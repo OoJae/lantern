@@ -1,0 +1,1188 @@
+{
+  "what": "A real run of the Lantern story on a local Midnight chain: every accepted step is a proved, balanced, finalized transaction.",
+  "network": "undeployed (local, single node)",
+  "recordedAt": "2026-09-22T22:54:26.623Z",
+  "mode": "full+sponsored",
+  "machine": {
+    "platform": "darwin arm64",
+    "cpus": 10,
+    "cpuModel": "Apple M5",
+    "node": "v26.0.0"
+  },
+  "images": [
+    "midnightntwrk/midnight-node:1.0.0",
+    "midnightntwrk/indexer-standalone:4.3.3",
+    "midnightntwrk/proof-server:8.1.0"
+  ],
+  "toolchain": {
+    "compact": "0.31.1",
+    "compact-runtime": "0.16.0",
+    "midnight-js": "4.1.1",
+    "wallet-sdk": "1.2.0"
+  },
+  "flavour": {
+    "what": "contracts/src/lantern.compact with exactly one line changed, so the timelock can be waited out",
+    "line": 120,
+    "recoveryDelaySeconds": 60,
+    "shipped": 259200
+  },
+  "payer": "per step: the recovering phone holds no wallet and a sponsor paid its fees; Seo-yeon paid for the open; the genesis wallet paid the rest",
+  "contract": {
+    "name": "Lantern (devnet flavour)",
+    "address": "c105c3a5ea75c32b95d294e3f92719f1a940a7f576c7cac9fc042462f34c56bd",
+    "txId": "003ac0ff0895e6bc5ebf9aa6bc5d598a6d4b8b4037db3df92d71c7fa3ef18aba8b",
+    "txHash": "d5bd90dabe49bed1e73acc7795d1be17e1eb2ae823e651f81b3cc3db9ae17d90",
+    "blockHeight": 1081,
+    "status": "SucceedEntirely",
+    "timings": {
+      "execute": 0.1,
+      "prove": 0,
+      "balance": 0.9,
+      "submit": 18.2,
+      "finalize": 1,
+      "total": 20.2
+    },
+    "maintenanceAuthority": {
+      "committee": 0,
+      "threshold": 1,
+      "counter": 1,
+      "frozenBy": {
+        "txId": "00fb315f7c1d9c78278555ef153fb4324f9f7fca389804683019ed8d88bee1d7a0",
+        "txHash": "e2d8c8f456b5ff7569c8c4c552ba63b5d4ef5a1438476d4707ab947a142ae989",
+        "blockHeight": 1084,
+        "status": "SucceedEntirely"
+      }
+    }
+  },
+  "timingNotes": "seconds. execute: the circuit run locally; prove: the local proof server; balance: adding DUST; submit: until the node included the transaction in a block (about 6 s per block); finalize: until midnight-js saw it finalized. The first proof of a run is marked cold.",
+  "steps": [
+    {
+      "id": "0.1",
+      "beat": 0,
+      "kind": "call",
+      "actor": "Hana",
+      "say": "Hana enrols: a commitment to her identity secret, a commitment to a separate veto secret, threshold 2.",
+      "circuit": "enrollIdentity",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "deca3b4d23f7a7cba316f683bd99b8ff9da85fdd25f8c779721bbb9ac7422c19",
+        "2"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00f15d095e6fe82ddb5583da11b821ab9b01cbc2c5c2b38de23a6020cff6329870",
+        "txHash": "714904b7b3aec61fcfd65c5b76396971f81c0736f710f05cbeb8cabbde3c8c0d",
+        "blockHeight": 1087,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 0.8,
+        "balance": 0.4,
+        "submit": 16.4,
+        "finalize": 1,
+        "total": 18.6,
+        "cold": true,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "enrolled": 1,
+        "lineage": 1,
+        "guardianSets": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "0.2",
+      "beat": 0,
+      "kind": "call",
+      "actor": "Hana",
+      "say": "Hana adds Seo-yeon as a guardian. The leaf is public; the secret inside it went to Seo-yeon out of band.",
+      "circuit": "addGuardian",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00d4ee8c2516b6133c4b61a9adcc54e8a1b406203192d96321c06402f95bef1ebd",
+        "txHash": "8034992ec0b4f11952c78de4b81c208aa8d48966ce7ccedc72962762805e0c1c",
+        "blockHeight": 1091,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0,
+        "prove": 1.7,
+        "balance": 0.4,
+        "submit": 20.9,
+        "finalize": 1,
+        "total": 24,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": "eebb4f19bd3f49525469d2e61002f090670c39a1628f5cfad2a46e910291b138",
+      "publicChange": {
+        "guardianLeaves": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "0.3",
+      "beat": 0,
+      "kind": "call",
+      "actor": "Hana",
+      "say": "Hana adds Mum as a guardian. The leaf is public; the secret inside it went to Mum out of band.",
+      "circuit": "addGuardian",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "002033ae8a0f82c751bcb58a60541c5336fd3631fc06c248a7326b6e59382e1b01",
+        "txHash": "362fba334c5728828b9acefb4d236e0a6144d74674b71021849fba159626b50e",
+        "blockHeight": 1094,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 0.9,
+        "balance": 0.4,
+        "submit": 15,
+        "finalize": 1,
+        "total": 17.3,
+        "cold": false,
+        "firstOfCircuit": false
+      },
+      "outcome": "accepted",
+      "result": "2caa9efcea7f689c16f22f303b5a461b1dad25c12c6d744dc0640c7f07b0c132",
+      "publicChange": {
+        "guardianLeaves": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "0.4",
+      "beat": 0,
+      "kind": "call",
+      "actor": "Hana",
+      "say": "Hana adds Jihoon as a guardian. The leaf is public; the secret inside it went to Jihoon out of band.",
+      "circuit": "addGuardian",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00862d9d00815804b2b41e47b3806c4d2ce2476f15acb0613187e6077ae7068ed9",
+        "txHash": "03242194a532f30583a6281784a884604276acb1e6f8bbefc78589781d420291",
+        "blockHeight": 1097,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 0.9,
+        "balance": 0.4,
+        "submit": 15,
+        "finalize": 1,
+        "total": 17.3,
+        "cold": false,
+        "firstOfCircuit": false
+      },
+      "outcome": "accepted",
+      "result": "3cdc6e8f2813df0e4aef615992e98b36d163e8f1997c31336eebc553592ef890",
+      "publicChange": {
+        "guardianLeaves": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "0.5",
+      "beat": 0,
+      "kind": "offchain",
+      "actor": "Hana",
+      "say": "She splits her identity secret 2-of-3 and gives each guardian one share. The veto card goes in a drawer.",
+      "detail": "three shares dealt, off chain",
+      "ok": true
+    },
+    {
+      "id": "0.6",
+      "beat": 0,
+      "kind": "call",
+      "actor": "Minji",
+      "say": "Elsewhere on the same contract, Minji enrols an identity of her own.",
+      "circuit": "enrollIdentity",
+      "args": [
+        "35260dd12db0006cb28e1fb4d92ebb67b3cd57f5d29ec30fcec7fe428c9ceb56",
+        "df4f12234618e4396b705260cfc91c222aced99e8c7ebb4f425b320c6003cb2f",
+        "2"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00b829cdf27045a03ebfe931da551f74e202bef627ba51b3b47c87fcca02a9cf38",
+        "txHash": "1a49c89d23e90cb0cbe48032a06005a16d57711d398ad25c7cc02f5ef429eb2c",
+        "blockHeight": 1100,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 0.6,
+        "balance": 0.4,
+        "submit": 16.6,
+        "finalize": 1,
+        "total": 18.7,
+        "cold": false,
+        "firstOfCircuit": false
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "enrolled": 1,
+        "lineage": 1,
+        "guardianSets": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "0.7",
+      "beat": 0,
+      "kind": "call",
+      "actor": "Minji",
+      "say": "She makes herself one of her own guardians, so she holds a real leaf with a real Merkle path.",
+      "circuit": "addGuardian",
+      "args": [
+        "35260dd12db0006cb28e1fb4d92ebb67b3cd57f5d29ec30fcec7fe428c9ceb56"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "002d2ee9f2154e124e4c8c9c02100e328e56b5eb47ffc72bfc1300980ad7b60b1d",
+        "txHash": "f836c37024fb8c0bd3b686f44d58903d5bdab0b181182db0a78049e463c584bb",
+        "blockHeight": 1103,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 1,
+        "balance": 0.3,
+        "submit": 15,
+        "finalize": 1,
+        "total": 17.3,
+        "cold": false,
+        "firstOfCircuit": false
+      },
+      "outcome": "accepted",
+      "result": "1a10706909f627f1ad892887171ddaa62fb5e112c24b78feb065f9dec604698a",
+      "publicChange": {
+        "guardianLeaves": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "1.1",
+      "beat": 1,
+      "kind": "call",
+      "actor": "Hana's laptop",
+      "say": "The DApp stores one value, Hana's identity root, and asks: is the caller its current owner? Yes.",
+      "circuit": "hostGatedAction",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "6badf79b308283288ee42d3098e5a1e71dab88c0300c98d184e24b1c01b7a117"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00e0a43ea4d48acd128789caf7d20c47cecc87ee844e7e63d6ac07674965e3583d",
+        "txHash": "849b9fb20b56cffadd9878736e9c6aa966f1348bbe015b60951be54ae9e0453b",
+        "blockHeight": 1106,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0,
+        "prove": 1.3,
+        "balance": 0.4,
+        "submit": 15.9,
+        "finalize": 1,
+        "total": 18.6,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "gateActions": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "2.1",
+      "beat": 2,
+      "kind": "offchain",
+      "actor": "Hana",
+      "say": "The laptop is destroyed, and its private state with it. No seed phrase brings it back.",
+      "detail": "identity secret: gone. Veto card: in the drawer.",
+      "ok": true
+    },
+    {
+      "id": "3.1",
+      "beat": 3,
+      "kind": "offchain",
+      "actor": "Hana's new phone",
+      "say": "The new phone makes a one-time device key. Its fingerprint is what the guardians will check.",
+      "detail": "device fingerprint 48B1-1743",
+      "ok": true
+    },
+    {
+      "id": "3.2",
+      "beat": 3,
+      "kind": "call",
+      "actor": "Seo-yeon",
+      "say": "Seo-yeon opens a recovery of Hana's identity, for that device key. Opening needs no secret; the new phone has none to offer.",
+      "circuit": "openRecovery",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "48b11743446822f5fd7171c38641f5c76003503de2a84d386928d69783285000"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00198b4702deb8e5d021df48c829be1d5519dd4c8c46c804933c3c8aa856d72cc7",
+        "txHash": "0ee2ee8760d67e0aadf604b4280b6e11b33dd1d828cc9f7be952c554c7a77a4d",
+        "blockHeight": 1109,
+        "status": "SucceedEntirely"
+      },
+      "payer": "Seo-yeon's own wallet",
+      "timings": {
+        "execute": 0,
+        "prove": 0.7,
+        "balance": 0.4,
+        "submit": 15.2,
+        "finalize": 1,
+        "total": 17.3,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": "9cd8ed71f2b591286cd448b3aee32220701da8c5a0a6bcb3932abfaa1bdeb2e7",
+      "publicChange": {
+        "recoveries": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "4.1",
+      "beat": 4,
+      "kind": "call",
+      "actor": "Seo-yeon",
+      "say": "Seo-yeon compares the fingerprint with the one Hana reads to her over the phone, and approves.",
+      "circuit": "approveRecovery",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "9cd8ed71f2b591286cd448b3aee32220701da8c5a0a6bcb3932abfaa1bdeb2e7"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00cd3ef5d7e57ff64010c2acc27ab25f19313124cbbf7ca039b4e14dd127f772dd",
+        "txHash": "db9ef790c86a1c0e13d370e2cc1cc8c9def2ae12dbc1fba96a883f03b43180b9",
+        "blockHeight": 1112,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 1.2,
+        "balance": 0.5,
+        "submit": 15.9,
+        "finalize": 1,
+        "total": 18.7,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "approvals": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "4.2",
+      "beat": 4,
+      "kind": "call",
+      "actor": "Mum",
+      "say": "Mum does the same. Quorum: two of two needed.",
+      "circuit": "approveRecovery",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "9cd8ed71f2b591286cd448b3aee32220701da8c5a0a6bcb3932abfaa1bdeb2e7"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "000524d9945cb21ba6e5f69dcda8a1dca91d62803b4b9818fef877a9cb0af34f59",
+        "txHash": "6190b036ea4decc9d80c37fa59aba07775b6a63419a3c6f9443334ab1e5eb458",
+        "blockHeight": 1115,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 1,
+        "balance": 0.4,
+        "submit": 14.9,
+        "finalize": 1,
+        "total": 17.4,
+        "cold": false,
+        "firstOfCircuit": false
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "approvals": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "4.3",
+      "beat": 4,
+      "kind": "offchain",
+      "actor": "Seo-yeon, Mum",
+      "say": "Each sends her share to the new phone, off chain.",
+      "detail": "the phone holds two shares",
+      "ok": true
+    },
+    {
+      "id": "5.1",
+      "beat": 5,
+      "kind": "offchain",
+      "actor": "an attacker",
+      "say": "An attacker reads the whole public ledger and tries every derivation it knows against Hana's guardian tree, starting from her real guardians' names.",
+      "detail": "268 probes, 0 guardians named, 0 votes linked",
+      "ok": true
+    },
+    {
+      "id": "6.1",
+      "beat": 6,
+      "kind": "call",
+      "actor": "Minji",
+      "say": "Minji tries to approve Hana's recovery with her own guardian leaf. The leaf and its path are real — for a different identity.",
+      "circuit": "approveRecovery",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "9cd8ed71f2b591286cd448b3aee32220701da8c5a0a6bcb3932abfaa1bdeb2e7"
+      ],
+      "expect": "refused: path does not bind to this guardian leaf",
+      "outcome": "refused",
+      "message": "path does not bind to this guardian leaf",
+      "ok": true
+    },
+    {
+      "id": "6.2",
+      "beat": 6,
+      "kind": "call",
+      "actor": "Seo-yeon",
+      "say": "Seo-yeon tries to approve a second time.",
+      "circuit": "approveRecovery",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "9cd8ed71f2b591286cd448b3aee32220701da8c5a0a6bcb3932abfaa1bdeb2e7"
+      ],
+      "expect": "refused: guardian already approved",
+      "outcome": "refused",
+      "message": "guardian already approved",
+      "ok": true
+    },
+    {
+      "id": "7.1",
+      "beat": 7,
+      "kind": "offchain",
+      "actor": "Jihoon",
+      "say": "Jihoon phishes Mum's share. With his own, that is two: he rebuilds Hana's identity secret, salt and all.",
+      "detail": "he now holds exactly what the lost laptop held",
+      "ok": true
+    },
+    {
+      "id": "7.2",
+      "beat": 7,
+      "kind": "call",
+      "actor": "Jihoon",
+      "say": "He acts as Hana at the DApp. This is the honest cost of any recovery scheme: until her recovery finalizes, that secret IS the owner's.",
+      "circuit": "hostGatedAction",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "da4cbf086b544326de48cb0930e54e1a12bafb31bbf09f0cb2a5989050b485d9"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00e5462b8fd6ccdcbe5ec1d2f55d83b154495cf16a2d46a3e5bc4890791009e2c4",
+        "txHash": "69bb618ebbdb0696049d5e73f81c95e360dbb6344853ea3a7e851fbfa4818a13",
+        "blockHeight": 1118,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0,
+        "prove": 0.9,
+        "balance": 0.4,
+        "submit": 16.2,
+        "finalize": 1,
+        "total": 18.5,
+        "cold": false,
+        "firstOfCircuit": false
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "gateActions": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "7.3",
+      "beat": 7,
+      "kind": "call",
+      "actor": "Jihoon",
+      "say": "He tries to mint a guardian token of his own, to fake a quorum.",
+      "circuit": "addGuardian",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847"
+      ],
+      "expect": "refused: adding a guardian requires the veto secret",
+      "outcome": "refused",
+      "message": "adding a guardian requires the veto secret",
+      "ok": true
+    },
+    {
+      "id": "7.4",
+      "beat": 7,
+      "kind": "call",
+      "actor": "Jihoon",
+      "say": "He opens a recovery for his own device. Anyone may.",
+      "circuit": "openRecovery",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "81e34cc0b56b32e2ef3196c54e534c389cbef1f9f3655405a3ba1ead2efb7f00"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00e135645b3e13d4f21c33f278dd46b421650f5cdbc039fd96d9a0b6cd26cb543a",
+        "txHash": "64bd5e5d7fce57627092574a788d3104247f9f2e766e22b96e195760e1e78625",
+        "blockHeight": 1121,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0,
+        "prove": 0.6,
+        "balance": 0.9,
+        "submit": 14.7,
+        "finalize": 1,
+        "total": 17.3,
+        "cold": false,
+        "firstOfCircuit": false
+      },
+      "outcome": "accepted",
+      "result": "e0e2b62d695ed22d6e29694df7e559beb298725018b3ab196de384ae2ffc27f0",
+      "publicChange": {
+        "recoveries": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "7.5",
+      "beat": 7,
+      "kind": "call",
+      "actor": "Jihoon",
+      "say": "He approves it with his real guardian token: one of the two it needs, and he cannot mint the second.",
+      "circuit": "approveRecovery",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "e0e2b62d695ed22d6e29694df7e559beb298725018b3ab196de384ae2ffc27f0"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00626d3f730d4afeab4ab0566ea1ff599f3008028902c23dee75c4da81b297503e",
+        "txHash": "8ea9554b69ba24d48d1d813ec5b43cf6e991b2b1d672c39ca7516d79834688b6",
+        "blockHeight": 1124,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 0.9,
+        "balance": 0.4,
+        "submit": 16.3,
+        "finalize": 1,
+        "total": 18.6,
+        "cold": false,
+        "firstOfCircuit": false
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "approvals": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "7.6",
+      "beat": 7,
+      "kind": "call",
+      "actor": "Jihoon",
+      "say": "He tries to finalize Hana's recovery instead: it has a quorum, and he has the secret.",
+      "circuit": "finalizeRecovery",
+      "args": [
+        "9cd8ed71f2b591286cd448b3aee32220701da8c5a0a6bcb3932abfaa1bdeb2e7",
+        "f181a68f274fb3f288559d0f72482b9187012006f7428b07d8e922e6facec685",
+        "cc39bcddcb43bfdff992c9f2b988493d3b62e89e073d9090c176bf2aff28e7ef"
+      ],
+      "expect": "refused: not the device the guardians approved",
+      "outcome": "refused",
+      "message": "not the device the guardians approved",
+      "ok": true
+    },
+    {
+      "id": "7.7",
+      "beat": 7,
+      "kind": "call",
+      "actor": "Jihoon",
+      "say": "He tries to evict the guardians, which would kill Hana's recovery.",
+      "circuit": "rotateGuardianSet",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "ba733dbb0fe82a6e008d6b5a0876a149028a0740ee52c5e18755829b1197f86e"
+      ],
+      "expect": "refused: rotating the guardian set requires the veto secret",
+      "outcome": "refused",
+      "message": "rotating the guardian set requires the veto secret",
+      "ok": true
+    },
+    {
+      "id": "7.8",
+      "beat": 7,
+      "kind": "call",
+      "actor": "Jihoon",
+      "say": "He tries to veto Hana's recovery.",
+      "circuit": "vetoRecovery",
+      "args": [
+        "9cd8ed71f2b591286cd448b3aee32220701da8c5a0a6bcb3932abfaa1bdeb2e7"
+      ],
+      "expect": "refused: veto secret does not open this identity's veto commitment",
+      "outcome": "refused",
+      "message": "veto secret does not open this identity's veto commitment",
+      "ok": true
+    },
+    {
+      "id": "7.9",
+      "beat": 7,
+      "kind": "call",
+      "actor": "Hana",
+      "say": "Hana sees a recovery she did not start, types her veto card into the phone, and kills it.",
+      "circuit": "vetoRecovery",
+      "args": [
+        "e0e2b62d695ed22d6e29694df7e559beb298725018b3ab196de384ae2ffc27f0"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "006806e6aabb591130f2ac7f094ccc4a95c0201aa7a72f1d511c8278e004599156",
+        "txHash": "49f8139ad83846d918000d5c929f11c424bdba568c9176fd245d65cf60ed69cd",
+        "blockHeight": 1127,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the sponsor (the device holds no wallet)",
+      "sponsorship": {
+        "circuit": "vetoRecovery",
+        "deviceWallet": "none",
+        "fee": "384500000000001",
+        "userIntentDustSpends": 0,
+        "sponsorDustSpends": 1,
+        "sponsorBalanceSeconds": 0.4,
+        "sponsorSubmitSeconds": 14.5
+      },
+      "timings": {
+        "execute": 0,
+        "prove": 1.3,
+        "balance": 14.9,
+        "submit": 0,
+        "finalize": 1,
+        "total": 17.2,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "vetoes": 1,
+        "killed": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "7.10",
+      "beat": 7,
+      "kind": "call",
+      "actor": "Jihoon",
+      "say": "His own recovery is dead.",
+      "circuit": "finalizeRecovery",
+      "args": [
+        "e0e2b62d695ed22d6e29694df7e559beb298725018b3ab196de384ae2ffc27f0",
+        "f181a68f274fb3f288559d0f72482b9187012006f7428b07d8e922e6facec685",
+        "cc39bcddcb43bfdff992c9f2b988493d3b62e89e073d9090c176bf2aff28e7ef"
+      ],
+      "expect": "refused: recovery vetoed",
+      "outcome": "refused",
+      "message": "recovery vetoed",
+      "ok": true
+    },
+    {
+      "id": "8.1",
+      "beat": 8,
+      "kind": "offchain",
+      "actor": "Hana's new phone",
+      "say": "The phone rebuilds Hana's identity secret from the two shares, and makes a new identity to succeed it.",
+      "detail": "secret and salt rebuilt from shares alone",
+      "ok": true
+    },
+    {
+      "id": "8.2",
+      "beat": 8,
+      "kind": "call",
+      "actor": "Hana's new phone",
+      "say": "Finalize now?",
+      "circuit": "finalizeRecovery",
+      "args": [
+        "9cd8ed71f2b591286cd448b3aee32220701da8c5a0a6bcb3932abfaa1bdeb2e7",
+        "f181a68f274fb3f288559d0f72482b9187012006f7428b07d8e922e6facec685",
+        "cc39bcddcb43bfdff992c9f2b988493d3b62e89e073d9090c176bf2aff28e7ef"
+      ],
+      "expect": "refused: timelock has not elapsed",
+      "outcome": "refused",
+      "message": "timelock has not elapsed",
+      "ok": true
+    },
+    {
+      "id": "8.3",
+      "beat": 8,
+      "kind": "clock",
+      "actor": "time",
+      "say": "Wait out the timelock: 11 min 10 s.",
+      "detail": "waited 8 min 29 s of real time for the chain's block time to pass the timelock",
+      "ok": true
+    },
+    {
+      "id": "8.4",
+      "beat": 8,
+      "kind": "call",
+      "actor": "Hana's new phone",
+      "say": "Suppose one share had been tampered with in transit. The rebuilt secret is wrong, and the chain can tell.",
+      "circuit": "finalizeRecovery",
+      "args": [
+        "9cd8ed71f2b591286cd448b3aee32220701da8c5a0a6bcb3932abfaa1bdeb2e7",
+        "f181a68f274fb3f288559d0f72482b9187012006f7428b07d8e922e6facec685",
+        "cc39bcddcb43bfdff992c9f2b988493d3b62e89e073d9090c176bf2aff28e7ef"
+      ],
+      "expect": "refused: reconstructed secret does not open idCommit",
+      "outcome": "refused",
+      "message": "reconstructed secret does not open idCommit",
+      "ok": true
+    },
+    {
+      "id": "8.5",
+      "beat": 8,
+      "kind": "call",
+      "actor": "the fee sponsor",
+      "say": "The sponsor who pays for Hana's transactions tries to finalize for itself.",
+      "circuit": "finalizeRecovery",
+      "args": [
+        "9cd8ed71f2b591286cd448b3aee32220701da8c5a0a6bcb3932abfaa1bdeb2e7",
+        "f181a68f274fb3f288559d0f72482b9187012006f7428b07d8e922e6facec685",
+        "cc39bcddcb43bfdff992c9f2b988493d3b62e89e073d9090c176bf2aff28e7ef"
+      ],
+      "expect": "refused: not the device the guardians approved",
+      "outcome": "refused",
+      "message": "not the device the guardians approved",
+      "ok": true
+    },
+    {
+      "id": "8.6",
+      "beat": 8,
+      "kind": "call",
+      "actor": "Hana's new phone",
+      "say": "The phone finalizes: the approved device, the right secret, after the timelock. The old commitment is retired and a successor takes its place.",
+      "circuit": "finalizeRecovery",
+      "args": [
+        "9cd8ed71f2b591286cd448b3aee32220701da8c5a0a6bcb3932abfaa1bdeb2e7",
+        "f181a68f274fb3f288559d0f72482b9187012006f7428b07d8e922e6facec685",
+        "cc39bcddcb43bfdff992c9f2b988493d3b62e89e073d9090c176bf2aff28e7ef"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "009055dff5110a4b58a41217f605d28d0d8a35b35642a799ef34272ebedeb9b80e",
+        "txHash": "cd736459b44342ee8d7cdeb46b7e599a2a5bcc11c172441e6bb6b2d9d2288c83",
+        "blockHeight": 1215,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the sponsor (the device holds no wallet)",
+      "sponsorship": {
+        "circuit": "finalizeRecovery",
+        "deviceWallet": "none",
+        "fee": "516780000000001",
+        "userIntentDustSpends": 0,
+        "sponsorDustSpends": 1,
+        "sponsorBalanceSeconds": 0.4,
+        "sponsorSubmitSeconds": 16.4
+      },
+      "timings": {
+        "execute": 0.1,
+        "prove": 1.3,
+        "balance": 16.8,
+        "submit": 0,
+        "finalize": 1,
+        "total": 19.2,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "enrolled": 1,
+        "retired": 1,
+        "lineage": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "9.1",
+      "beat": 9,
+      "kind": "call",
+      "actor": "Jihoon",
+      "say": "Jihoon tries the DApp again with the old secret.",
+      "circuit": "hostGatedAction",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "61313bfbf4e7e73b08976d2cbf7b8976d08f175cd007f628a6a17733d7728500"
+      ],
+      "expect": "refused: not the current owner of this identity root",
+      "outcome": "refused",
+      "message": "not the current owner of this identity root",
+      "ok": true
+    },
+    {
+      "id": "9.2",
+      "beat": 9,
+      "kind": "call",
+      "actor": "Hana's new phone",
+      "say": "Hana's phone acts at the DApp. The DApp still stores the same single value — her identity root — and never had to change it.",
+      "circuit": "hostGatedAction",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "f181a68f274fb3f288559d0f72482b9187012006f7428b07d8e922e6facec685",
+        "50bfe388d047628a1d8459cdda843d2e7be05cb70ae44dc2b07cb001df2c49b0"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00ad950ef85754fa5591970d12a7cddf5c808ec47e69ee7a0c6e1e14653ce10518",
+        "txHash": "7ddfb1bbff644188b35525a9812e9d530eb60c78b8f90530c3171ce0fc0debfb",
+        "blockHeight": 1218,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the sponsor (the device holds no wallet)",
+      "sponsorship": {
+        "circuit": "hostGatedAction",
+        "deviceWallet": "none",
+        "fee": "377150000000001",
+        "userIntentDustSpends": 0,
+        "sponsorDustSpends": 1,
+        "sponsorBalanceSeconds": 0.5,
+        "sponsorSubmitSeconds": 15.4
+      },
+      "timings": {
+        "execute": 0,
+        "prove": 1.7,
+        "balance": 15.9,
+        "submit": 0,
+        "finalize": 1,
+        "total": 18.6,
+        "cold": false,
+        "firstOfCircuit": false
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "gateActions": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "9.3",
+      "beat": 9,
+      "kind": "call",
+      "actor": "anyone",
+      "say": "Anyone can prove the new commitment is the current head of Hana's root: descent is one Merkle membership proof, headship one non-membership check.",
+      "circuit": "proveSuccession",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "f181a68f274fb3f288559d0f72482b9187012006f7428b07d8e922e6facec685"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00267ae003280d4867679f3c18c584263a7b4624f0bb4ac4a94b0601c83b2f17ee",
+        "txHash": "0334ed8c6e71e2f9f76af801e92777cea82fbfaae348c2f25ff5fe8afe288c4e",
+        "blockHeight": 1221,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0,
+        "prove": 0.6,
+        "balance": 0.3,
+        "submit": 15.2,
+        "finalize": 1,
+        "total": 17.3,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {},
+      "ok": true
+    },
+    {
+      "id": "9.4",
+      "beat": 9,
+      "kind": "call",
+      "actor": "anyone",
+      "say": "The same proof for the old commitment: it still descends from the root, but it is no longer the head.",
+      "circuit": "proveSuccession",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847"
+      ],
+      "expect": "refused: head has been superseded",
+      "outcome": "refused",
+      "message": "head has been superseded",
+      "ok": true
+    },
+    {
+      "id": "9.5",
+      "beat": 9,
+      "kind": "call",
+      "actor": "Hana's new phone",
+      "say": "And the phone proves it holds the head's secret, without revealing it.",
+      "circuit": "proveHeadOwnership",
+      "args": [
+        "0d42777bf2922de9482d9720af3067254c7dd066a0ce5a9c44e272c01b6bd847",
+        "f181a68f274fb3f288559d0f72482b9187012006f7428b07d8e922e6facec685"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00a1634c9d9f9351d2f976ee4ed0a48038ae8ac29d4112788c1bc2418e81cef5e5",
+        "txHash": "4c74f53979c9bab7f19eb329f5f6c110850d178d2c19eb7c3d4bef22f73358d2",
+        "blockHeight": 1224,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the sponsor (the device holds no wallet)",
+      "sponsorship": {
+        "circuit": "proveHeadOwnership",
+        "deviceWallet": "none",
+        "fee": "342400000000001",
+        "userIntentDustSpends": 0,
+        "sponsorDustSpends": 1,
+        "sponsorBalanceSeconds": 0.4,
+        "sponsorSubmitSeconds": 16.1
+      },
+      "timings": {
+        "execute": 0,
+        "prove": 1.1,
+        "balance": 16.4,
+        "submit": 0,
+        "finalize": 1,
+        "total": 18.6,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {},
+      "ok": true
+    },
+    {
+      "id": "10.1",
+      "beat": 10,
+      "kind": "offchain",
+      "actor": "Hana",
+      "say": "Hana deals fresh shares of her new secret. The old shares rebuild a retired secret, so they are worthless.",
+      "detail": "two new shares, off chain",
+      "ok": true
+    },
+    {
+      "id": "10.2",
+      "beat": 10,
+      "kind": "call",
+      "actor": "Hana",
+      "say": "With her new veto card she rotates the guardian set. Every old token is void — Jihoon's included.",
+      "circuit": "rotateGuardianSet",
+      "args": [
+        "f181a68f274fb3f288559d0f72482b9187012006f7428b07d8e922e6facec685",
+        "fa21601fd6f5b2d2878285c9bef184270f8fe3eb2ce78d2ae7c8c41ce0ab1408"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00f0dbea54b4406b02509c73461b6ed9957132333f604ccc0bfca5d5e144317559",
+        "txHash": "16ffe330ad2f684e9277b14c62094d87fb3e58991329c9f50833d1bcb9e97b5f",
+        "blockHeight": 1227,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the sponsor (the device holds no wallet)",
+      "sponsorship": {
+        "circuit": "rotateGuardianSet",
+        "deviceWallet": "none",
+        "fee": "386550000000001",
+        "userIntentDustSpends": 0,
+        "sponsorDustSpends": 1,
+        "sponsorBalanceSeconds": 0.4,
+        "sponsorSubmitSeconds": 14.7
+      },
+      "timings": {
+        "execute": 0,
+        "prove": 1.1,
+        "balance": 15.2,
+        "submit": 0,
+        "finalize": 1,
+        "total": 17.3,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "guardianSets": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "10.3",
+      "beat": 10,
+      "kind": "call",
+      "actor": "Hana",
+      "say": "She adds Seo-yeon back, with a fresh token.",
+      "circuit": "addGuardian",
+      "args": [
+        "f181a68f274fb3f288559d0f72482b9187012006f7428b07d8e922e6facec685"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "001d9760f31a8194c243c5d75ac032b0ee3a6b39c5721d9925b54790f682f57973",
+        "txHash": "930993815820fef1935b0200e2c0385cd06b278be411a3018c4bd460dbf07ea9",
+        "blockHeight": 1230,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the sponsor (the device holds no wallet)",
+      "sponsorship": {
+        "circuit": "addGuardian",
+        "deviceWallet": "none",
+        "fee": "396220000000001",
+        "userIntentDustSpends": 0,
+        "sponsorDustSpends": 1,
+        "sponsorBalanceSeconds": 0.3,
+        "sponsorSubmitSeconds": 16.1
+      },
+      "timings": {
+        "execute": 0.1,
+        "prove": 1.1,
+        "balance": 16.5,
+        "submit": 0,
+        "finalize": 1,
+        "total": 18.7,
+        "cold": false,
+        "firstOfCircuit": false
+      },
+      "outcome": "accepted",
+      "result": "37db86ce880035dc1a18aa053695651c3ddac865bc52b96004110524a07e0565",
+      "publicChange": {
+        "guardianLeaves": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "10.4",
+      "beat": 10,
+      "kind": "call",
+      "actor": "Hana",
+      "say": "She adds Mum back, with a fresh token.",
+      "circuit": "addGuardian",
+      "args": [
+        "f181a68f274fb3f288559d0f72482b9187012006f7428b07d8e922e6facec685"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00fa381d17521981d4447f5068c4f1a05f2ea315519f2dabd50b13f2b5e32da96f",
+        "txHash": "ef9833334448c508dc604d0cd9a88ed0a6f3f2025dedd24eaa71075b6e36e136",
+        "blockHeight": 1233,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the sponsor (the device holds no wallet)",
+      "sponsorship": {
+        "circuit": "addGuardian",
+        "deviceWallet": "none",
+        "fee": "421670000000001",
+        "userIntentDustSpends": 0,
+        "sponsorDustSpends": 1,
+        "sponsorBalanceSeconds": 0.4,
+        "sponsorSubmitSeconds": 15
+      },
+      "timings": {
+        "execute": 0.1,
+        "prove": 0.9,
+        "balance": 15.3,
+        "submit": 0,
+        "finalize": 1,
+        "total": 17.4,
+        "cold": false,
+        "firstOfCircuit": false
+      },
+      "outcome": "accepted",
+      "result": "799661b80e5013ca2ed0e6f1ef8df41ec11fc8f152beabbf14d8afbc7f73078f",
+      "publicChange": {
+        "guardianLeaves": 1
+      },
+      "ok": true
+    }
+  ],
+  "finalPublicRecord": {
+    "enrolled": 3,
+    "guardianLeaves": 6,
+    "recoveries": 2,
+    "approvals": 3,
+    "vetoes": 1,
+    "killed": 1,
+    "retired": 1,
+    "lineage": 3,
+    "guardianSets": 3,
+    "gateActions": 3
+  },
+  "summary": {
+    "steps": 42,
+    "accepted": 21,
+    "refused": 12,
+    "transactions": 23,
+    "proveSeconds": {
+      "min": 0.6,
+      "median": 1,
+      "max": 1.7,
+      "coldFirst": 0.8
+    },
+    "callToFinalizedSeconds": {
+      "min": 17.2,
+      "median": 18.5,
+      "max": 24
+    },
+    "wallClockMinutes": 15.6
+  }
+}
