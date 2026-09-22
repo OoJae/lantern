@@ -284,3 +284,30 @@ describe('reference host gate: a DApp survives its user losing their key', () =>
       .toThrow(/does not hold the current identity secret/);
   });
 });
+
+// Regression. Previously finalizeRecovery never re-read guardianCtx, so
+// rotating the guardian set was forward-looking only: it invalidated PENDING
+// approvals, but a recovery that had already reached quorum still finalised.
+// An owner who discovered a guardian compromise and rotated would lose the
+// identity anyway. Reproduced before the fix.
+describe('regression: a guardian-set rotation kills a recovery that already reached quorum', () => {
+  it('a quorum reached before the rotation can no longer finalise', () => {
+    const { sim, id, guardians } = world();
+    const rid = openAndApprove(sim, id, guardians, 2);   // quorum reached
+    sim.call('rotateGuardianSet', id, bytes32(777));     // owner evicts them
+    sim.advance(DELAY + SLACK + 1);
+    expect(() => sim.call('finalizeRecovery', rid,
+      pureCircuits.idCommitOf(fieldOf(70), bytes32(71)),
+      pureCircuits.vetoCommitOf(fieldOf(80), bytes32(81))))
+      .toThrow(/guardian set was rotated/);
+  });
+
+  it('an unrotated quorum still finalises normally', () => {
+    const { sim, id, guardians } = world();
+    const rid = openAndApprove(sim, id, guardians, 2);
+    sim.advance(DELAY + SLACK + 1);
+    expect(() => sim.call('finalizeRecovery', rid,
+      pureCircuits.idCommitOf(fieldOf(70), bytes32(71)),
+      pureCircuits.vetoCommitOf(fieldOf(80), bytes32(81)))).not.toThrow();
+  });
+});

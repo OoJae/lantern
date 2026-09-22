@@ -220,12 +220,14 @@ export type Ledger = {
     member(key_0: Uint8Array): boolean;
     lookup(key_0: Uint8Array): { idCommit: Uint8Array,
                                  idRoot: Uint8Array,
+                                 ctx: Uint8Array,
                                  ephemeralPk: Uint8Array,
                                  openedAtLo: bigint,
                                  openedAtHi: bigint
                                };
     [Symbol.iterator](): Iterator<[Uint8Array, { idCommit: Uint8Array,
   idRoot: Uint8Array,
+  ctx: Uint8Array,
   ephemeralPk: Uint8Array,
   openedAtLo: bigint,
   openedAtHi: bigint

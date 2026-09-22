@@ -35,8 +35,8 @@ jobs:
       - name: Assert the independently deployed host compiled
         run: |
           set -euo pipefail
-          for c in appendSnapshotLeaf addCommitteeSlot openEpoch attestVote \
-                   sealEpoch rotateCommittee requireCurrentOwnerAttested; do
+          for c in appendSnapshotLeaf openEpoch attestVote sealEpoch \
+                   openRotation rotateVote sealRotation requireCurrentOwnerAttested; do
             test -s "contracts/managed-host/keys/${c}.prover"   || { echo "missing host prover key: $c";   exit 1; }
             test -s "contracts/managed-host/keys/${c}.verifier" || { echo "missing host verifier key: $c"; exit 1; }
           done

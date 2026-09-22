@@ -32,6 +32,10 @@ struct VetoNulPreimage { domain: Bytes<18>; secret: Field; rid: Bytes<32>; }
 struct RecoveryRecord {
   idCommit: Bytes<32>;
   idRoot: Bytes<32>;
+  // The guardian set this recovery was opened against. finalizeRecovery
+  // requires it to still be current, so rotating the guardian set kills every
+  // in-flight recovery -- including one that has already reached quorum.
+  ctx: Bytes<32>;
   ephemeralPk: Bytes<32>;
   openedAtLo: Uint<64>;
   openedAtHi: Uint<64>;
@@ -255,10 +259,12 @@ export circuit openRecovery(idCommit: Bytes<32>, ephemeralPk: Bytes<32>): Bytes<
   // Frozen into the write-once record, so approve/finalize read it for free
   // and can never disagree about which root is in play.
   const idRoot = idRoots.lookup(disclose(idCommit));
+  const ctx = guardianCtx.lookup(disclose(idRoot));
 
   recoveries.insert(disclose(rid), RecoveryRecord {
     idCommit: disclose(idCommit),
     idRoot: disclose(idRoot),
+    ctx: disclose(ctx),
     ephemeralPk: disclose(ephemeralPk),
     openedAtLo: disclose(lo),
     openedAtHi: disclose(hi)
@@ -332,6 +338,13 @@ export circuit finalizeRecovery(
 
   assert(!killed.member(disclose(rid)), "recovery vetoed");
   assert(!retiredIdentities.member(disclose(idCommit)), "identity already retired");
+
+  // Without this, rotateGuardianSet was forward-looking only: it invalidated
+  // PENDING approvals but a recovery that had already reached quorum still
+  // finalised. An owner who discovered a guardian compromise and rotated would
+  // lose the identity anyway. Now the rotation is decisive.
+  assert(guardianCtx.lookup(disclose(rec.idRoot)) == rec.ctx,
+         "guardian set was rotated since this recovery opened");
 
   // Timelock against the PESSIMISTIC bound recorded at open.
   assert(blockTimeGte((rec.openedAtHi + recoveryDelaySeconds()) as Uint<64>),

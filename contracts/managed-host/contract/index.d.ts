@@ -16,22 +16,37 @@ export type ImpureCircuits<PS> = {
   appendSnapshotLeaf(context: __compactRuntime.CircuitContext<PS>,
                      root_0: Uint8Array,
                      current_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
-  addCommitteeSlot(context: __compactRuntime.CircuitContext<PS>,
-                   slot_0: bigint,
-                   pkX_0: bigint,
-                   pkY_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   openEpoch(context: __compactRuntime.CircuitContext<PS>,
             epoch_0: bigint,
             snapshotRoot_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   attestVote(context: __compactRuntime.CircuitContext<PS>,
              epoch_0: bigint,
+             snapshotRoot_0: bigint,
              slot_0: bigint,
              pk_0: __compactRuntime.JubjubPoint,
              sig_0: { announcement: __compactRuntime.JubjubPoint,
                       response: bigint
                     }): __compactRuntime.CircuitResults<PS, []>;
-  sealEpoch(context: __compactRuntime.CircuitContext<PS>, epoch_0: bigint): __compactRuntime.CircuitResults<PS, []>;
-  rotateCommittee(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
+  sealEpoch(context: __compactRuntime.CircuitContext<PS>,
+            epoch_0: bigint,
+            snapshotRoot_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  openRotation(context: __compactRuntime.CircuitContext<PS>,
+               targetSlot_0: bigint,
+               newPkX_0: bigint,
+               newPkY_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  rotateVote(context: __compactRuntime.CircuitContext<PS>,
+             targetSlot_0: bigint,
+             newPkX_0: bigint,
+             newPkY_0: bigint,
+             voterSlot_0: bigint,
+             voterPk_0: __compactRuntime.JubjubPoint,
+             sig_0: { announcement: __compactRuntime.JubjubPoint,
+                      response: bigint
+                    }): __compactRuntime.CircuitResults<PS, []>;
+  sealRotation(context: __compactRuntime.CircuitContext<PS>,
+               targetSlot_0: bigint,
+               newPkX_0: bigint,
+               newPkY_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   requireCurrentOwnerAttested(context: __compactRuntime.CircuitContext<PS>,
                               epoch_0: bigint,
                               rootIdCommit_0: Uint8Array,
@@ -42,22 +57,37 @@ export type ProvableCircuits<PS> = {
   appendSnapshotLeaf(context: __compactRuntime.CircuitContext<PS>,
                      root_0: Uint8Array,
                      current_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
-  addCommitteeSlot(context: __compactRuntime.CircuitContext<PS>,
-                   slot_0: bigint,
-                   pkX_0: bigint,
-                   pkY_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   openEpoch(context: __compactRuntime.CircuitContext<PS>,
             epoch_0: bigint,
             snapshotRoot_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   attestVote(context: __compactRuntime.CircuitContext<PS>,
              epoch_0: bigint,
+             snapshotRoot_0: bigint,
              slot_0: bigint,
              pk_0: __compactRuntime.JubjubPoint,
              sig_0: { announcement: __compactRuntime.JubjubPoint,
                       response: bigint
                     }): __compactRuntime.CircuitResults<PS, []>;
-  sealEpoch(context: __compactRuntime.CircuitContext<PS>, epoch_0: bigint): __compactRuntime.CircuitResults<PS, []>;
-  rotateCommittee(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
+  sealEpoch(context: __compactRuntime.CircuitContext<PS>,
+            epoch_0: bigint,
+            snapshotRoot_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  openRotation(context: __compactRuntime.CircuitContext<PS>,
+               targetSlot_0: bigint,
+               newPkX_0: bigint,
+               newPkY_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  rotateVote(context: __compactRuntime.CircuitContext<PS>,
+             targetSlot_0: bigint,
+             newPkX_0: bigint,
+             newPkY_0: bigint,
+             voterSlot_0: bigint,
+             voterPk_0: __compactRuntime.JubjubPoint,
+             sig_0: { announcement: __compactRuntime.JubjubPoint,
+                      response: bigint
+                    }): __compactRuntime.CircuitResults<PS, []>;
+  sealRotation(context: __compactRuntime.CircuitContext<PS>,
+               targetSlot_0: bigint,
+               newPkX_0: bigint,
+               newPkY_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   requireCurrentOwnerAttested(context: __compactRuntime.CircuitContext<PS>,
                               epoch_0: bigint,
                               rootIdCommit_0: Uint8Array,
@@ -68,18 +98,33 @@ export type PureCircuits = {
   attestSlackSeconds(): bigint;
   maxStalenessSeconds(): bigint;
   attestDomain(): bigint;
+  rotateDomain(): bigint;
   ownerLeafOf(root_0: Uint8Array, current_0: Uint8Array): Uint8Array;
   attestDigest(tag_0: bigint,
                gen_0: bigint,
                epoch_0: bigint,
                snapshotRoot_0: bigint): bigint[];
-  attestNulOf(gen_0: bigint, epoch_0: bigint, slot_0: bigint): Uint8Array;
+  rotateDigest(tag_0: bigint,
+               gen_0: bigint,
+               targetSlot_0: bigint,
+               newPkX_0: bigint,
+               newPkY_0: bigint): bigint[];
+  epochProposalOf(gen_0: bigint, epoch_0: bigint, root_0: bigint): Uint8Array;
+  rotationProposalOf(gen_0: bigint,
+                     targetSlot_0: bigint,
+                     newPkX_0: bigint,
+                     newPkY_0: bigint): Uint8Array;
+  epochVoteNullifierOf(gen_0: bigint, epoch_0: bigint, slot_0: bigint): Uint8Array;
+  rotationVoteNullifierOf(gen_0: bigint,
+                          targetSlot_0: bigint,
+                          voterSlot_0: bigint): Uint8Array;
 }
 
 export type Circuits<PS> = {
   attestSlackSeconds(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, bigint>;
   maxStalenessSeconds(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, bigint>;
   attestDomain(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, bigint>;
+  rotateDomain(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, bigint>;
   ownerLeafOf(context: __compactRuntime.CircuitContext<PS>,
               root_0: Uint8Array,
               current_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
@@ -88,29 +133,63 @@ export type Circuits<PS> = {
                gen_0: bigint,
                epoch_0: bigint,
                snapshotRoot_0: bigint): __compactRuntime.CircuitResults<PS, bigint[]>;
-  attestNulOf(context: __compactRuntime.CircuitContext<PS>,
-              gen_0: bigint,
-              epoch_0: bigint,
-              slot_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  rotateDigest(context: __compactRuntime.CircuitContext<PS>,
+               tag_0: bigint,
+               gen_0: bigint,
+               targetSlot_0: bigint,
+               newPkX_0: bigint,
+               newPkY_0: bigint): __compactRuntime.CircuitResults<PS, bigint[]>;
+  epochProposalOf(context: __compactRuntime.CircuitContext<PS>,
+                  gen_0: bigint,
+                  epoch_0: bigint,
+                  root_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  rotationProposalOf(context: __compactRuntime.CircuitContext<PS>,
+                     gen_0: bigint,
+                     targetSlot_0: bigint,
+                     newPkX_0: bigint,
+                     newPkY_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  epochVoteNullifierOf(context: __compactRuntime.CircuitContext<PS>,
+                       gen_0: bigint,
+                       epoch_0: bigint,
+                       slot_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  rotationVoteNullifierOf(context: __compactRuntime.CircuitContext<PS>,
+                          gen_0: bigint,
+                          targetSlot_0: bigint,
+                          voterSlot_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
   appendSnapshotLeaf(context: __compactRuntime.CircuitContext<PS>,
                      root_0: Uint8Array,
                      current_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
-  addCommitteeSlot(context: __compactRuntime.CircuitContext<PS>,
-                   slot_0: bigint,
-                   pkX_0: bigint,
-                   pkY_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   openEpoch(context: __compactRuntime.CircuitContext<PS>,
             epoch_0: bigint,
             snapshotRoot_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   attestVote(context: __compactRuntime.CircuitContext<PS>,
              epoch_0: bigint,
+             snapshotRoot_0: bigint,
              slot_0: bigint,
              pk_0: __compactRuntime.JubjubPoint,
              sig_0: { announcement: __compactRuntime.JubjubPoint,
                       response: bigint
                     }): __compactRuntime.CircuitResults<PS, []>;
-  sealEpoch(context: __compactRuntime.CircuitContext<PS>, epoch_0: bigint): __compactRuntime.CircuitResults<PS, []>;
-  rotateCommittee(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
+  sealEpoch(context: __compactRuntime.CircuitContext<PS>,
+            epoch_0: bigint,
+            snapshotRoot_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  openRotation(context: __compactRuntime.CircuitContext<PS>,
+               targetSlot_0: bigint,
+               newPkX_0: bigint,
+               newPkY_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  rotateVote(context: __compactRuntime.CircuitContext<PS>,
+             targetSlot_0: bigint,
+             newPkX_0: bigint,
+             newPkY_0: bigint,
+             voterSlot_0: bigint,
+             voterPk_0: __compactRuntime.JubjubPoint,
+             sig_0: { announcement: __compactRuntime.JubjubPoint,
+                      response: bigint
+                    }): __compactRuntime.CircuitResults<PS, []>;
+  sealRotation(context: __compactRuntime.CircuitContext<PS>,
+               targetSlot_0: bigint,
+               newPkX_0: bigint,
+               newPkY_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   requireCurrentOwnerAttested(context: __compactRuntime.CircuitContext<PS>,
                               epoch_0: bigint,
                               rootIdCommit_0: Uint8Array,
@@ -129,20 +208,19 @@ export type Ledger = {
   readonly slotCount: bigint;
   readonly quorum: bigint;
   readonly lanternTag: bigint;
-  claimedRoot: {
+  epochVotes: {
     isEmpty(): boolean;
     size(): bigint;
-    member(key_0: bigint): boolean;
-    lookup(key_0: bigint): bigint;
-    [Symbol.iterator](): Iterator<[bigint, bigint]>
+    member(key_0: Uint8Array): boolean;
+    lookup(key_0: Uint8Array): { read(): bigint }
   };
-  attestVotes: {
+  rotationVotes: {
     isEmpty(): boolean;
     size(): bigint;
-    member(key_0: bigint): boolean;
-    lookup(key_0: bigint): { read(): bigint }
+    member(key_0: Uint8Array): boolean;
+    lookup(key_0: Uint8Array): { read(): bigint }
   };
-  attestNullifiers: {
+  voteNullifiers: {
     isEmpty(): boolean;
     size(): bigint;
     member(elem_0: Uint8Array): boolean;
@@ -187,8 +265,13 @@ export declare class Contract<PS = any, W extends Witnesses<PS> = Witnesses<PS>>
   constructor(witnesses: W);
   initialState(context: __compactRuntime.ConstructorContext<PS>,
                tag_0: bigint,
-               slots_0: bigint,
-               q_0: bigint): __compactRuntime.ConstructorResult<PS>;
+               q_0: bigint,
+               k0x_0: bigint,
+               k0y_0: bigint,
+               k1x_0: bigint,
+               k1y_0: bigint,
+               k2x_0: bigint,
+               k2y_0: bigint): __compactRuntime.ConstructorResult<PS>;
 }
 
 export declare function ledger(state: __compactRuntime.StateValue | __compactRuntime.ChargedState): Ledger;
