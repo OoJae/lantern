@@ -27,3 +27,6 @@ jobs:
       - run: npm ci || npm install --no-audit --no-fund
       - run: bash scripts/compile.sh
       - run: npm test
+      # The adversarial demo is also an assertion: it exits non-zero if a
+      # vulnerable target is NOT fully broken, or if the shipped one IS.
+      - run: npm run attack -- --no-color

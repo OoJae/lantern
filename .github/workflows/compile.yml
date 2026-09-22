@@ -59,9 +59,11 @@ jobs:
       - name: Assert the committed contract module matches source
         run: |
           set -euo pipefail
-          if ! git diff --quiet -- contracts/managed/contract; then
-            echo "::error::contracts/managed/contract is stale. Run 'npm run compile' and commit."
-            git diff --stat -- contracts/managed/contract
+          dirs="contracts/managed/contract contracts/managed-host/contract \
+                contracts/managed-public-guardians/contract contracts/managed-lantern-v0/contract"
+          if ! git diff --quiet -- $dirs; then
+            echo "::error::a committed contract module is stale. Run 'npm run compile' and commit."
+            git diff --stat -- $dirs
             exit 1
           fi
-          echo "committed contract module is byte-identical to a fresh compile"
+          echo "all four committed contract modules are byte-identical to a fresh compile"

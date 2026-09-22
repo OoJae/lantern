@@ -13,7 +13,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "cost": "bash scripts/cost.sh",
-    "test:concurrent": "vitest run test/concurrency.test.js"
+    "test:concurrent": "vitest run test/concurrency.test.js",
+    "attack": "node scripts/enumerate.mjs",
+    "test:adversarial": "vitest run test/adversarial.test.js",
+    "compile:shipped": "bash scripts/compile.sh --shipped-only"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0",

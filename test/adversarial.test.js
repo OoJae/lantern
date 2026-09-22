@@ -3,6 +3,7 @@ import { buildTargets } from '../src/attack/targets.mjs';
 import { runAttack } from '../src/attack/attack.mjs';
 import { ADDRESS_BOOK, TRUE_GUARDIANS, guardianIdOf, hex } from '../src/attack/candidates.mjs';
 import { Sim } from '../src/attack/sim.mjs';
+import { COVERAGE, leakReport } from '../src/attack/leaks.mjs';
 import * as V0 from '../contracts/managed-lantern-v0/contract/index.js';
 import * as PublicGuardians from '../contracts/managed-public-guardians/contract/index.js';
 import * as Lantern from '../contracts/managed/contract/index.js';
@@ -166,5 +167,38 @@ describe('labelling', () => {
   });
   it('the shipped module does not', () => {
     expect(Lantern.pureCircuits.THIS_CONTRACT_IS_DELIBERATELY_INSECURE).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE LEAK REPORT IS HONEST AND COMPLETE.
+// ---------------------------------------------------------------------------
+describe('leak report', () => {
+  // Honesty made mechanical: add a ledger field without classifying what it
+  // leaks, and CI fails.
+  it('classifies EVERY field of the shipped ledger', () => {
+    const fields = Object.keys(byId['3'].view.ledger);
+    const unclassified = fields.filter((f) => !(f in COVERAGE));
+    expect(unclassified).toEqual([]);
+    expect(Object.keys(COVERAGE).sort()).toEqual([...fields].sort());
+  });
+
+  it('every entry is measured, not asserted', () => {
+    for (const r of leakReport(byId['3'].view)) {
+      expect(r.measured, r.field).toBeTypeOf('string');
+      expect(r.measured.length, r.field).toBeGreaterThan(0);
+    }
+  });
+
+  it('a claimed measurement is independently reproducible from the ledger', () => {
+    const L = byId['3'].view.ledger;
+    const rec = leakReport(byId['3'].view).find((r) => r.field === 'recoveries');
+    expect(rec.measured).toBe(`${[...L.recoveries].length} open`);
+    expect(rec.sev).toBe('HIGH');
+  });
+
+  it('ranks the liveness oracle among the highest-severity leaks', () => {
+    const high = leakReport(byId['3'].view).filter((r) => r.sev === 'HIGH').map((r) => r.field);
+    expect(high).toContain('recoveries');
   });
 });
