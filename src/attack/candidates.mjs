@@ -3,7 +3,8 @@
 // This is not guesswork. On an EVM chain it is every address that has ever
 // transacted with the victim -- typically a few hundred -- plus their ENS and
 // social graph. For a Korean audience it is a phone contact list.
-import { createHash } from 'node:crypto';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { bytesToHex, concatBytes, utf8ToBytes } from '@noble/hashes/utils.js';
 
 export const ADDRESS_BOOK = Object.freeze([
   'seo-yeon.eth', 'jihoon.eth', 'mum@example.com', 'dad@example.com',
@@ -30,7 +31,10 @@ export const TRUE_GUARDIANS = Object.freeze(['seo-yeon.eth', 'mum@example.com', 
 
 // A guardian's PUBLIC identifier: derived from who they are. This is what the
 // vulnerable designs put in the leaf, and what the shipped design does not.
-export const guardianIdOf = (name) => new Uint8Array(createHash('sha256').update(name).digest());
+export const guardianIdOf = (name) => sha256(utf8ToBytes(name));
 
-export const hex = (u) => Buffer.from(u).toString('hex');
+/** SHA-256 over the concatenation of strings (UTF-8) and byte arrays. */
+export const sha = (...parts) => sha256(concatBytes(...parts.map((p) => (typeof p === 'string' ? utf8ToBytes(p) : p))));
+
+export const hex = (u) => bytesToHex(u);
 export const short = (u) => { const h = hex(u); return `${h.slice(0, 4)}…${h.slice(-2)}`; };

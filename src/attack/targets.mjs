@@ -5,7 +5,6 @@
 // simulator, no private state and no witness. So a target that HOLDS cannot be
 // holding because the attacker was denied something a real observer has --
 // and a target that BREAKS was broken from public data alone.
-import { webcrypto } from 'node:crypto';
 import * as PublicGuardians from '../../contracts/managed-public-guardians/contract/index.js';
 import * as LanternV0 from '../../contracts/managed-lantern-v0/contract/index.js';
 import * as Lantern from '../../contracts/managed/contract/index.js';
@@ -17,7 +16,7 @@ export const RIDS = [new Uint8Array(32).fill(0x76)];       // recoveries opened 
 export const SLOTS = 8;                                    // 2b's slot range
 
 const slotBytes = (i) => { const b = new Uint8Array(32); b[31] = i; return b; };
-const rand32 = () => webcrypto.getRandomValues(new Uint8Array(32));
+const rand32 = () => globalThis.crypto.getRandomValues(new Uint8Array(32));
 
 // Deterministic but NOT a function of the guardian's name, so target 3's
 // secrets can be reproduced for the negative control without being guessable.

@@ -1,8 +1,10 @@
 // Arithmetic in the BLS12-381 scalar field -- the field Compact's `Field` type
 // actually uses. Cross-checked against the runtime at load time, so a toolchain
 // curve change fails loudly instead of silently producing wrong shares.
+//
+// Portable: Web Crypto via globalThis, so the same module runs in Node and in
+// the browser demo. test/portable.test.js keeps it that way.
 import { MAX_FIELD } from '@midnight-ntwrk/compact-runtime';
-import { webcrypto } from 'node:crypto';
 
 export const R = BigInt(MAX_FIELD) + 1n;
 
@@ -41,7 +43,7 @@ export function inv(a) {
  */
 export function randomFieldElement() {
   const b = new Uint8Array(64);
-  webcrypto.getRandomValues(b);
+  globalThis.crypto.getRandomValues(b);
   let x = 0n;
   for (let i = 0; i < b.length; i++) x = (x << 8n) | BigInt(b[i]);
   return x % R;

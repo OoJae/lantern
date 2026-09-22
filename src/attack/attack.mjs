@@ -1,15 +1,9 @@
 // One attacker, one strategy per target. Every strategy consumes ONLY a frozen
 // observer view: the public ledger plus that contract's public derivation code.
-import { createHash } from 'node:crypto';
-import { ADDRESS_BOOK, guardianIdOf, hex } from './candidates.mjs';
+import { ADDRESS_BOOK, guardianIdOf, hex, sha } from './candidates.mjs';
 
 const ZERO = new Uint8Array(32);
 const slotBytes = (i) => { const b = new Uint8Array(32); b[31] = i; return b; };
-const sha = (...parts) => {
-  const h = createHash('sha256');
-  for (const p of parts) h.update(typeof p === 'string' ? Buffer.from(p) : Buffer.from(p));
-  return new Uint8Array(h.digest());
-};
 const inTree = (tree, leaf) => tree.findPathForLeaf(leaf) !== undefined;
 
 /** Count how many named guardians' votes are computable from public data. */
