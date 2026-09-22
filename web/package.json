@@ -1,0 +1,23 @@
+{
+  "name": "lantern-web",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "Lantern's browser demo. Runs the real compiled circuits against an in-memory ledger: no wallet, no chain, no proofs.",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4319 --strictPort"
+  },
+  "dependencies": {
+    "buffer": "6.0.3"
+  },
+  "devDependencies": {
+    "vite": "8.3.0",
+    "vite-plugin-wasm": "3.6.0"
+  }
+}

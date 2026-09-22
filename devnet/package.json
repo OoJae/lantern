@@ -1,0 +1,39 @@
+{
+  "name": "lantern-devnet",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "Lantern on a real local Midnight chain: real proofs, real transactions. Standalone so the root npm install stays fast.",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "@midnight-ntwrk/ledger-v8": "8.1.0",
+    "@midnight-ntwrk/midnight-did-jubjub-schnorr": "0.7.0",
+    "@midnight-ntwrk/midnight-js-contracts": "4.1.1",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-network-id": "4.1.1",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-protocol": "4.1.1",
+    "@midnight-ntwrk/midnight-js-types": "4.1.1",
+    "@midnight-ntwrk/midnight-js-utils": "4.1.1",
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0",
+    "@midnight-ntwrk/wallet-sdk": "1.2.0",
+    "@midnight-ntwrk/wallet-sdk-address-format": "3.1.2",
+    "@midnight-ntwrk/wallet-sdk-capabilities": "3.3.1",
+    "rxjs": "7.8.2",
+    "ws": "8.21.3"
+  },
+  "overrides": {
+    "smoldot": "npm:empty-npm-package@1.0.0",
+    "@midnight-ntwrk/ledger-v8": "8.1.0",
+    "@midnight-ntwrk/midnight-js-network-id": "4.1.1",
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0"
+  }
+}
