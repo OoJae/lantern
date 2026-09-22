@@ -31,3 +31,13 @@ jobs:
             test -s "contracts/managed/keys/${c}.verifier" || { echo "missing verifier key: $c"; exit 1; }
           done
           echo "all circuits produced prover + verifier keys"
+
+      - name: Assert the committed contract module matches source
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet -- contracts/managed/contract; then
+            echo "::error::contracts/managed/contract is stale. Run 'npm run compile' and commit."
+            git diff --stat -- contracts/managed/contract
+            exit 1
+          fi
+          echo "committed contract module is byte-identical to a fresh compile"
