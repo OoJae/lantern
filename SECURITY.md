@@ -39,7 +39,7 @@ secret. Here is exactly what that is worth.
 | Guardian *identities* stay private | **Held** — and demonstrated | salted `persistentCommit` leaves; `npm run attack` |
 | Guardians survive a recovery, so an identity can be recovered again | **Held** | stable `idRoot`; leaves bind a guardian context, not the rotating commitment |
 | A downstream contract keeps working across a key loss | **Held, in-contract** | `hostGatedAction` reads `retiredIdentities` directly |
-| An *independently deployed* contract keeps working | **Held, but strictly less sound** | `host.compact` can accept a revoked owner for up to 24h. See §4.4 |
+| An *independently deployed* contract keeps working | **Not yet held** | `requireCurrentOwnerAttested` checks that a pair is in the signed snapshot, not who is calling. The fix is scheduled; until then it is a membership predicate, not an authorisation. §4.4 |
 | Guardian *count* and *threshold* stay private | **Not held** | `thresholds` is public; `n` is recoverable from transaction history |
 | t colluding guardians cannot take the identity | **Not held.** Nothing here claims otherwise | §4.3 |
 
@@ -253,15 +253,28 @@ between them *is* the architectural result. Use the attested host only if you
 cannot compile against Lantern, and only for decisions that tolerate a day of
 staleness.
 
-**Can.** At quorum, sign a snapshot naming an attacker as the current owner of any
-root; the leaf costs nothing to plant, since `appendSnapshotLeaf` is
-permissionless. Or stop signing, which bricks the gate once the window lapses.
+**Two gaps in the attested host, found in review and not yet fixed.**
+1. `requireCurrentOwnerAttested` reads no identity witness, so it does not
+   authenticate its caller. **It is an attested-membership predicate:** anyone can
+   pass it for any pair in the signed snapshot. Do not use it to authorise an
+   action until the fix lands (the caller will prove it holds the current
+   identity secret, with a host-scoped nullifier; measured at k=14).
+2. The committee must sign the **canonical live-set root** —
+   `src/host/snapshot.js` rebuilds it from Lantern's public ledger: exactly the
+   enrolled, non-retired owners, sorted — and never the root of the on-chain
+   `snapshot` log. That log is append-only, so it keeps every retired owner
+   forever. `test/host-snapshot.test.js` shows the canonical tree admitting the
+   live owners through the gate and refusing a retired one.
+
+**Can.** At quorum, sign a root naming an attacker as the current owner of any
+identity root. Or stop signing, which bricks the gate once the window lapses.
 
 **Cannot.**
 - **Forge a signature** — `attestVote` runs the Foundation's in-circuit Jubjub
   Schnorr verifier and binds each key to its slot.
-- **Forge undetectably** — every snapshot leaf is recomputable from Lantern's
-  public ledger by anyone, so a fraudulent attestation is publicly falsifiable.
+- **Forge undetectably** — the canonical root is recomputable from Lantern's
+  public ledger by anyone (`src/host/snapshot.js`), so signing any other root is
+  publicly falsifiable.
 - **Act without a quorum** — there is no admin. The committee is installed
   atomically by the constructor, and after deployment *only a quorum* can change
   a key (`openRotation` / `rotateVote` / `sealRotation`).
@@ -429,6 +442,14 @@ before it was fixed, and each has a regression test named after it.
 | The idSalt could not be rebuilt from shares | shares alone could never finalize a recovery; a test hid it by handing the device the salt | `any 2 of 3 shares rebuild the secret AND the salt` |
 | Privacy tests searched for Field secrets big-endian | the runtime stores them little-endian, so the tests **could never fail** | `test/leakscan.test.js` — every scan must find the secret privately first |
 | The attack demo's shipped target derived guardian secrets from their names | target 3 held by luck: the attack happened not to try that formula | `two independent builds share no guardian leaf, secret or salt` |
+| `addGuardian` was gated on the identity secret alone | a thief with the lost laptop could mint *t* guardian tokens, self-approve a recovery for their own device and take the identity, stopped only by a veto in time | `a thief holding only the identity secret cannot mint a quorum and take the identity` |
+
+**Found in review, fix scheduled** (both documented in §4.4 meanwhile):
+
+| Defect | Consequence | Status |
+|---|---|---|
+| `requireCurrentOwnerAttested` does not authenticate its caller | anyone passes the attested gate for any pair in the signed snapshot | the caller will prove the current identity secret; measured at k=14 / 9,242 rows (`docs/spikes.md`, S9) |
+| The committee's tests signed the append-only `snapshot` log's root | a retired owner stays in that tree forever | `src/host/snapshot.js` builds the canonical live-set root; the on-chain log is to be removed |
 
 ---
 

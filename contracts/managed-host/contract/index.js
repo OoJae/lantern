@@ -288,21 +288,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('appendSnapshotLeaf',
                                      'argument 1 (as invoked from Typescript)',
-                                     'host.compact line 153 char 1',
+                                     'host.compact line 163 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(root_0.buffer instanceof ArrayBuffer && root_0.BYTES_PER_ELEMENT === 1 && root_0.length === 32)) {
           __compactRuntime.typeError('appendSnapshotLeaf',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'host.compact line 153 char 1',
+                                     'host.compact line 163 char 1',
                                      'Bytes<32>',
                                      root_0)
         }
         if (!(current_0.buffer instanceof ArrayBuffer && current_0.BYTES_PER_ELEMENT === 1 && current_0.length === 32)) {
           __compactRuntime.typeError('appendSnapshotLeaf',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'host.compact line 153 char 1',
+                                     'host.compact line 163 char 1',
                                      'Bytes<32>',
                                      current_0)
         }
@@ -333,21 +333,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('openEpoch',
                                      'argument 1 (as invoked from Typescript)',
-                                     'host.compact line 176 char 1',
+                                     'host.compact line 186 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(typeof(epoch_0) === 'bigint' && epoch_0 >= 0n && epoch_0 <= 4294967295n)) {
           __compactRuntime.typeError('openEpoch',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'host.compact line 176 char 1',
+                                     'host.compact line 186 char 1',
                                      'Uint<0..4294967296>',
                                      epoch_0)
         }
         if (!(typeof(snapshotRoot_0) === 'bigint' && snapshotRoot_0 >= 0 && snapshotRoot_0 <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('openEpoch',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'host.compact line 176 char 1',
+                                     'host.compact line 186 char 1',
                                      'Field',
                                      snapshotRoot_0)
         }
@@ -381,35 +381,35 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('attestVote',
                                      'argument 1 (as invoked from Typescript)',
-                                     'host.compact line 184 char 1',
+                                     'host.compact line 194 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(typeof(epoch_0) === 'bigint' && epoch_0 >= 0n && epoch_0 <= 4294967295n)) {
           __compactRuntime.typeError('attestVote',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'host.compact line 184 char 1',
+                                     'host.compact line 194 char 1',
                                      'Uint<0..4294967296>',
                                      epoch_0)
         }
         if (!(typeof(snapshotRoot_0) === 'bigint' && snapshotRoot_0 >= 0 && snapshotRoot_0 <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('attestVote',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'host.compact line 184 char 1',
+                                     'host.compact line 194 char 1',
                                      'Field',
                                      snapshotRoot_0)
         }
         if (!(typeof(slot_0) === 'bigint' && slot_0 >= 0n && slot_0 <= 255n)) {
           __compactRuntime.typeError('attestVote',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'host.compact line 184 char 1',
+                                     'host.compact line 194 char 1',
                                      'Uint<0..256>',
                                      slot_0)
         }
         if (!(typeof(sig_0) === 'object' && true && typeof(sig_0.response) === 'bigint' && sig_0.response >= 0 && sig_0.response <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('attestVote',
                                      'argument 5 (argument 6 as invoked from Typescript)',
-                                     'host.compact line 184 char 1',
+                                     'host.compact line 194 char 1',
                                      'struct SchnorrSignature<announcement: Opaque<"JubjubPoint">, response: Field>',
                                      sig_0)
         }
@@ -443,21 +443,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('sealEpoch',
                                      'argument 1 (as invoked from Typescript)',
-                                     'host.compact line 205 char 1',
+                                     'host.compact line 215 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(typeof(epoch_0) === 'bigint' && epoch_0 >= 0n && epoch_0 <= 4294967295n)) {
           __compactRuntime.typeError('sealEpoch',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'host.compact line 205 char 1',
+                                     'host.compact line 215 char 1',
                                      'Uint<0..4294967296>',
                                      epoch_0)
         }
         if (!(typeof(snapshotRoot_0) === 'bigint' && snapshotRoot_0 >= 0 && snapshotRoot_0 <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('sealEpoch',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'host.compact line 205 char 1',
+                                     'host.compact line 215 char 1',
                                      'Field',
                                      snapshotRoot_0)
         }
@@ -489,28 +489,28 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('openRotation',
                                      'argument 1 (as invoked from Typescript)',
-                                     'host.compact line 236 char 1',
+                                     'host.compact line 246 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(typeof(targetSlot_0) === 'bigint' && targetSlot_0 >= 0n && targetSlot_0 <= 255n)) {
           __compactRuntime.typeError('openRotation',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'host.compact line 236 char 1',
+                                     'host.compact line 246 char 1',
                                      'Uint<0..256>',
                                      targetSlot_0)
         }
         if (!(typeof(newPkX_0) === 'bigint' && newPkX_0 >= 0 && newPkX_0 <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('openRotation',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'host.compact line 236 char 1',
+                                     'host.compact line 246 char 1',
                                      'Field',
                                      newPkX_0)
         }
         if (!(typeof(newPkY_0) === 'bigint' && newPkY_0 >= 0 && newPkY_0 <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('openRotation',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'host.compact line 236 char 1',
+                                     'host.compact line 246 char 1',
                                      'Field',
                                      newPkY_0)
         }
@@ -546,42 +546,42 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('rotateVote',
                                      'argument 1 (as invoked from Typescript)',
-                                     'host.compact line 243 char 1',
+                                     'host.compact line 253 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(typeof(targetSlot_0) === 'bigint' && targetSlot_0 >= 0n && targetSlot_0 <= 255n)) {
           __compactRuntime.typeError('rotateVote',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'host.compact line 243 char 1',
+                                     'host.compact line 253 char 1',
                                      'Uint<0..256>',
                                      targetSlot_0)
         }
         if (!(typeof(newPkX_0) === 'bigint' && newPkX_0 >= 0 && newPkX_0 <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('rotateVote',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'host.compact line 243 char 1',
+                                     'host.compact line 253 char 1',
                                      'Field',
                                      newPkX_0)
         }
         if (!(typeof(newPkY_0) === 'bigint' && newPkY_0 >= 0 && newPkY_0 <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('rotateVote',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'host.compact line 243 char 1',
+                                     'host.compact line 253 char 1',
                                      'Field',
                                      newPkY_0)
         }
         if (!(typeof(voterSlot_0) === 'bigint' && voterSlot_0 >= 0n && voterSlot_0 <= 255n)) {
           __compactRuntime.typeError('rotateVote',
                                      'argument 4 (argument 5 as invoked from Typescript)',
-                                     'host.compact line 243 char 1',
+                                     'host.compact line 253 char 1',
                                      'Uint<0..256>',
                                      voterSlot_0)
         }
         if (!(typeof(sig_0) === 'object' && true && typeof(sig_0.response) === 'bigint' && sig_0.response >= 0 && sig_0.response <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('rotateVote',
                                      'argument 6 (argument 7 as invoked from Typescript)',
-                                     'host.compact line 243 char 1',
+                                     'host.compact line 253 char 1',
                                      'struct SchnorrSignature<announcement: Opaque<"JubjubPoint">, response: Field>',
                                      sig_0)
         }
@@ -617,28 +617,28 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('sealRotation',
                                      'argument 1 (as invoked from Typescript)',
-                                     'host.compact line 264 char 1',
+                                     'host.compact line 274 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(typeof(targetSlot_0) === 'bigint' && targetSlot_0 >= 0n && targetSlot_0 <= 255n)) {
           __compactRuntime.typeError('sealRotation',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'host.compact line 264 char 1',
+                                     'host.compact line 274 char 1',
                                      'Uint<0..256>',
                                      targetSlot_0)
         }
         if (!(typeof(newPkX_0) === 'bigint' && newPkX_0 >= 0 && newPkX_0 <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('sealRotation',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'host.compact line 264 char 1',
+                                     'host.compact line 274 char 1',
                                      'Field',
                                      newPkX_0)
         }
         if (!(typeof(newPkY_0) === 'bigint' && newPkY_0 >= 0 && newPkY_0 <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('sealRotation',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'host.compact line 264 char 1',
+                                     'host.compact line 274 char 1',
                                      'Field',
                                      newPkY_0)
         }
@@ -671,28 +671,28 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('requireCurrentOwnerAttested',
                                      'argument 1 (as invoked from Typescript)',
-                                     'host.compact line 281 char 1',
+                                     'host.compact line 291 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(typeof(epoch_0) === 'bigint' && epoch_0 >= 0n && epoch_0 <= 4294967295n)) {
           __compactRuntime.typeError('requireCurrentOwnerAttested',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'host.compact line 281 char 1',
+                                     'host.compact line 291 char 1',
                                      'Uint<0..4294967296>',
                                      epoch_0)
         }
         if (!(rootIdCommit_0.buffer instanceof ArrayBuffer && rootIdCommit_0.BYTES_PER_ELEMENT === 1 && rootIdCommit_0.length === 32)) {
           __compactRuntime.typeError('requireCurrentOwnerAttested',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'host.compact line 281 char 1',
+                                     'host.compact line 291 char 1',
                                      'Bytes<32>',
                                      rootIdCommit_0)
         }
         if (!(currentIdCommit_0.buffer instanceof ArrayBuffer && currentIdCommit_0.BYTES_PER_ELEMENT === 1 && currentIdCommit_0.length === 32)) {
           __compactRuntime.typeError('requireCurrentOwnerAttested',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'host.compact line 281 char 1',
+                                     'host.compact line 291 char 1',
                                      'Bytes<32>',
                                      currentIdCommit_0)
         }
@@ -764,56 +764,56 @@ export class Contract {
     if (!(typeof(tag_0) === 'bigint' && tag_0 >= 0 && tag_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('Contract state constructor',
                                  'argument 1 (argument 2 as invoked from Typescript)',
-                                 'host.compact line 71 char 1',
+                                 'host.compact line 81 char 1',
                                  'Field',
                                  tag_0)
     }
     if (!(typeof(q_0) === 'bigint' && q_0 >= 0n && q_0 <= 255n)) {
       __compactRuntime.typeError('Contract state constructor',
                                  'argument 2 (argument 3 as invoked from Typescript)',
-                                 'host.compact line 71 char 1',
+                                 'host.compact line 81 char 1',
                                  'Uint<0..256>',
                                  q_0)
     }
     if (!(typeof(k0x_0) === 'bigint' && k0x_0 >= 0 && k0x_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('Contract state constructor',
                                  'argument 3 (argument 4 as invoked from Typescript)',
-                                 'host.compact line 71 char 1',
+                                 'host.compact line 81 char 1',
                                  'Field',
                                  k0x_0)
     }
     if (!(typeof(k0y_0) === 'bigint' && k0y_0 >= 0 && k0y_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('Contract state constructor',
                                  'argument 4 (argument 5 as invoked from Typescript)',
-                                 'host.compact line 71 char 1',
+                                 'host.compact line 81 char 1',
                                  'Field',
                                  k0y_0)
     }
     if (!(typeof(k1x_0) === 'bigint' && k1x_0 >= 0 && k1x_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('Contract state constructor',
                                  'argument 5 (argument 6 as invoked from Typescript)',
-                                 'host.compact line 71 char 1',
+                                 'host.compact line 81 char 1',
                                  'Field',
                                  k1x_0)
     }
     if (!(typeof(k1y_0) === 'bigint' && k1y_0 >= 0 && k1y_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('Contract state constructor',
                                  'argument 6 (argument 7 as invoked from Typescript)',
-                                 'host.compact line 71 char 1',
+                                 'host.compact line 81 char 1',
                                  'Field',
                                  k1y_0)
     }
     if (!(typeof(k2x_0) === 'bigint' && k2x_0 >= 0 && k2x_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('Contract state constructor',
                                  'argument 7 (argument 8 as invoked from Typescript)',
-                                 'host.compact line 71 char 1',
+                                 'host.compact line 81 char 1',
                                  'Field',
                                  k2x_0)
     }
     if (!(typeof(k2y_0) === 'bigint' && k2y_0 >= 0 && k2y_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('Contract state constructor',
                                  'argument 8 (argument 9 as invoked from Typescript)',
-                                 'host.compact line 71 char 1',
+                                 'host.compact line 81 char 1',
                                  'Field',
                                  k2y_0)
     }
@@ -1260,7 +1260,7 @@ export class Contract {
     if (!(typeof(result_0) === 'bigint' && result_0 >= 0n && result_0 <= 18446744073709551615n)) {
       __compactRuntime.typeError('claimedNow',
                                  'return value',
-                                 'host.compact line 84 char 1',
+                                 'host.compact line 94 char 1',
                                  'Uint<0..18446744073709551616>',
                                  result_0)
     }
@@ -1277,7 +1277,7 @@ export class Contract {
     if (!(typeof(result_0) === 'object' && result_0.leaf.buffer instanceof ArrayBuffer && result_0.leaf.BYTES_PER_ELEMENT === 1 && result_0.leaf.length === 32 && Array.isArray(result_0.path) && result_0.path.length === 20 && result_0.path.every((t) => typeof(t) === 'object' && typeof(t.sibling) === 'object' && typeof(t.sibling.field) === 'bigint' && t.sibling.field >= 0 && t.sibling.field <= __compactRuntime.MAX_FIELD && typeof(t.goes_left) === 'boolean'))) {
       __compactRuntime.typeError('snapshotPath',
                                  'return value',
-                                 'host.compact line 85 char 1',
+                                 'host.compact line 95 char 1',
                                  'struct MerkleTreePath<leaf: Bytes<32>, path: Vector<20, struct MerkleTreePathEntry<sibling: struct MerkleTreeDigest<field: Field>, goes_left: Boolean>>>',
                                  result_0)
     }
@@ -1460,7 +1460,7 @@ export class Contract {
                             'epoch already sealed');
     const prop_0 = this._epochProposalOf_0(((t1) => {
                                              if (t1 > 4294967295n) {
-                                               throw new __compactRuntime.CompactError('host.compact line 178 char 32: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
+                                               throw new __compactRuntime.CompactError('host.compact line 188 char 32: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
                                              }
                                              return t1;
                                            })(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
@@ -1540,7 +1540,7 @@ export class Contract {
                             'epoch already sealed');
     const gen_0 = ((t1) => {
                     if (t1 > 4294967295n) {
-                      throw new __compactRuntime.CompactError('host.compact line 192 char 15: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
+                      throw new __compactRuntime.CompactError('host.compact line 202 char 15: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
                     }
                     return t1;
                   })(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
@@ -1669,7 +1669,7 @@ export class Contract {
     __compactRuntime.assert(this._equal_0(epoch_0,
                                           ((t1) => {
                                             if (t1 > 4294967295n) {
-                                              throw new __compactRuntime.CompactError('host.compact line 210 char 29: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
+                                              throw new __compactRuntime.CompactError('host.compact line 220 char 29: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
                                             }
                                             return t1;
                                           })(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
@@ -1687,7 +1687,7 @@ export class Contract {
                             'epochs must be sealed in order');
     const prop_0 = this._epochProposalOf_0(((t1) => {
                                              if (t1 > 4294967295n) {
-                                               throw new __compactRuntime.CompactError('host.compact line 212 char 32: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
+                                               throw new __compactRuntime.CompactError('host.compact line 222 char 32: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
                                              }
                                              return t1;
                                            })(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
@@ -1757,7 +1757,7 @@ export class Contract {
     const lo_0 = this._claimedNow_0(context, partialProofData);
     const hi_0 = ((t1) => {
                    if (t1 > 18446744073709551615n) {
-                     throw new __compactRuntime.CompactError('host.compact line 219 char 14: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                     throw new __compactRuntime.CompactError('host.compact line 229 char 14: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                    }
                    return t1;
                  })(lo_0 + this._attestSlackSeconds_0());
@@ -1837,7 +1837,7 @@ export class Contract {
                             'slot out of range');
     const prop_0 = this._rotationProposalOf_0(((t1) => {
                                                 if (t1 > 4294967295n) {
-                                                  throw new __compactRuntime.CompactError('host.compact line 238 char 35: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
+                                                  throw new __compactRuntime.CompactError('host.compact line 248 char 35: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
                                                 }
                                                 return t1;
                                               })(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
@@ -1902,7 +1902,7 @@ export class Contract {
   {
     const gen_0 = ((t1) => {
                     if (t1 > 4294967295n) {
-                      throw new __compactRuntime.CompactError('host.compact line 251 char 15: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
+                      throw new __compactRuntime.CompactError('host.compact line 261 char 15: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
                     }
                     return t1;
                   })(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
@@ -2022,7 +2022,7 @@ export class Contract {
   _sealRotation_0(context, partialProofData, targetSlot_0, newPkX_0, newPkY_0) {
     const gen_0 = ((t1) => {
                     if (t1 > 4294967295n) {
-                      throw new __compactRuntime.CompactError('host.compact line 265 char 15: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
+                      throw new __compactRuntime.CompactError('host.compact line 275 char 15: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
                     }
                     return t1;
                   })(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
@@ -2096,7 +2096,7 @@ export class Contract {
                     addedAtGen:
                       ((t1) => {
                         if (t1 > 4294967295n) {
-                          throw new __compactRuntime.CompactError('host.compact line 271 char 63: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
+                          throw new __compactRuntime.CompactError('host.compact line 281 char 63: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
                         }
                         return t1;
                       })(gen_0 + 1n) };
@@ -2161,7 +2161,7 @@ export class Contract {
     let tmp_0;
     __compactRuntime.assert(!(tmp_0 = ((t1) => {
                                         if (t1 > 4294967295n) {
-                                          throw new __compactRuntime.CompactError('host.compact line 289 char 32: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
+                                          throw new __compactRuntime.CompactError('host.compact line 299 char 32: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
                                         }
                                         return t1;
                                       })(epoch_0 + 1n),
@@ -2186,7 +2186,7 @@ export class Contract {
                                                 partialProofData,
                                                 ((t1) => {
                                                   if (t1 > 18446744073709551615n) {
-                                                    throw new __compactRuntime.CompactError('host.compact line 290 char 22: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                                                    throw new __compactRuntime.CompactError('host.compact line 300 char 22: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                                                   }
                                                   return t1;
                                                 })(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
@@ -2330,7 +2330,7 @@ export function ledger(stateOrChargedState) {
         if (!(typeof(key_0) === 'bigint' && key_0 >= 0n && key_0 <= 255n)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'host.compact line 37 char 1',
+                                     'host.compact line 46 char 1',
                                      'Uint<0..256>',
                                      key_0)
         }
@@ -2359,7 +2359,7 @@ export function ledger(stateOrChargedState) {
         if (!(typeof(key_0) === 'bigint' && key_0 >= 0n && key_0 <= 255n)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'host.compact line 37 char 1',
+                                     'host.compact line 46 char 1',
                                      'Uint<0..256>',
                                      key_0)
         }
@@ -2495,7 +2495,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'host.compact line 44 char 1',
+                                     'host.compact line 53 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -2524,7 +2524,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'host.compact line 44 char 1',
+                                     'host.compact line 53 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -2605,7 +2605,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'host.compact line 45 char 1',
+                                     'host.compact line 54 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -2634,7 +2634,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'host.compact line 45 char 1',
+                                     'host.compact line 54 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -2715,7 +2715,7 @@ export function ledger(stateOrChargedState) {
         if (!(elem_0.buffer instanceof ArrayBuffer && elem_0.BYTES_PER_ELEMENT === 1 && elem_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'host.compact line 46 char 1',
+                                     'host.compact line 55 char 1',
                                      'Bytes<32>',
                                      elem_0)
         }
@@ -2793,7 +2793,7 @@ export function ledger(stateOrChargedState) {
         if (!(typeof(key_0) === 'bigint' && key_0 >= 0n && key_0 <= 4294967295n)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'host.compact line 49 char 1',
+                                     'host.compact line 58 char 1',
                                      'Uint<0..4294967296>',
                                      key_0)
         }
@@ -2822,7 +2822,7 @@ export function ledger(stateOrChargedState) {
         if (!(typeof(key_0) === 'bigint' && key_0 >= 0n && key_0 <= 4294967295n)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'host.compact line 49 char 1',
+                                     'host.compact line 58 char 1',
                                      'Uint<0..4294967296>',
                                      key_0)
         }
@@ -2902,7 +2902,7 @@ export function ledger(stateOrChargedState) {
         if (!(typeof(key_0) === 'bigint' && key_0 >= 0n && key_0 <= 4294967295n)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'host.compact line 55 char 1',
+                                     'host.compact line 64 char 1',
                                      'Uint<0..4294967296>',
                                      key_0)
         }
@@ -2931,7 +2931,7 @@ export function ledger(stateOrChargedState) {
         if (!(typeof(key_0) === 'bigint' && key_0 >= 0n && key_0 <= 4294967295n)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'host.compact line 55 char 1',
+                                     'host.compact line 64 char 1',
                                      'Uint<0..4294967296>',
                                      key_0)
         }
@@ -3027,7 +3027,7 @@ export function ledger(stateOrChargedState) {
         if (!(typeof(rt_0) === 'object' && typeof(rt_0.field) === 'bigint' && rt_0.field >= 0 && rt_0.field <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('checkRoot',
                                      'argument 1',
-                                     'host.compact line 67 char 1',
+                                     'host.compact line 77 char 1',
                                      'struct MerkleTreeDigest<field: Field>',
                                      rt_0)
         }
@@ -3077,14 +3077,14 @@ export function ledger(stateOrChargedState) {
         if (!(typeof(index_0) === 'bigint' && index_0 >= 0 && index_0 <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('path_for_leaf',
                                      'argument 1',
-                                     'host.compact line 67 char 1',
+                                     'host.compact line 77 char 1',
                                      'Field',
                                      index_0)
         }
         if (!(leaf_0.buffer instanceof ArrayBuffer && leaf_0.BYTES_PER_ELEMENT === 1 && leaf_0.length === 32)) {
           __compactRuntime.typeError('path_for_leaf',
                                      'argument 2',
-                                     'host.compact line 67 char 1',
+                                     'host.compact line 77 char 1',
                                      'Bytes<32>',
                                      leaf_0)
         }
@@ -3099,7 +3099,7 @@ export function ledger(stateOrChargedState) {
         if (!(leaf_0.buffer instanceof ArrayBuffer && leaf_0.BYTES_PER_ELEMENT === 1 && leaf_0.length === 32)) {
           __compactRuntime.typeError('find_path_for_leaf',
                                      'argument 1',
-                                     'host.compact line 67 char 1',
+                                     'host.compact line 77 char 1',
                                      'Bytes<32>',
                                      leaf_0)
         }
@@ -3158,14 +3158,14 @@ export const pureCircuits = {
     if (!(root_0.buffer instanceof ArrayBuffer && root_0.BYTES_PER_ELEMENT === 1 && root_0.length === 32)) {
       __compactRuntime.typeError('ownerLeafOf',
                                  'argument 1',
-                                 'host.compact line 109 char 1',
+                                 'host.compact line 119 char 1',
                                  'Bytes<32>',
                                  root_0)
     }
     if (!(current_0.buffer instanceof ArrayBuffer && current_0.BYTES_PER_ELEMENT === 1 && current_0.length === 32)) {
       __compactRuntime.typeError('ownerLeafOf',
                                  'argument 2',
-                                 'host.compact line 109 char 1',
+                                 'host.compact line 119 char 1',
                                  'Bytes<32>',
                                  current_0)
     }
@@ -3182,28 +3182,28 @@ export const pureCircuits = {
     if (!(typeof(tag_0) === 'bigint' && tag_0 >= 0 && tag_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('attestDigest',
                                  'argument 1',
-                                 'host.compact line 117 char 1',
+                                 'host.compact line 127 char 1',
                                  'Field',
                                  tag_0)
     }
     if (!(typeof(gen_0) === 'bigint' && gen_0 >= 0n && gen_0 <= 4294967295n)) {
       __compactRuntime.typeError('attestDigest',
                                  'argument 2',
-                                 'host.compact line 117 char 1',
+                                 'host.compact line 127 char 1',
                                  'Uint<0..4294967296>',
                                  gen_0)
     }
     if (!(typeof(epoch_0) === 'bigint' && epoch_0 >= 0n && epoch_0 <= 4294967295n)) {
       __compactRuntime.typeError('attestDigest',
                                  'argument 3',
-                                 'host.compact line 117 char 1',
+                                 'host.compact line 127 char 1',
                                  'Uint<0..4294967296>',
                                  epoch_0)
     }
     if (!(typeof(snapshotRoot_0) === 'bigint' && snapshotRoot_0 >= 0 && snapshotRoot_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('attestDigest',
                                  'argument 4',
-                                 'host.compact line 117 char 1',
+                                 'host.compact line 127 char 1',
                                  'Field',
                                  snapshotRoot_0)
     }
@@ -3221,35 +3221,35 @@ export const pureCircuits = {
     if (!(typeof(tag_0) === 'bigint' && tag_0 >= 0 && tag_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('rotateDigest',
                                  'argument 1',
-                                 'host.compact line 123 char 1',
+                                 'host.compact line 133 char 1',
                                  'Field',
                                  tag_0)
     }
     if (!(typeof(gen_0) === 'bigint' && gen_0 >= 0n && gen_0 <= 4294967295n)) {
       __compactRuntime.typeError('rotateDigest',
                                  'argument 2',
-                                 'host.compact line 123 char 1',
+                                 'host.compact line 133 char 1',
                                  'Uint<0..4294967296>',
                                  gen_0)
     }
     if (!(typeof(targetSlot_0) === 'bigint' && targetSlot_0 >= 0n && targetSlot_0 <= 255n)) {
       __compactRuntime.typeError('rotateDigest',
                                  'argument 3',
-                                 'host.compact line 123 char 1',
+                                 'host.compact line 133 char 1',
                                  'Uint<0..256>',
                                  targetSlot_0)
     }
     if (!(typeof(newPkX_0) === 'bigint' && newPkX_0 >= 0 && newPkX_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('rotateDigest',
                                  'argument 4',
-                                 'host.compact line 123 char 1',
+                                 'host.compact line 133 char 1',
                                  'Field',
                                  newPkX_0)
     }
     if (!(typeof(newPkY_0) === 'bigint' && newPkY_0 >= 0 && newPkY_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('rotateDigest',
                                  'argument 5',
-                                 'host.compact line 123 char 1',
+                                 'host.compact line 133 char 1',
                                  'Field',
                                  newPkY_0)
     }
@@ -3269,21 +3269,21 @@ export const pureCircuits = {
     if (!(typeof(gen_0) === 'bigint' && gen_0 >= 0n && gen_0 <= 4294967295n)) {
       __compactRuntime.typeError('epochProposalOf',
                                  'argument 1',
-                                 'host.compact line 130 char 1',
+                                 'host.compact line 140 char 1',
                                  'Uint<0..4294967296>',
                                  gen_0)
     }
     if (!(typeof(epoch_0) === 'bigint' && epoch_0 >= 0n && epoch_0 <= 4294967295n)) {
       __compactRuntime.typeError('epochProposalOf',
                                  'argument 2',
-                                 'host.compact line 130 char 1',
+                                 'host.compact line 140 char 1',
                                  'Uint<0..4294967296>',
                                  epoch_0)
     }
     if (!(typeof(root_0) === 'bigint' && root_0 >= 0 && root_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('epochProposalOf',
                                  'argument 3',
-                                 'host.compact line 130 char 1',
+                                 'host.compact line 140 char 1',
                                  'Field',
                                  root_0)
     }
@@ -3300,28 +3300,28 @@ export const pureCircuits = {
     if (!(typeof(gen_0) === 'bigint' && gen_0 >= 0n && gen_0 <= 4294967295n)) {
       __compactRuntime.typeError('rotationProposalOf',
                                  'argument 1',
-                                 'host.compact line 134 char 1',
+                                 'host.compact line 144 char 1',
                                  'Uint<0..4294967296>',
                                  gen_0)
     }
     if (!(typeof(targetSlot_0) === 'bigint' && targetSlot_0 >= 0n && targetSlot_0 <= 255n)) {
       __compactRuntime.typeError('rotationProposalOf',
                                  'argument 2',
-                                 'host.compact line 134 char 1',
+                                 'host.compact line 144 char 1',
                                  'Uint<0..256>',
                                  targetSlot_0)
     }
     if (!(typeof(newPkX_0) === 'bigint' && newPkX_0 >= 0 && newPkX_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('rotationProposalOf',
                                  'argument 3',
-                                 'host.compact line 134 char 1',
+                                 'host.compact line 144 char 1',
                                  'Field',
                                  newPkX_0)
     }
     if (!(typeof(newPkY_0) === 'bigint' && newPkY_0 >= 0 && newPkY_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('rotationProposalOf',
                                  'argument 4',
-                                 'host.compact line 134 char 1',
+                                 'host.compact line 144 char 1',
                                  'Field',
                                  newPkY_0)
     }
@@ -3340,21 +3340,21 @@ export const pureCircuits = {
     if (!(typeof(gen_0) === 'bigint' && gen_0 >= 0n && gen_0 <= 4294967295n)) {
       __compactRuntime.typeError('epochVoteNullifierOf',
                                  'argument 1',
-                                 'host.compact line 142 char 1',
+                                 'host.compact line 152 char 1',
                                  'Uint<0..4294967296>',
                                  gen_0)
     }
     if (!(typeof(epoch_0) === 'bigint' && epoch_0 >= 0n && epoch_0 <= 4294967295n)) {
       __compactRuntime.typeError('epochVoteNullifierOf',
                                  'argument 2',
-                                 'host.compact line 142 char 1',
+                                 'host.compact line 152 char 1',
                                  'Uint<0..4294967296>',
                                  epoch_0)
     }
     if (!(typeof(slot_0) === 'bigint' && slot_0 >= 0n && slot_0 <= 255n)) {
       __compactRuntime.typeError('epochVoteNullifierOf',
                                  'argument 3',
-                                 'host.compact line 142 char 1',
+                                 'host.compact line 152 char 1',
                                  'Uint<0..256>',
                                  slot_0)
     }
@@ -3370,21 +3370,21 @@ export const pureCircuits = {
     if (!(typeof(gen_0) === 'bigint' && gen_0 >= 0n && gen_0 <= 4294967295n)) {
       __compactRuntime.typeError('rotationVoteNullifierOf',
                                  'argument 1',
-                                 'host.compact line 148 char 1',
+                                 'host.compact line 158 char 1',
                                  'Uint<0..4294967296>',
                                  gen_0)
     }
     if (!(typeof(targetSlot_0) === 'bigint' && targetSlot_0 >= 0n && targetSlot_0 <= 255n)) {
       __compactRuntime.typeError('rotationVoteNullifierOf',
                                  'argument 2',
-                                 'host.compact line 148 char 1',
+                                 'host.compact line 158 char 1',
                                  'Uint<0..256>',
                                  targetSlot_0)
     }
     if (!(typeof(voterSlot_0) === 'bigint' && voterSlot_0 >= 0n && voterSlot_0 <= 255n)) {
       __compactRuntime.typeError('rotationVoteNullifierOf',
                                  'argument 3',
-                                 'host.compact line 148 char 1',
+                                 'host.compact line 158 char 1',
                                  'Uint<0..256>',
                                  voterSlot_0)
     }

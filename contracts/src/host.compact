@@ -17,6 +17,15 @@ pragma language_version >= 0.22;
 // This exists because an independently deployed contract has no better option,
 // not because it is the better design. See SECURITY.md.
 //
+// KNOWN GAPS, both scheduled (SECURITY.md §4.4):
+//  1. requireCurrentOwnerAttested does NOT authenticate its caller. It is an
+//     attested-MEMBERSHIP predicate: anyone may pass it for any pair in the
+//     signed snapshot. Do not use it to authorise an action yet.
+//  2. The committee must sign the CANONICAL live-set root that
+//     src/host/snapshot.js rebuilds from Lantern's ledger -- never the root of
+//     the `snapshot` log below, which is append-only and so keeps every
+//     retired owner in it for good.
+//
 // GOVERNANCE. There is no admin. The committee is fixed atomically at
 // deployment, so there is no window in which a slot can be front-run, and
 // after deployment ONLY a quorum of the committee can change its membership.
@@ -59,9 +68,10 @@ export ledger latestEpoch: Counter;
 
 export ledger gateActions: Counter;
 
-// The ownership snapshot, appendable by ANYONE. Its contents are not trusted --
-// the committee's job is to attest WHICH root correctly reflects Lantern's
-// public state, not to build the tree. A forged leaf is useless unless a quorum
+// An ownership log, appendable by ANYONE. Its contents are not trusted, and
+// its root is NOT what the committee should sign: being append-only, it keeps
+// every retired owner forever. The committee signs the canonical live-set root
+// (src/host/snapshot.js); this log only reproduces that tree's construction. A forged leaf is useless unless a quorum
 // signs the root containing it, and because the snapshot is deterministically
 // recomputable from Lantern's ledger, such a signature is publicly falsifiable.
 export ledger snapshot: HistoricMerkleTree<20, Bytes<32>>;
