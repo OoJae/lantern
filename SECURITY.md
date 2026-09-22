@@ -42,7 +42,7 @@ secret. Here is exactly what that is worth.
 | Guardian *identities* stay private | **Held** — and demonstrated | salted `persistentCommit` leaves; `npm run attack` |
 | Guardians survive a recovery, so an identity can be recovered again | **Held** | stable `idRoot`; leaves bind a guardian context, not the rotating commitment |
 | A downstream contract keeps working across a key loss | **Held, in-contract** | `hostGatedAction` reads `retiredIdentities` directly |
-| An *independently deployed* contract keeps working | **Not yet held** | `requireCurrentOwnerAttested` checks that a pair is in the signed snapshot, not who is calling. The fix is scheduled; until then it is a membership predicate, not an authorisation. §4.4 |
+| An *independently deployed* contract keeps working | **Held, but strictly less sound** | `requireCurrentOwnerAttested` proves the caller holds the current identity secret, against a committee-signed canonical snapshot — but it accepts a retired owner's secret for up to 24 h, until a newer epoch seals. §4.4 |
 | The rules of a deployed instance cannot change | **Held on the recorded local deployment** — not a property of the source | the run that deployed it replaced its maintenance authority with an empty committee; `npm run devnet:verify` re-checks that, and that every on-chain verifier key matches a fresh compile (`deployments/`). Any other deployer can keep the key: check before you trust an instance |
 | Nothing trusts the fee payer | **Held** | no circuit uses the caller's coin key or any token operation; every check is a commitment opening or a signature. `test/authentication.test.js` |
 | Guardian *count* and *threshold* stay private | **Not held** | `thresholds` is public; `n` is recoverable from transaction history |
@@ -300,27 +300,32 @@ A quorum of the committee in `contracts/src/host.compact`.
 **Read this first.** `host.compact` is an *independently deployed* contract that
 cannot call Lantern — cross-contract calls error at the ZKIR stage on 0.31.x, and
 one contract cannot read another's ledger. Its only option is a relayed,
-committee-attested snapshot. And **an append-only Merkle root proves membership,
-never non-membership.** "Current owner" is a negative claim, so
-`requireCurrentOwnerAttested` can accept a **revoked** owner for up to 24 hours,
-while `hostGatedAction` — which reads `retiredIdentities` directly — cannot.
+committee-attested snapshot. And **a Merkle root proves membership, never
+non-membership.** "Current owner" is a negative claim: a snapshot can only say who
+the owners *were* when it was built. So `requireCurrentOwnerAttested` can accept a
+**revoked** owner until the next snapshot seals — up to 24 hours — while
+`hostGatedAction`, which reads `retiredIdentities` directly, cannot.
 **The in-contract gate is strictly more sound.** Both ship, deliberately: the gap
 between them *is* the architectural result. Use the attested host only if you
 cannot compile against Lantern, and only for decisions that tolerate a day of
 staleness.
 
-**Two gaps in the attested host, found in review and not yet fixed.**
-1. `requireCurrentOwnerAttested` reads no identity witness, so it does not
-   authenticate its caller. **It is an attested-membership predicate:** anyone can
-   pass it for any pair in the signed snapshot. Do not use it to authorise an
-   action until the fix lands (the caller will prove it holds the current
-   identity secret, with a host-scoped nullifier; measured at k=14).
-2. The committee must sign the **canonical live-set root** —
-   `src/host/snapshot.js` rebuilds it from Lantern's public ledger: exactly the
-   enrolled, non-retired owners, sorted — and never the root of the on-chain
-   `snapshot` log. That log is append-only, so it keeps every retired owner
-   forever. `test/host-snapshot.test.js` shows the canonical tree admitting the
-   live owners through the gate and refusing a retired one.
+**What the gate proves, since the review.** The caller holds the secret behind a
+commitment that a quorum attested, in the latest sealed epoch and inside the
+staleness window, as the current owner of the root: `requireCurrentOwnerAttested`
+opens the identity commitment with the shared `identity.compact` module and writes
+a nullifier bound to this host's tag, one per action. Measured: k=14, 9,242 rows.
+The committee signs the **canonical live-set root** — exactly the enrolled,
+non-retired owners, sorted, which `src/host/snapshot.js` rebuilds from Lantern's
+public ledger — and the contract no longer keeps an on-chain ownership log, whose
+append-only root kept every retired owner forever.
+
+**The gap that remains, bounded.** After a recovery the retired owner's secret
+still passes the gate against the older epoch, **for up to 24 hours**, until a
+newer epoch seals over the new live set. Then it fails at both: *"not the latest
+epoch"* and *"ownership leaf is not in the attested snapshot"*.
+`test/host.test.js › accepts the retired secret against the older epoch until a newer one seals, then never again`.
+Epochs sealed before a committee rotation stay valid.
 
 **Can.** At quorum, sign a root naming an attacker as the current owner of any
 identity root. Or stop signing, which bricks the gate once the window lapses.
@@ -485,9 +490,10 @@ consequence.
    that was not already there, but in-flight recoveries would not survive such an
    upgrade.
 
-12. **The trees are global and finite.** `guardians`, `lineage` and the host's
-   `snapshot` are depth-20: 1,048,576 leaves each, shared by every identity, and
-   enrolment is permissionless. Exhausting one costs one transaction per leaf.
+12. **The trees are global and finite.** `guardians` and `lineage` are depth-20:
+   1,048,576 leaves each, shared by every identity, and enrolment is
+   permissionless. Exhausting one costs one transaction per leaf. The canonical
+   host snapshot is depth-20 too, so it holds at most that many live owners.
 
 ---
 
@@ -516,13 +522,10 @@ before it was fixed, and each has a regression test named after it.
 | Privacy tests searched for Field secrets big-endian | the runtime stores them little-endian, so the tests **could never fail** | `test/leakscan.test.js` — every scan must find the secret privately first |
 | The attack demo's shipped target derived guardian secrets from their names | target 3 held by luck: the attack happened not to try that formula | `two independent builds share no guardian leaf, secret or salt` |
 | `addGuardian` was gated on the identity secret alone | a thief with the lost laptop could mint *t* guardian tokens, self-approve a recovery for their own device and take the identity, stopped only by a veto in time | `a thief holding only the identity secret cannot mint a quorum and take the identity` |
+| The attested host gate read no identity witness | anyone passed it for any pair in the signed snapshot: a membership predicate, not an authorisation | `refuses a caller who does not hold the current identity secret` |
+| The committee signed the root of an append-only on-chain log | a retired owner stayed in the signed tree forever | the log is gone; the committee signs `src/host/snapshot.js`'s canonical live set. `refuses the retired owner, even with their secret and a genuine path from a tree that still holds them` |
+| The leak scanner missed byte secrets ending in zero bytes | the runtime stores them trimmed, so about one run in eight had a secret the scanner could see on neither side | `finds a byte secret that ends in zero bytes, which the runtime stores trimmed` |
 
-**Found in review, fix scheduled** (both documented in §4.4 meanwhile):
-
-| Defect | Consequence | Status |
-|---|---|---|
-| `requireCurrentOwnerAttested` does not authenticate its caller | anyone passes the attested gate for any pair in the signed snapshot | the caller will prove the current identity secret; measured at k=14 / 9,242 rows (`docs/spikes.md`, S9) |
-| The committee's tests signed the append-only `snapshot` log's root | a retired owner stays in that tree forever | `src/host/snapshot.js` builds the canonical live-set root; the on-chain log is to be removed |
 
 ---
 

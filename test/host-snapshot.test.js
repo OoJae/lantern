@@ -20,7 +20,7 @@ function lanternWorld() {
   sim.call('enrollIdentity', B, pureCircuits.vetoCommitOf(bVeto, bVetoSalt), 2n);
   Object.assign(sim.ps, saved);
   const a1 = succeed(sim, A, guardians, 1, EPH_A);
-  return { sim, A, A1: a1.newId, B };
+  return { sim, A, A1: a1.newId, B, keys: { A1: [a1.secret, a1.salt], B: [bSecret, bSalt], A: [saved.identitySecret, saved.idSalt] } };
 }
 
 /** Seal `root` as epoch 0 with a real 2-of-3 committee. */
@@ -43,14 +43,6 @@ describe('canonical live-set snapshot', () => {
     expect(() => snap.pathFor(A, A)).toThrow(/not a live owner pair/);
   });
 
-  it('reproduces the contract\'s own tree for the same leaves in the same order', () => {
-    const { sim } = lanternWorld();
-    const snap = snapshotOf(sim.ledger);
-    const h = new HostSim();
-    for (const e of snap.entries) h.call('appendSnapshotLeaf', e.root, e.current);
-    expect(h.snapshotRoot()).toBe(snap.root);
-  });
-
   it('does not depend on the order the ledger is enumerated in', () => {
     const { sim } = lanternWorld();
     const L = sim.ledger;
@@ -62,18 +54,18 @@ describe('canonical live-set snapshot', () => {
     expect(snapshotOf(reversed).root).toBe(snapshotOf(L).root);
   });
 
-  it('once sealed, admits a live owner\'s off-chain path through the attested gate', () => {
-    const { sim, A, A1, B } = lanternWorld();
+  it('once sealed, admits each live owner, holding their own secret, through the attested gate', () => {
+    const { sim, A, A1, B, keys } = lanternWorld();
     const snap = snapshotOf(sim.ledger);
     const h = sealed(snap.root);
-    h.ps.snapshotPath = snap.pathFor(A, A1);
-    expect(() => h.call('requireCurrentOwnerAttested', 0n, A, A1)).not.toThrow();
-    h.ps.snapshotPath = snap.pathFor(B, B);
-    expect(() => h.call('requireCurrentOwnerAttested', 0n, B, B)).not.toThrow();
+    for (const [root, current, [secret, salt]] of [[A, A1, keys.A1], [B, B, keys.B]]) {
+      Object.assign(h.ps, { snapshotPath: snap.pathFor(root, current), identitySecret: secret, idSalt: salt });
+      expect(() => h.gate(0n, root, current)).not.toThrow();
+    }
   });
 
-  it('refuses the retired owner, even with a genuine path from a tree that still holds them', () => {
-    const { sim, A } = lanternWorld();
+  it('refuses the retired owner, even with their secret and a genuine path from a tree that still holds them', () => {
+    const { sim, A, keys } = lanternWorld();
     const snap = snapshotOf(sim.ledger);
     const h = sealed(snap.root);
     // An append-only log would still contain (A, A). Build that tree and try its path.
@@ -82,8 +74,7 @@ describe('canonical live-set snapshot', () => {
       retiredIdentities: { member: () => false },
       idRoots: sim.ledger.idRoots,
     });
-    h.ps.snapshotPath = stale.pathFor(A, A);
-    expect(() => h.call('requireCurrentOwnerAttested', 0n, A, A))
-      .toThrow(/not in the attested snapshot/);
+    Object.assign(h.ps, { snapshotPath: stale.pathFor(A, A), identitySecret: keys.A[0], idSalt: keys.A[1] });
+    expect(() => h.gate(0n, A, A)).toThrow(/not in the attested snapshot/);
   });
 });

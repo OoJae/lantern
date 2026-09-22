@@ -17,14 +17,14 @@ pragma language_version >= 0.22;
 // This exists because an independently deployed contract has no better option,
 // not because it is the better design. See SECURITY.md.
 //
-// KNOWN GAPS, both scheduled (SECURITY.md §4.4):
-//  1. requireCurrentOwnerAttested does NOT authenticate its caller. It is an
-//     attested-MEMBERSHIP predicate: anyone may pass it for any pair in the
-//     signed snapshot. Do not use it to authorise an action yet.
-//  2. The committee must sign the CANONICAL live-set root that
-//     src/host/snapshot.js rebuilds from Lantern's ledger -- never the root of
-//     the `snapshot` log below, which is append-only and so keeps every
-//     retired owner in it for good.
+// WHAT THE GATE PROVES. The caller holds the secret behind a commitment that a
+// quorum of the committee attested, in the latest sealed epoch and within the
+// staleness window, as the current owner of an identity root. The committee
+// signs the CANONICAL live-set root -- exactly the enrolled, non-retired owners,
+// rebuilt by anyone from Lantern's ledger with src/host/snapshot.js -- so a
+// signature over anything else is publicly falsifiable. The honest gap that
+// remains: a retired owner's secret passes until a newer epoch seals, for up to
+// 24 hours. See SECURITY.md §4.4.
 //
 // GOVERNANCE. There is no admin. The committee is fixed atomically at
 // deployment, so there is no window in which a slot can be front-run, and
@@ -33,9 +33,11 @@ pragma language_version >= 0.22;
 
 import CompactStandardLibrary;
 import "schnorr" prefix Schnorr_;
+import "identity" prefix Id_;
 
 struct CommitteeSlot { pkX: Field; pkY: Field; addedAtGen: Uint<32>; }
 struct OwnerPreimage { domain: Bytes<16>; root: Bytes<32>; current: Bytes<32>; }
+struct HostGatePreimage { domain: Bytes<19>; tag: Field; secret: Field; nonce: Bytes<32>; }
 
 // --- committee, DELIBERATELY NOT `sealed` -----------------------------------
 // Every signature and every proposal id binds `gen`. A quorum-sealed rotation
@@ -68,13 +70,9 @@ export ledger latestEpoch: Counter;
 
 export ledger gateActions: Counter;
 
-// An ownership log, appendable by ANYONE. Its contents are not trusted, and
-// its root is NOT what the committee should sign: being append-only, it keeps
-// every retired owner forever. The committee signs the canonical live-set root
-// (src/host/snapshot.js); this log only reproduces that tree's construction. A forged leaf is useless unless a quorum
-// signs the root containing it, and because the snapshot is deterministically
-// recomputable from Lantern's ledger, such a signature is publicly falsifiable.
-export ledger snapshot: HistoricMerkleTree<20, Bytes<32>>;
+// One per gated action. Bound to this host's tag, so the same secret and nonce
+// never produce the same nullifier at two hosts.
+export ledger hostGateNullifiers: Set<Bytes<32>>;
 
 // The whole committee is installed in one transaction. No admin, no bootstrap
 // phase, no slot to race for.
@@ -93,6 +91,9 @@ constructor(
 
 witness claimedNow(): Uint<64>;
 witness snapshotPath(): MerkleTreePath<20, Bytes<32>>;
+// The caller's identity opening: the same commitment Lantern uses (identity.compact).
+witness identitySecret(): Field;
+witness idSalt(): Bytes<32>;
 
 export pure circuit attestSlackSeconds(): Uint<64> { return 600; }
 export pure circuit maxStalenessSeconds(): Uint<64> { return 86400; }
@@ -114,8 +115,8 @@ pure circuit idOf(v: Vector<4, Field>): Bytes<32> {
   return upgradeFromTransient(transientHash<Vector<4, Field>>(v));
 }
 
-// The snapshot leaf: one per live identity, deterministically recomputable
-// from Lantern's public ledger by anyone.
+// The snapshot leaf: one per live owner, deterministically recomputable from
+// Lantern's public ledger by anyone (src/host/snapshot.js).
 export pure circuit ownerLeafOf(root: Bytes<32>, current: Bytes<32>): Bytes<32> {
   return upgradeFromTransient(transientHash<OwnerPreimage>(
     OwnerPreimage { domain: pad(16, "lantern:owner:v1"), root: root, current: current }));
@@ -159,11 +160,9 @@ export pure circuit rotationVoteNullifierOf(gen: Uint<32>, targetSlot: Uint<8>, 
   return idOf([rotVoteDomain(), gen as Field, targetSlot as Field, voterSlot as Field]);
 }
 
-// Permissionless: anyone may relay a (root, current) pair into the snapshot.
-export circuit appendSnapshotLeaf(root: Bytes<32>, current: Bytes<32>): Bytes<32> {
-  const leaf = ownerLeafOf(root, current);
-  snapshot.insert(disclose(leaf));
-  return disclose(leaf);
+export pure circuit hostGateNullifierOf(tag: Field, secret: Field, nonce: Bytes<32>): Bytes<32> {
+  return upgradeFromTransient(transientHash<HostGatePreimage>(
+    HostGatePreimage { domain: pad(19, "lantern:hostgate:v1"), tag: tag, secret: secret, nonce: nonce }));
 }
 
 // Binds a supplied point to its slot by coordinate equality, which sidesteps
@@ -291,7 +290,8 @@ export circuit sealRotation(targetSlot: Uint<8>, newPkX: Field, newPkY: Field): 
 export circuit requireCurrentOwnerAttested(
   epoch: Uint<32>,
   rootIdCommit: Bytes<32>,
-  currentIdCommit: Bytes<32>
+  currentIdCommit: Bytes<32>,
+  nonce: Bytes<32>
 ): [] {
   assert(attestedRoots.member(disclose(epoch)), "epoch not attested");
   // Sound only because epochs seal contiguously: with no gaps, "epoch+1 is not
@@ -307,5 +307,13 @@ export circuit requireCurrentOwnerAttested(
   assert(merkleTreePathRoot<20, Bytes<32>>(path).field == attestedRoots.lookup(disclose(epoch)),
          "ownership leaf is not in the attested snapshot");
 
+  // And the caller must actually BE that owner. Without this the gate was an
+  // attested-membership predicate: anyone passed it for any pair in the snapshot.
+  assert(Id_idCommitOf(identitySecret(), idSalt()) == currentIdCommit,
+         "caller does not hold the current identity secret");
+
+  const nul = hostGateNullifierOf(lanternTag, identitySecret(), nonce);
+  assert(!hostGateNullifiers.member(disclose(nul)), "action already performed");
+  hostGateNullifiers.insert(disclose(nul));
   gateActions.increment(1);
 }

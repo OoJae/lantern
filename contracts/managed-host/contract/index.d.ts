@@ -10,12 +10,11 @@ export type Witnesses<PS> = {
                                                                                      goes_left: boolean
                                                                                    }[]
                                                                            }];
+  identitySecret(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, bigint];
+  idSalt(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
 }
 
 export type ImpureCircuits<PS> = {
-  appendSnapshotLeaf(context: __compactRuntime.CircuitContext<PS>,
-                     root_0: Uint8Array,
-                     current_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   openEpoch(context: __compactRuntime.CircuitContext<PS>,
             epoch_0: bigint,
             snapshotRoot_0: bigint): __compactRuntime.CircuitResults<PS, []>;
@@ -50,13 +49,11 @@ export type ImpureCircuits<PS> = {
   requireCurrentOwnerAttested(context: __compactRuntime.CircuitContext<PS>,
                               epoch_0: bigint,
                               rootIdCommit_0: Uint8Array,
-                              currentIdCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+                              currentIdCommit_0: Uint8Array,
+                              nonce_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type ProvableCircuits<PS> = {
-  appendSnapshotLeaf(context: __compactRuntime.CircuitContext<PS>,
-                     root_0: Uint8Array,
-                     current_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   openEpoch(context: __compactRuntime.CircuitContext<PS>,
             epoch_0: bigint,
             snapshotRoot_0: bigint): __compactRuntime.CircuitResults<PS, []>;
@@ -91,7 +88,8 @@ export type ProvableCircuits<PS> = {
   requireCurrentOwnerAttested(context: __compactRuntime.CircuitContext<PS>,
                               epoch_0: bigint,
                               rootIdCommit_0: Uint8Array,
-                              currentIdCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+                              currentIdCommit_0: Uint8Array,
+                              nonce_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type PureCircuits = {
@@ -118,6 +116,7 @@ export type PureCircuits = {
   rotationVoteNullifierOf(gen_0: bigint,
                           targetSlot_0: bigint,
                           voterSlot_0: bigint): Uint8Array;
+  hostGateNullifierOf(tag_0: bigint, secret_0: bigint, nonce_0: Uint8Array): Uint8Array;
 }
 
 export type Circuits<PS> = {
@@ -156,9 +155,10 @@ export type Circuits<PS> = {
                           gen_0: bigint,
                           targetSlot_0: bigint,
                           voterSlot_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
-  appendSnapshotLeaf(context: __compactRuntime.CircuitContext<PS>,
-                     root_0: Uint8Array,
-                     current_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  hostGateNullifierOf(context: __compactRuntime.CircuitContext<PS>,
+                      tag_0: bigint,
+                      secret_0: bigint,
+                      nonce_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   openEpoch(context: __compactRuntime.CircuitContext<PS>,
             epoch_0: bigint,
             snapshotRoot_0: bigint): __compactRuntime.CircuitResults<PS, []>;
@@ -193,7 +193,8 @@ export type Circuits<PS> = {
   requireCurrentOwnerAttested(context: __compactRuntime.CircuitContext<PS>,
                               epoch_0: bigint,
                               rootIdCommit_0: Uint8Array,
-                              currentIdCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+                              currentIdCommit_0: Uint8Array,
+                              nonce_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type Ledger = {
@@ -242,14 +243,11 @@ export type Ledger = {
   };
   readonly latestEpoch: bigint;
   readonly gateActions: bigint;
-  snapshot: {
-    isFull(): boolean;
-    checkRoot(rt_0: { field: bigint }): boolean;
-    root(): __compactRuntime.MerkleTreeDigest;
-    firstFree(): bigint;
-    pathForLeaf(index_0: bigint, leaf_0: Uint8Array): __compactRuntime.MerkleTreePath<Uint8Array>;
-    findPathForLeaf(leaf_0: Uint8Array): __compactRuntime.MerkleTreePath<Uint8Array> | undefined;
-    history(): Iterator<__compactRuntime.MerkleTreeDigest>
+  hostGateNullifiers: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(elem_0: Uint8Array): boolean;
+    [Symbol.iterator](): Iterator<Uint8Array>
   };
 }
 

@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import * as rt from '@midnight-ntwrk/compact-runtime';
 import { signJubjubDigest } from '@midnight-ntwrk/midnight-did-jubjub-schnorr';
 import { pureCircuits as hostPure } from '../contracts/managed-host/contract/index.js';
-import { bytes32, fieldOf } from './simulator.js';
-import { TAG, NOW, ROOT, HEAD, member, xy, HostSim, attestedHost } from './host-fixtures.js';
+import { bytes32, fieldOf, pureCircuits } from './simulator.js';
+import { TAG, NOW, ROOT, HEAD, SNAP, HEAD_SECRET, member, xy, HostSim, attestedHost, snapshotOf } from './host-fixtures.js';
 
 describe('committee attestation (real in-circuit Jubjub Schnorr)', () => {
   it('reaches quorum and seals an epoch', () => {
@@ -14,16 +14,14 @@ describe('committee attestation (real in-circuit Jubjub Schnorr)', () => {
 
   it('rejects a key that is not the one in the claimed slot', () => {
     const h = new HostSim();
-    h.call('appendSnapshotLeaf', ROOT, HEAD);
-    const root = h.snapshotRoot();
+    const root = SNAP.root;
     h.call('openEpoch', 0n, root);
     expect(() => h.vote(0, 0, root, member(99))).toThrow(/does not match this committee slot/);
   });
 
   it('rejects a signature over a DIFFERENT root', () => {
     const h = new HostSim();
-    h.call('appendSnapshotLeaf', ROOT, HEAD);
-    const root = h.snapshotRoot();
+    const root = SNAP.root;
     h.call('openEpoch', 0n, root);
     const sig = signJubjubDigest(h.members[0].sk, hostPure.attestDigest(TAG, h.gen, 0n, root + 1n));
     expect(() => h.call('attestVote', 0n, root, 0n, h.members[0].pk, sig)).toThrow();
@@ -31,8 +29,7 @@ describe('committee attestation (real in-circuit Jubjub Schnorr)', () => {
 
   it('enforces one vote per slot per epoch, even across competing roots', () => {
     const h = new HostSim();
-    h.call('appendSnapshotLeaf', ROOT, HEAD);
-    const root = h.snapshotRoot();
+    const root = SNAP.root;
     h.call('openEpoch', 0n, root);
     h.call('openEpoch', 0n, root + 1n);
     h.vote(0, 0, root);
@@ -41,8 +38,7 @@ describe('committee attestation (real in-circuit Jubjub Schnorr)', () => {
 
   it('refuses to seal below quorum', () => {
     const h = new HostSim();
-    h.call('appendSnapshotLeaf', ROOT, HEAD);
-    const root = h.snapshotRoot();
+    const root = SNAP.root;
     h.call('openEpoch', 0n, root);
     h.vote(0, 0, root);
     expect(() => h.call('sealEpoch', 0n, root)).toThrow(/quorum not reached/);
@@ -58,8 +54,7 @@ describe('regression: a junk-root proposal cannot block an epoch', () => {
   // it, and was forced to skip -- leaving a gap.
   it('the committee seals the real root despite a squatted junk proposal', () => {
     const h = new HostSim();
-    h.call('appendSnapshotLeaf', ROOT, HEAD);
-    const root = h.snapshotRoot();
+    const root = SNAP.root;
     h.call('openEpoch', 0n, 12345n);          // attacker squats epoch 0
     h.call('openEpoch', 0n, root);            // committee opens the real one
     h.vote(0, 0, root);
@@ -80,8 +75,7 @@ describe('regression: epochs seal strictly in order', () => {
   // epoch pass the gate's "latest epoch" check.
   it('cannot skip an epoch', () => {
     const h = new HostSim();
-    h.call('appendSnapshotLeaf', ROOT, HEAD);
-    const root = h.snapshotRoot();
+    const root = SNAP.root;
     h.call('openEpoch', 1n, root);
     h.vote(0, 1, root);
     h.vote(1, 1, root);
@@ -89,14 +83,13 @@ describe('regression: epochs seal strictly in order', () => {
   });
 
   it('an older epoch stops being accepted once a newer one seals', () => {
-    const { h, leaf, root } = attestedHost();
+    const { h, root } = attestedHost();
     h.call('openEpoch', 1n, root);
     h.vote(0, 1, root);
     h.vote(1, 1, root);
     h.call('sealEpoch', 1n, root);
-    h.ps.snapshotPath = h.ledger.snapshot.findPathForLeaf(leaf);
-    expect(() => h.call('requireCurrentOwnerAttested', 0n, ROOT, HEAD)).toThrow(/not the latest epoch/);
-    expect(() => h.call('requireCurrentOwnerAttested', 1n, ROOT, HEAD)).not.toThrow();
+    expect(() => h.gate(0n, ROOT, HEAD)).toThrow(/not the latest epoch/);
+    expect(() => h.gate(1n, ROOT, HEAD)).not.toThrow();
   });
 });
 
@@ -127,8 +120,7 @@ describe('regression: committee rotation needs a quorum', () => {
     h.call('sealRotation', 2n, ...xy(fresh));
     expect(h.gen).toBe(1n);
 
-    h.call('appendSnapshotLeaf', ROOT, HEAD);
-    const root = h.snapshotRoot();
+    const root = SNAP.root;
     h.call('openEpoch', 0n, root);
     // The leaked key is gone from slot 2, even signing under the NEW generation.
     expect(() => h.vote(2, 0, root, leaked)).toThrow(/does not match this committee slot/);
@@ -138,8 +130,7 @@ describe('regression: committee rotation needs a quorum', () => {
 
   it('a rotation strands every vote cast under the old generation', () => {
     const h = new HostSim();
-    h.call('appendSnapshotLeaf', ROOT, HEAD);
-    const root = h.snapshotRoot();
+    const root = SNAP.root;
     h.call('openEpoch', 0n, root);
     h.vote(0, 0, root);
     h.vote(1, 0, root);                        // quorum reached under gen 0...
@@ -157,23 +148,20 @@ describe('regression: committee rotation needs a quorum', () => {
 
 describe('the attested gate', () => {
   it('accepts the current owner against the attested snapshot', () => {
-    const { h, leaf } = attestedHost();
-    h.ps.snapshotPath = h.ledger.snapshot.findPathForLeaf(leaf);
-    expect(() => h.call('requireCurrentOwnerAttested', 0n, ROOT, HEAD)).not.toThrow();
+    const { h } = attestedHost();
+    expect(() => h.gate(0n, ROOT, HEAD)).not.toThrow();
     expect(h.ledger.gateActions).toBe(1n);
   });
 
   it('rejects a pair that is not in the attested snapshot', () => {
-    const { h, leaf } = attestedHost();
-    h.ps.snapshotPath = h.ledger.snapshot.findPathForLeaf(leaf);
-    expect(() => h.call('requireCurrentOwnerAttested', 0n, ROOT, bytes32(99))).toThrow(/does not bind/);
+    const { h } = attestedHost();
+    expect(() => h.gate(0n, ROOT, bytes32(99))).toThrow(/does not bind/);
   });
 
   it('rejects a stale attestation once the window closes', () => {
-    const { h, leaf } = attestedHost();
-    h.ps.snapshotPath = h.ledger.snapshot.findPathForLeaf(leaf);
+    const { h } = attestedHost();
     h.advance(Number(hostPure.maxStalenessSeconds()) + 3600);
-    expect(() => h.call('requireCurrentOwnerAttested', 0n, ROOT, HEAD)).toThrow(/stale/);
+    expect(() => h.gate(0n, ROOT, HEAD)).toThrow(/stale/);
   });
 
   // Regression. The window used to start at the claimed time PLUS slack, so a
@@ -182,21 +170,70 @@ describe('the attested gate', () => {
   // At this instant the OLD code would still accept; the new code must not.
   it('a sealer cannot stretch the staleness window with its claimed time', () => {
     const h = new HostSim();
-    const leaf = h.call('appendSnapshotLeaf', ROOT, HEAD);
-    const root = h.snapshotRoot();
+    const root = SNAP.root;
     h.call('openEpoch', 0n, root);
     h.vote(0, 0, root);
     h.vote(1, 0, root);
     h.ps.claimedNow = h.now - 500;          // earliest bracket the seal allows
     h.call('sealEpoch', 0n, root);
-    h.ps.snapshotPath = h.ledger.snapshot.findPathForLeaf(leaf);
     h.advance(Number(hostPure.maxStalenessSeconds()) - 400);
-    expect(() => h.call('requireCurrentOwnerAttested', 0n, ROOT, HEAD)).toThrow(/stale/);
+    expect(() => h.gate(0n, ROOT, HEAD)).toThrow(/stale/);
   });
 
   it('rejects an unattested epoch', () => {
-    const { h, leaf } = attestedHost();
-    h.ps.snapshotPath = h.ledger.snapshot.findPathForLeaf(leaf);
-    expect(() => h.call('requireCurrentOwnerAttested', 5n, ROOT, HEAD)).toThrow(/not attested/);
+    const { h } = attestedHost();
+    expect(() => h.gate(5n, ROOT, HEAD)).toThrow(/not attested/);
+  });
+});
+
+// Regression (D6). The gate read no identity witness, so it was an
+// attested-MEMBERSHIP predicate: anyone passed it for any pair in the signed
+// snapshot. It now proves the caller holds the current identity secret.
+describe('regression: the attested gate authenticates its caller', () => {
+  it('refuses a caller who does not hold the current identity secret', () => {
+    const { h } = attestedHost();
+    h.ps.identitySecret = fieldOf(4444);
+    expect(() => h.gate(0n, ROOT, HEAD)).toThrow(/caller does not hold the current identity secret/);
+    expect(h.ledger.gateActions).toBe(0n);
+  });
+
+  it('performs each action once: a replayed nonce is refused', () => {
+    const { h } = attestedHost();
+    h.gate(0n, ROOT, HEAD, bytes32(77));
+    expect(() => h.gate(0n, ROOT, HEAD, bytes32(77))).toThrow(/action already performed/);
+    expect(() => h.gate(0n, ROOT, HEAD, bytes32(78))).not.toThrow();
+  });
+
+  it('binds each nullifier to this host, so one action cannot be replayed at another', () => {
+    const a = hostPure.hostGateNullifierOf(TAG, HEAD_SECRET, bytes32(77));
+    const b = hostPure.hostGateNullifierOf(TAG + 1n, HEAD_SECRET, bytes32(77));
+    expect(Buffer.from(a).toString('hex')).not.toBe(Buffer.from(b).toString('hex'));
+  });
+});
+
+// The honest gap, shown rather than stated (SECURITY.md §4.4). After a
+// recovery, the retired owner's secret still passes the attested gate until a
+// newer epoch seals over the new live set -- at most the staleness window.
+describe('the attested gate after a recovery: the window, and how it closes', () => {
+  const NEW_SECRET = fieldOf(1200), NEW_SALT = bytes32(1201);
+  const NEW_HEAD = pureCircuits.idCommitOf(NEW_SECRET, NEW_SALT);
+  const after = snapshotOf([{ root: ROOT, current: NEW_HEAD }]);
+
+  it('accepts the retired secret against the older epoch until a newer one seals, then never again', () => {
+    const { h } = attestedHost();               // epoch 0: (ROOT, HEAD)
+    // HEAD's owner has recovered to NEW_HEAD, but no newer epoch has sealed.
+    expect(() => h.gate(0n, ROOT, HEAD)).not.toThrow();
+
+    h.call('openEpoch', 1n, after.root);        // epoch 1: the canonical live set, (ROOT, NEW_HEAD)
+    h.vote(0, 1, after.root);
+    h.vote(1, 1, after.root);
+    h.call('sealEpoch', 1n, after.root);
+
+    expect(() => h.gate(0n, ROOT, HEAD)).toThrow(/not the latest epoch/);
+    expect(() => h.gate(1n, ROOT, HEAD)).toThrow(/not in the attested snapshot/);
+
+    h.ps.identitySecret = NEW_SECRET; h.ps.idSalt = NEW_SALT;
+    h.ps.snapshotPath = after.pathFor(ROOT, NEW_HEAD);
+    expect(() => h.gate(1n, ROOT, NEW_HEAD)).not.toThrow();
   });
 });
