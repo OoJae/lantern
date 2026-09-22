@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { split, reconstruct } from '../src/shamir.js';
+import { idSaltOf, recoverFromShares } from '../src/identity.js';
 import { R, randomFieldElement, inv, mul, add, mod } from '../src/field.js';
 import { LanternSim, pureCircuits, bytes32, fieldOf } from './simulator.js';
 import { asGuardian, EPH_A, ephSkFor, DELAY, SLACK } from './fixtures.js';
@@ -64,9 +65,13 @@ describe('shamir x circuit (end to end)', () => {
   const NEW_ID = () => pureCircuits.idCommitOf(fieldOf(70), bytes32(71));
   const NEW_VETO = () => pureCircuits.vetoCommitOf(fieldOf(80), bytes32(81));
 
-  /** Enrol a real, randomly generated identity and collect 2 approvals. */
+  /**
+   * Enrol a real, randomly generated identity and collect 2 approvals. The
+   * salt is DERIVED from the secret (src/identity.js), which is what lets the
+   * recovering device rebuild both from shares alone.
+   */
   function setup(secret) {
-    const salt = bytes32(51);
+    const salt = idSaltOf(secret);
     const sim = new LanternSim({ identitySecret: secret, idSalt: salt });
     const id = pureCircuits.idCommitOf(secret, salt);
     sim.call('enrollIdentity', id, pureCircuits.vetoCommitOf(fieldOf(60), bytes32(61)), 2n);
@@ -90,8 +95,10 @@ describe('shamir x circuit (end to end)', () => {
     const shares = split(secret, 3, 2);
     const { sim, rid } = setup(secret);
 
-    // The recovering device holds no secret -- only two shares.
-    sim.ps.identitySecret = reconstruct([shares[0], shares[2]]);
+    // The recovering device holds no secret and no salt -- only two shares.
+    // Wipe both, then rebuild both from the shares.
+    sim.ps.identitySecret = undefined; sim.ps.idSalt = undefined;
+    Object.assign(sim.ps, recoverFromShares([shares[0], shares[2]]));
     expect(sim.ps.identitySecret).toBe(secret);
     expect(() => sim.call('finalizeRecovery', rid, NEW_ID(), NEW_VETO())).not.toThrow();
   });
@@ -103,9 +110,9 @@ describe('shamir x circuit (end to end)', () => {
     for (let trial = 0; trial < 10; trial++) {
       const { sim, rid } = setup(secret);
       const forged = { x: shares[1].x, y: randomFieldElement() };
-      const wrong = reconstruct([shares[0], forged]);
-      expect(wrong).not.toBe(secret);
-      sim.ps.identitySecret = wrong;
+      const wrong = recoverFromShares([shares[0], forged]);
+      expect(wrong.identitySecret).not.toBe(secret);
+      Object.assign(sim.ps, wrong);
       expect(() => sim.call('finalizeRecovery', rid, NEW_ID(), NEW_VETO()))
         .toThrow(/does not open idCommit/);
     }
