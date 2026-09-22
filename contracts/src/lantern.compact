@@ -20,7 +20,7 @@ import "schnorr" prefix Schnorr_;
 struct IdPreimage      { domain: Bytes<13>; secret: Field; }
 struct VetoPreimage    { domain: Bytes<15>; secret: Field; }
 struct RidPreimage     { domain: Bytes<14>; idCommit: Bytes<32>; ephemeralPk: Bytes<32>; }
-struct SuccPreimage    { domain: Bytes<15>; prev: Bytes<32>; next: Bytes<32>; }
+struct LinPreimage     { domain: Bytes<18>; idRoot: Bytes<32>; member: Bytes<32>; }
 struct LeafPreimage    { domain: Bytes<19>; secret: Bytes<32>; ctx: Bytes<32>; }
 struct ApprovePreimage { domain: Bytes<18>; secret: Bytes<32>; idCommit: Bytes<32>; rid: Bytes<32>; }
 struct VetoNulPreimage { domain: Bytes<18>; secret: Field; rid: Bytes<32>; }
@@ -80,9 +80,19 @@ export pure circuit vetoNullifierOf(secret: Field, rid: Bytes<32>): Bytes<32> {
     VetoNulPreimage { domain: pad(18, "lantern:vetonul:v1"), secret: secret, rid: rid });
 }
 
-export pure circuit successionEdgeOf(prev: Bytes<32>, next: Bytes<32>): Bytes<32> {
-  return persistentHash<SuccPreimage>(
-    SuccPreimage { domain: pad(15, "lantern:succ:v1"), prev: prev, next: next });
+// A DESCENT leaf, not an edge. An edge tree can only answer "does prev->next
+// exist", which is what a bounded walk needs -- and a walk proves descent in
+// O(R) while leaking nothing an O(1) membership proof does not. This leaf lets
+// any descendant prove descent from the root in ONE membership check, at
+// constant cost and unbounded chain depth.
+//
+// transientHash is the circuit-native (Poseidon-family) hash: ~743 rows here
+// versus ~4,520 for persistentHash. Every Merkle root in this contract already
+// depends on transientHash, because merkleTreePathRoot uses it for all 20
+// levels -- so this adds no new upgrade exposure beyond what already exists.
+export pure circuit lineageLeafOf(idRoot: Bytes<32>, member: Bytes<32>): Bytes<32> {
+  return upgradeFromTransient(transientHash<LinPreimage>(
+    LinPreimage { domain: pad(18, "lantern:lineage:v1"), idRoot: idRoot, member: member }));
 }
 
 // Compact has no module-level const; the schnorr module declares its constants
@@ -125,7 +135,9 @@ export ledger vetoNullifiers: Set<Bytes<32>>;
 export ledger killed: Set<Bytes<32>>;
 export ledger retiredIdentities: Set<Bytes<32>>;
 
-export ledger succession: HistoricMerkleTree<20, Bytes<32>>;
+// Descent records: (idRoot, member) for every identity in a lineage. A host
+// that has never met you can still verify you descend from a root it gates on.
+export ledger lineage: HistoricMerkleTree<20, Bytes<32>>;
 
 constructor() {}
 
@@ -150,6 +162,7 @@ witness vetoSalt(): Bytes<32>;
 // There is no readable clock in Compact; the prover claims one and the circuit
 // brackets it between two block-time predicates.
 witness claimedNow(): Uint<64>;
+witness lineagePath(): MerkleTreePath<20, Bytes<32>>;
 
 // ---------------------------------------------------------------------------
 // ENROLMENT
@@ -175,6 +188,7 @@ export circuit enrollIdentity(
   idRoots.insert(disclose(idCommit), disclose(idCommit));
   guardianCtx.insert(disclose(idCommit), disclose(idCommit));
   usedGuardianCtx.insert(disclose(idCommit));
+  lineage.insert(disclose(lineageLeafOf(idCommit, idCommit)));
 }
 
 // Also authenticated: otherwise a stranger unilaterally becomes a full quorum
@@ -333,7 +347,7 @@ export circuit finalizeRecovery(
   // Retire and succeed ATOMICALLY. A two-transaction version would let anyone
   // front-run enrolment on the now-public newIdCommit and capture its veto.
   retiredIdentities.insert(disclose(idCommit));
-  succession.insert(disclose(successionEdgeOf(idCommit, newIdCommit)));
+  lineage.insert(disclose(lineageLeafOf(rec.idRoot, newIdCommit)));
 
   assert(!enrolled.member(disclose(newIdCommit)), "successor already enrolled");
   enrolled.insert(disclose(newIdCommit));
@@ -343,4 +357,39 @@ export circuit finalizeRecovery(
   // leaf keeps working across the rotation. guardianCtx is deliberately
   // untouched -- the guardian set survives.
   idRoots.insert(disclose(newIdCommit), disclose(rec.idRoot));
+}
+
+// ---------------------------------------------------------------------------
+// SUCCESSION PROOFS
+//
+// DESCENT is a membership claim and an append-only Merkle tree proves it.
+// HEADSHIP is a NON-membership claim -- "no edge (C, *) exists" -- and NO
+// append-only structure can express it. Not with self-edges (every former head
+// has one, so a prover stalls at a retired ancestor), not with head markers
+// (they persist after being superseded).
+//
+// So headship comes from a Set non-membership query, which IS available
+// in-circuit and is free. That asymmetry is the whole reason this contract
+// gates in-contract rather than against an attested root: an attested root can
+// only prove membership, so a host consuming one will accept a REVOKED owner.
+// ---------------------------------------------------------------------------
+
+export circuit proveSuccession(idRoot: Bytes<32>, head: Bytes<32>): [] {
+  // Descent: one membership proof, constant cost, unbounded chain depth.
+  const path = lineagePath();
+  // Leaf-binding assert BEFORE checkRoot -- without it any valid path passes.
+  assert(path.leaf == lineageLeafOf(idRoot, head),
+         "path does not bind to this lineage leaf");
+  assert(lineage.checkRoot(disclose(merkleTreePathRoot<20, Bytes<32>>(path))),
+         "not a known lineage root");
+
+  // Headship. This is the load-bearing half.
+  assert(enrolled.member(disclose(head)), "head is not enrolled");
+  assert(!retiredIdentities.member(disclose(head)), "head has been superseded");
+}
+
+// What a host actually wants: "I currently control the identity rooted at R."
+export circuit proveHeadOwnership(idRoot: Bytes<32>, head: Bytes<32>): [] {
+  assert(idCommitOf(identitySecret(), idSalt()) == head, "not the head owner");
+  proveSuccession(idRoot, head);
 }

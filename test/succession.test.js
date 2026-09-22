@@ -130,3 +130,94 @@ describe('guardian-set rotation', () => {
     expect(() => sim.call('approveRecovery', g1.newId, rid)).not.toThrow();
   });
 });
+
+// Descent is a membership claim; headship is a NON-membership claim. These
+// tests are what stop `proveSuccession` from accepting a revoked owner.
+describe('proveSuccession', () => {
+  const loadPath = (sim, idRoot, head) => {
+    sim.ps.lineagePath = sim.ledger.lineage.findPathForLeaf(
+      pureCircuits.lineageLeafOf(idRoot, head));
+    return sim;
+  };
+
+  it('accepts the genesis identity as its own head', () => {
+    const { sim, id, idRoot } = world();
+    loadPath(sim, idRoot, id);
+    expect(() => sim.call('proveSuccession', idRoot, id)).not.toThrow();
+  });
+
+  it('accepts a successor, proving descent at constant cost', () => {
+    const { sim, id, idRoot, guardians } = world();
+    const g1 = succeed(sim, id, guardians, 1);
+    loadPath(sim, idRoot, g1.newId);
+    expect(() => sim.call('proveSuccession', idRoot, g1.newId)).not.toThrow();
+  });
+
+  it('accepts the third generation with the SAME constant-cost proof', () => {
+    const { sim, id, idRoot, guardians } = world();
+    const g1 = succeed(sim, id, guardians, 1, EPH_A);
+    const g2 = succeed(sim, g1.newId, guardians, 2, EPH_B);
+    const g3 = succeed(sim, g2.newId, guardians, 3, bytes32(22));
+    loadPath(sim, idRoot, g3.newId);
+    expect(() => sim.call('proveSuccession', idRoot, g3.newId)).not.toThrow();
+  });
+
+  // STALLING. A retired ancestor's lineage leaf is permanently in the tree, so
+  // its membership proof stays valid forever. Only the Set non-membership check
+  // stops a revoked owner from passing. This is the load-bearing assertion.
+  it('REJECTS a retired ancestor even with a genuinely valid path', () => {
+    const { sim, id, idRoot, guardians } = world();
+    succeed(sim, id, guardians, 1);
+    loadPath(sim, idRoot, id);   // the path really is valid
+    expect(() => sim.call('proveSuccession', idRoot, id)).toThrow(/superseded/);
+  });
+
+  it('rejects a commitment that was never enrolled', () => {
+    const { sim, idRoot } = world();
+    const stranger = pureCircuits.idCommitOf(fieldOf(31337), bytes32(31));
+    sim.ps.lineagePath = sim.ledger.lineage.findPathForLeaf(
+      pureCircuits.lineageLeafOf(idRoot, idRoot));
+    expect(() => sim.call('proveSuccession', idRoot, stranger)).toThrow();
+  });
+
+  it('rejects a head claimed under the wrong root', () => {
+    const { sim, id, idRoot } = world();
+    loadPath(sim, idRoot, id);
+    const wrongRoot = bytes32(4242);
+    expect(() => sim.call('proveSuccession', wrongRoot, id)).toThrow(/does not bind/);
+  });
+});
+
+describe('proveHeadOwnership', () => {
+  it('succeeds for the current owner', () => {
+    const { sim, id, idRoot, guardians } = world();
+    const g1 = succeed(sim, id, guardians, 1);
+    sim.ps.lineagePath = sim.ledger.lineage.findPathForLeaf(
+      pureCircuits.lineageLeafOf(idRoot, g1.newId));
+    expect(() => sim.call('proveHeadOwnership', idRoot, g1.newId)).not.toThrow();
+  });
+
+  it('rejects someone who descends but does not hold the secret', () => {
+    const { sim, id, idRoot, guardians } = world();
+    const g1 = succeed(sim, id, guardians, 1);
+    sim.ps.lineagePath = sim.ledger.lineage.findPathForLeaf(
+      pureCircuits.lineageLeafOf(idRoot, g1.newId));
+    sim.ps.identitySecret = fieldOf(6666);
+    expect(() => sim.call('proveHeadOwnership', idRoot, g1.newId))
+      .toThrow(/not the head owner/);
+  });
+
+  it('leaks no path sibling and exactly one Merkle root', () => {
+    const { sim, id, idRoot } = world();
+    sim.ps.lineagePath = sim.ledger.lineage.findPathForLeaf(
+      pureCircuits.lineageLeafOf(idRoot, id));
+    sim.call('proveHeadOwnership', idRoot, id);
+    const blob = JSON.stringify(sim.publicTranscript, (_k, v) =>
+      typeof v === 'bigint' ? v.toString(16)
+        : v instanceof Uint8Array ? Buffer.from(v).toString('hex') : v);
+    expect(blob).not.toContain(Buffer.from(ID_SALT).toString('hex'));
+    // The path's siblings must never reach the transcript.
+    const sibs = sim.ps.lineagePath.path.map((e) => e.sibling.field.toString(16));
+    for (const s of sibs) if (s.length > 8) expect(blob).not.toContain(s);
+  });
+});

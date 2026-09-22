@@ -14,6 +14,12 @@ export type Witnesses<PS> = {
   vetoSecret(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, bigint];
   vetoSalt(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
   claimedNow(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, bigint];
+  lineagePath(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, { leaf: Uint8Array,
+                                                                            path: { sibling: { field: bigint
+                                                                                             },
+                                                                                    goes_left: boolean
+                                                                                  }[]
+                                                                          }];
 }
 
 export type ImpureCircuits<PS> = {
@@ -37,6 +43,12 @@ export type ImpureCircuits<PS> = {
                    rid_0: Uint8Array,
                    newIdCommit_0: Uint8Array,
                    newVetoCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  proveSuccession(context: __compactRuntime.CircuitContext<PS>,
+                  idRoot_0: Uint8Array,
+                  head_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  proveHeadOwnership(context: __compactRuntime.CircuitContext<PS>,
+                     idRoot_0: Uint8Array,
+                     head_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type ProvableCircuits<PS> = {
@@ -60,6 +72,12 @@ export type ProvableCircuits<PS> = {
                    rid_0: Uint8Array,
                    newIdCommit_0: Uint8Array,
                    newVetoCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  proveSuccession(context: __compactRuntime.CircuitContext<PS>,
+                  idRoot_0: Uint8Array,
+                  head_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  proveHeadOwnership(context: __compactRuntime.CircuitContext<PS>,
+                     idRoot_0: Uint8Array,
+                     head_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type PureCircuits = {
@@ -71,7 +89,7 @@ export type PureCircuits = {
                       idCommit_0: Uint8Array,
                       rid_0: Uint8Array): Uint8Array;
   vetoNullifierOf(secret_0: bigint, rid_0: Uint8Array): Uint8Array;
-  successionEdgeOf(prev_0: Uint8Array, next_0: Uint8Array): Uint8Array;
+  lineageLeafOf(idRoot_0: Uint8Array, member_0: Uint8Array): Uint8Array;
   openSlackSeconds(): bigint;
   recoveryDelaySeconds(): bigint;
 }
@@ -97,9 +115,9 @@ export type Circuits<PS> = {
   vetoNullifierOf(context: __compactRuntime.CircuitContext<PS>,
                   secret_0: bigint,
                   rid_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
-  successionEdgeOf(context: __compactRuntime.CircuitContext<PS>,
-                   prev_0: Uint8Array,
-                   next_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  lineageLeafOf(context: __compactRuntime.CircuitContext<PS>,
+                idRoot_0: Uint8Array,
+                member_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   openSlackSeconds(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, bigint>;
   recoveryDelaySeconds(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, bigint>;
   enrollIdentity(context: __compactRuntime.CircuitContext<PS>,
@@ -122,6 +140,12 @@ export type Circuits<PS> = {
                    rid_0: Uint8Array,
                    newIdCommit_0: Uint8Array,
                    newVetoCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  proveSuccession(context: __compactRuntime.CircuitContext<PS>,
+                  idRoot_0: Uint8Array,
+                  head_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  proveHeadOwnership(context: __compactRuntime.CircuitContext<PS>,
+                     idRoot_0: Uint8Array,
+                     head_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type Ledger = {
@@ -221,7 +245,7 @@ export type Ledger = {
     member(elem_0: Uint8Array): boolean;
     [Symbol.iterator](): Iterator<Uint8Array>
   };
-  succession: {
+  lineage: {
     isFull(): boolean;
     checkRoot(rt_0: { field: bigint }): boolean;
     root(): __compactRuntime.MerkleTreeDigest;

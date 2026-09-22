@@ -192,8 +192,8 @@ describe('finalize', () => {
     expect(sim.ledger.enrolled.member(NEW_ID())).toBe(true);
     expect(sim.ledger.thresholds.lookup(NEW_ID())).toBe(2n);
     expect(hex(sim.ledger.vetoCommits.lookup(NEW_ID()))).toBe(hex(NEW_VETO()));
-    expect(sim.ledger.succession.findPathForLeaf(
-      pureCircuits.successionEdgeOf(id, NEW_ID()))).toBeDefined();
+    expect(sim.ledger.lineage.findPathForLeaf(
+      pureCircuits.lineageLeafOf(id, NEW_ID()))).toBeDefined();
   });
 
   it('rejects a secret that does not open the commitment', () => {
