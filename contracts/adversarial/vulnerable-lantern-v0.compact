@@ -1,0 +1,130 @@
+pragma language_version >= 0.22;
+
+// ###########################################################################
+// #  DELIBERATELY INSECURE.  DO NOT DEPLOY.  DO NOT COPY.                   #
+// #                                                                        #
+// #  Targets 2a and 2b of the Lantern adversarial demo: the two ways a      #
+// #  competent first pass on Midnight hides a guardian, and fails.          #
+// #                                                                        #
+// #    2a  leaf = H(domain, guardianId, owner)            -- "it's hashed"  #
+// #    2b  leaf = commit(preimage, H(owner, slot))        -- "it's salted"  #
+// #                                                                        #
+// #  In BOTH, guardianId is a WITNESS. It appears in no transaction, and    #
+// #  neither does the leaf -- only the leaf's tree digest does. And         #
+// #  `npm run attack` names every guardian anyway, from public ledger state #
+// #  alone, in milliseconds.                                               #
+// #                                                                        #
+// #  The Merkle logic here is CORRECT, leaf-binding assert included. The    #
+// #  flaw is in the PREIMAGE, and that is the entire lesson:                #
+// #  a commitment hides exactly the entropy in its preimage that is not     #
+// #  already on chain, and not one bit more.                                #
+// #                                                                        #
+// #  It is compiled so it can be attacked. It is NOT deployed anywhere.     #
+// #  The contract you want is contracts/src/lantern.compact.                #
+// #  SPDX-License-Identifier: Apache-2.0   NOT FOR PRODUCTION USE.          #
+// ###########################################################################
+
+import CompactStandardLibrary;
+
+// Distinct Bytes<N> per domain, the same discipline as the shipped contract,
+// so a v0 leaf can never collide with a shipped leaf.
+struct V0Unsalted { domain: Bytes<28>; guardian: Bytes<32>; owner: Bytes<32>; }
+struct V0Salted   { domain: Bytes<20>; guardian: Bytes<32>; owner: Bytes<32>; }
+struct V0SaltSeed { domain: Bytes<15>; owner: Bytes<32>; slot: Bytes<32>; }
+struct V0Approval { domain: Bytes<15>; guardian: Bytes<32>; owner: Bytes<32>; rid: Bytes<32>; }
+
+export ledger enrolled: Set<Bytes<32>>;
+export ledger thresholds: Map<Bytes<32>, Uint<8>>;
+export ledger guardians: HistoricMerkleTree<20, Bytes<32>>;
+export ledger approvals: Map<Bytes<32>, Counter>;
+export ledger approvedNullifiers: Set<Bytes<32>>;
+
+constructor() {}
+
+// The guardian's identity never leaves the device -- or so the author thought.
+witness guardianId(): Bytes<32>;
+witness guardianPath(): MerkleTreePath<20, Bytes<32>>;
+
+export pure circuit THIS_CONTRACT_IS_DELIBERATELY_INSECURE(): Uint<8> { return 1; }
+
+// --- 2a: "it's hashed, so it's hidden" -------------------------------------
+export pure circuit unsaltedLeafOf(guardian: Bytes<32>, owner: Bytes<32>): Bytes<32> {
+  return persistentHash<V0Unsalted>(
+    V0Unsalted { domain: pad(28, "lantern:guardian:unsalted:v0"), guardian: guardian, owner: owner });
+}
+
+// --- 2b: "we salt our commitments" -----------------------------------------
+// The salt IS 32 bytes of randomness. It is also a deterministic function of
+// two public values, because a stateless client must be able to recompute any
+// leaf without storing per-guardian state. That is a real engineering pressure,
+// which is what makes this the honest vulnerable variant: it passes any review
+// that asks "do you salt your commitments?"
+export pure circuit derivedSaltOf(owner: Bytes<32>, slot: Bytes<32>): Bytes<32> {
+  return persistentHash<V0SaltSeed>(
+    V0SaltSeed { domain: pad(15, "lantern:salt:v0"), owner: owner, slot: slot });
+}
+
+export pure circuit saltedLeafOf(guardian: Bytes<32>, owner: Bytes<32>, slot: Bytes<32>): Bytes<32> {
+  return persistentCommit<V0Salted>(
+    V0Salted { domain: pad(20, "lantern:guardian:v0b"), guardian: guardian, owner: owner },
+    derivedSaltOf(owner, slot));
+}
+
+// Bound to the guardian's IDENTITY -- so once the identity is named, every vote
+// that identity ever cast is computable too.
+export pure circuit approvalNullifierOf(guardian: Bytes<32>, owner: Bytes<32>, rid: Bytes<32>): Bytes<32> {
+  return persistentHash<V0Approval>(
+    V0Approval { domain: pad(15, "lantern:appr:v0"), guardian: guardian, owner: owner, rid: rid });
+}
+
+export circuit enroll(owner: Bytes<32>, threshold: Uint<8>): [] {
+  assert(!enrolled.member(disclose(owner)), "already enrolled");
+  assert(disclose(threshold) >= 2, "threshold must be at least 2");
+  enrolled.insert(disclose(owner));
+  thresholds.insert(disclose(owner), disclose(threshold));
+}
+
+export circuit addGuardianUnsalted(owner: Bytes<32>): Bytes<32> {
+  assert(enrolled.member(disclose(owner)), "not enrolled");
+  const leaf = unsaltedLeafOf(guardianId(), owner);
+  guardians.insert(disclose(leaf));
+  return disclose(leaf);
+}
+
+export circuit addGuardianDerivedSalt(owner: Bytes<32>, slot: Bytes<32>): Bytes<32> {
+  assert(enrolled.member(disclose(owner)), "not enrolled");
+  const leaf = saltedLeafOf(guardianId(), owner, slot);
+  guardians.insert(disclose(leaf));
+  return disclose(leaf);
+}
+
+export circuit openRecovery(rid: Bytes<32>): [] {
+  assert(!approvals.member(disclose(rid)), "already open");
+  approvals.insert(disclose(rid), default<Counter>);
+}
+
+// Structurally identical to the shipped approveRecovery: leaf-binding assert
+// BEFORE checkRoot. The Merkle logic is fine. The preimage is not.
+export circuit approveUnsalted(owner: Bytes<32>, rid: Bytes<32>): [] {
+  assert(approvals.member(disclose(rid)), "no such recovery");
+  const g = guardianId();
+  const path = guardianPath();
+  assert(path.leaf == unsaltedLeafOf(g, owner), "path does not bind to this guardian leaf");
+  assert(guardians.checkRoot(disclose(merkleTreePathRoot<20, Bytes<32>>(path))), "guardian not in tree");
+  const nul = approvalNullifierOf(g, owner, rid);
+  assert(!approvedNullifiers.member(disclose(nul)), "guardian already approved");
+  approvedNullifiers.insert(disclose(nul));
+  approvals.lookup(disclose(rid)).increment(1);
+}
+
+export circuit approveDerivedSalt(owner: Bytes<32>, slot: Bytes<32>, rid: Bytes<32>): [] {
+  assert(approvals.member(disclose(rid)), "no such recovery");
+  const g = guardianId();
+  const path = guardianPath();
+  assert(path.leaf == saltedLeafOf(g, owner, slot), "path does not bind to this guardian leaf");
+  assert(guardians.checkRoot(disclose(merkleTreePathRoot<20, Bytes<32>>(path))), "guardian not in tree");
+  const nul = approvalNullifierOf(g, owner, rid);
+  assert(!approvedNullifiers.member(disclose(nul)), "guardian already approved");
+  approvedNullifiers.insert(disclose(nul));
+  approvals.lookup(disclose(rid)).increment(1);
+}

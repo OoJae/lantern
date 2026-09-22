@@ -1,13 +1,24 @@
 #!/usr/bin/env bash
-# Compiles the Lantern contract with the EXACT pinned toolchain.
-# Requires no Docker. Proving keys are generated here, never committed.
+# Compiles every contract with the EXACT pinned toolchain. Requires no Docker.
+# Proving keys are generated here and never committed.
+#
+#   bash scripts/compile.sh                 shipped + adversarial targets
+#   bash scripts/compile.sh --shipped-only  the product only
 set -euo pipefail
 
 COMPACT_VERSION="0.31.1"
-SRC="contracts/src/lantern.compact"
-OUT="contracts/managed"
-HOST_SRC="contracts/src/host.compact"
-HOST_OUT="contracts/managed-host"
+
+SHIPPED=(
+  "contracts/src/lantern.compact|contracts/managed"
+  "contracts/src/host.compact|contracts/managed-host"
+)
+
+# DELIBERATELY INSECURE. Never deployed. Compiled only so `npm run attack` can
+# break them. See contracts/adversarial/README.md.
+ADVERSARIAL=(
+  "contracts/adversarial/vulnerable-public-guardians.compact|contracts/managed-public-guardians"
+  "contracts/adversarial/vulnerable-lantern-v0.compact|contracts/managed-lantern-v0"
+)
 
 command -v compact >/dev/null 2>&1 || {
   echo "error: 'compact' not found. Install the Compact developer tools, then:" >&2
@@ -22,17 +33,29 @@ if [ -z "${GITHUB_TOKEN:-}" ] && command -v gh >/dev/null 2>&1; then
   export GITHUB_TOKEN
 fi
 
-rm -rf "${OUT}" "${HOST_OUT}"
-echo "==> compiling ${SRC} with compact ${COMPACT_VERSION}"
-compact compile "+${COMPACT_VERSION}" "${SRC}" "${OUT}"
-echo "==> compiling ${HOST_SRC} (independently deployed host)"
-compact compile "+${COMPACT_VERSION}" "${HOST_SRC}" "${HOST_OUT}"
+build() {
+  local src="${1%%|*}" out="${1##*|}"
+  rm -rf "${out}"
+  echo "==> compiling ${src}"
+  compact compile "+${COMPACT_VERSION}" "${src}" "${out}"
+  # The generated sourcemap references compiler-internal paths that do not
+  # ship, which makes vitest emit a spurious warning. Strip it.
+  find "${out}" -name '*.js.map' -delete
+  find "${out}" -name '*.js' -exec sed -i '' -e '/^\/\/# sourceMappingURL=/d' {} \; 2>/dev/null \
+    || find "${out}" -name '*.js' -exec sed -i -e '/^\/\/# sourceMappingURL=/d' {} \;
+}
 
-# The generated sourcemap references compiler-internal paths that do not ship,
-# which makes vitest emit a spurious warning. Strip it.
-find "${OUT}" "${HOST_OUT}" -name '*.js.map' -delete
-find "${OUT}" "${HOST_OUT}" -name '*.js' -exec sed -i '' -e '/^\/\/# sourceMappingURL=/d' {} \; 2>/dev/null \
-  || find "${OUT}" "${HOST_OUT}" -name '*.js' -exec sed -i -e '/^\/\/# sourceMappingURL=/d' {} \;
+for t in "${SHIPPED[@]}"; do build "$t"; done
 
-echo "==> circuits built:"
-ls -1 "${OUT}/zkir"/*.zkir "${HOST_OUT}/zkir"/*.zkir 2>/dev/null | xargs -n1 basename | sed 's/\.zkir$//' | sed 's/^/    /'
+if [ "${1:-}" != "--shipped-only" ]; then
+  echo
+  echo "############################################################"
+  echo "#  ADVERSARIAL TARGETS -- DELIBERATELY INSECURE            #"
+  echo "#  never deployed; compiled only so 'npm run attack' can   #"
+  echo "#  break them. Do not copy these contracts.                #"
+  echo "############################################################"
+  for t in "${ADVERSARIAL[@]}"; do build "$t"; done
+fi
+
+echo
+echo "==> circuits built with compact ${COMPACT_VERSION}"

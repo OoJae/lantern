@@ -8,6 +8,14 @@ contracts/managed/contract/*.map
 contracts/managed-host/*
 !contracts/managed-host/contract/
 contracts/managed-host/contract/*.map
+# The adversarial targets' generated modules are committed too, or
+# `npm run attack` would need the Compact toolchain on a clean clone.
+contracts/managed-public-guardians/*
+!contracts/managed-public-guardians/contract/
+contracts/managed-public-guardians/contract/*.map
+contracts/managed-lantern-v0/*
+!contracts/managed-lantern-v0/contract/
+contracts/managed-lantern-v0/contract/*.map
 *.tgz
 .DS_Store
 dist/
