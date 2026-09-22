@@ -10,6 +10,7 @@ import * as LanternV0 from '../../contracts/managed-lantern-v0/contract/index.js
 import * as Lantern from '../../contracts/managed/contract/index.js';
 import { Sim } from './sim.mjs';
 import { TRUE_GUARDIANS, guardianIdOf } from './candidates.mjs';
+import { randomFieldElement } from '../field.js';
 
 export const OWNER = new Uint8Array(32).fill(0xc4);       // the victim, as target 1/2 see them
 export const RIDS = [new Uint8Array(32).fill(0x76)];       // recoveries opened -- rids are public args
@@ -17,15 +18,6 @@ export const SLOTS = 8;                                    // 2b's slot range
 
 const slotBytes = (i) => { const b = new Uint8Array(32); b[31] = i; return b; };
 const rand32 = () => globalThis.crypto.getRandomValues(new Uint8Array(32));
-
-// Deterministic but NOT a function of the guardian's name, so target 3's
-// secrets can be reproduced for the negative control without being guessable.
-function demoEntropy(label) {
-  const b = new Uint8Array(32);
-  const s = `lantern-demo-entropy:${label}`;
-  for (let i = 0; i < 32; i++) b[i] = (s.charCodeAt(i % s.length) * (i + 7) + i * 131) & 0xff;
-  return b;
-}
 
 const view = (id, label, scheme, publicParams, sim) => Object.freeze({
   id, label, scheme,
@@ -76,20 +68,24 @@ function buildV0(mode) {
 
 // --- 3 · the shipped contract ----------------------------------------------
 // The same three people are guardians. But each guardian's secret and salt are
-// 32 bytes of entropy delivered out of band -- NOT a function of who they are.
+// 32 bytes of fresh entropy delivered out of band -- NOT a function of who they
+// are, and different on every run. (An earlier version derived them from the
+// guardian's name with a fixed formula; the attack happened not to try that
+// formula, so target 3 held by luck, not by design. test/adversarial.test.js
+// now checks two builds share no leaf.)
 function buildShipped() {
   const sim = new Sim(Lantern, [
     'guardianSecret', 'leafSalt', 'guardianPath', 'lineagePath',
     'identitySecret', 'idSalt', 'vetoSecret', 'vetoSalt', 'claimedNow', 'ephemeralSk',
   ]);
-  const idSecret = 0x1234567890abcdefn * 99991n, idSalt = demoEntropy('idSalt');
+  const idSecret = randomFieldElement(), idSalt = rand32();
   const idCommit = Lantern.pureCircuits.idCommitOf(idSecret, idSalt);
   Object.assign(sim.ps, { identitySecret: idSecret, idSalt });
   sim.call('enrollIdentity', idCommit,
-    Lantern.pureCircuits.vetoCommitOf(0xfeedn, demoEntropy('vetoSalt')), 2n);
+    Lantern.pureCircuits.vetoCommitOf(randomFieldElement(), rand32()), 2n);
 
   const secrets = TRUE_GUARDIANS.map((n) => ({
-    name: n, secret: demoEntropy(`secret:${n}`), salt: demoEntropy(`salt:${n}`),
+    name: n, secret: rand32(), salt: rand32(),
   }));
   for (const g of secrets) {
     sim.ps.guardianSecret = g.secret; sim.ps.leafSalt = g.salt;

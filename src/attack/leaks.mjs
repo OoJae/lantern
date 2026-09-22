@@ -1,5 +1,5 @@
-// What the shipped contract STILL leaks. Every entry is measured live from the
-// same frozen observer view the attacker uses -- nothing here is hypothetical.
+// What the shipped contract STILL leaks. Every entry is measured from the same
+// frozen observer view the attacker uses -- nothing here is hypothetical.
 //
 // COVERAGE is exhaustive by construction: test/adversarial.test.js asserts that
 // every field of the shipped ledger appears here, so adding a ledger field
@@ -14,15 +14,18 @@ export const COVERAGE = {
     why: 'openRecovery is permissionless and recoveries is enumerable. Anyone can assert, for 72h, '
        + 'that a named identity lost its key. The owner\'s only answer, a veto, is itself a public '
        + 'proof of life. This is the liveness oracle.',
-    measure: (L) => `${count(L.recoveries)} open`,
+    // Records are write-once and never deleted, so this counts every recovery
+    // ever opened -- finalized, vetoed or pending alike.
+    measure: (L) => `${count(L.recoveries)} opened (ever)`,
   },
   approvals: {
-    sev: 'HIGH', what: 'live quorum progress',
+    sev: 'HIGH', what: 'quorum progress, as it happens',
     why: 'approvals has no iterator, but every rid is enumerable from recoveries, so an observer '
        + 'watches a takeover fill in real time and knows how many more guardians it needs.',
     measure: (L) => {
-      const [[rid, rec]] = [...L.recoveries];
-      return `${L.approvals.lookup(rid).read()} of ${L.thresholds.lookup(rec.idCommit)}`;
+      const per = [...L.recoveries].map(([rid, rec]) =>
+        `${short(rid)}: ${L.approvals.lookup(rid).read()} of ${L.thresholds.lookup(rec.idCommit)}`);
+      return per.length ? per.join(', ') : 'no recoveries';
     },
   },
   idRoots: {

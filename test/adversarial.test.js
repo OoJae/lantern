@@ -139,6 +139,24 @@ describe('negative control on the negative control', () => {
 });
 
 // ---------------------------------------------------------------------------
+// REGRESSION: target 3's guardian secrets were once a fixed function of the
+// guardian's NAME. The attack happened not to try that function, so target 3
+// "held" by luck. Fresh entropy means two builds can share no leaf; any
+// deterministic derivation -- name-based or not -- fails this.
+// ---------------------------------------------------------------------------
+describe('regression: target 3 secrets are fresh entropy, not a function of the name', () => {
+  it('two independent builds share no guardian leaf, secret or salt', () => {
+    const a = buildTargets().find((t) => t.view.id === '3').secretsForNegativeControl;
+    const b = buildTargets().find((t) => t.view.id === '3').secretsForNegativeControl;
+    const hexes = (gs, k) => new Set(gs.map((g) => hex(g[k])));
+    for (const k of ['leaf', 'secret', 'salt']) {
+      const inA = hexes(a, k);
+      expect([...hexes(b, k)].filter((h) => inA.has(h)), k).toEqual([]);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // THE ATTACKER CANNOT SEE PRIVATE STATE.
 // ---------------------------------------------------------------------------
 describe('the attacker sees only what a chain observer sees', () => {
@@ -193,8 +211,23 @@ describe('leak report', () => {
   it('a claimed measurement is independently reproducible from the ledger', () => {
     const L = byId['3'].view.ledger;
     const rec = leakReport(byId['3'].view).find((r) => r.field === 'recoveries');
-    expect(rec.measured).toBe(`${[...L.recoveries].length} open`);
+    expect(rec.measured).toBe(`${[...L.recoveries].length} opened (ever)`);
     expect(rec.sev).toBe('HIGH');
+  });
+
+  it('reports quorum progress per recovery, and does not throw when there are none', () => {
+    const L = byId['3'].view.ledger;
+    const approvals = leakReport(byId['3'].view).find((r) => r.field === 'approvals');
+    expect(approvals.measured.split(', ')).toHaveLength([...L.recoveries].length);
+    expect(approvals.measured).toMatch(/: 2 of 2$/);
+    const empty = new Sim(Lantern, ['guardianSecret', 'leafSalt', 'guardianPath', 'lineagePath',
+      'identitySecret', 'idSalt', 'vetoSecret', 'vetoSalt', 'claimedNow', 'ephemeralSk']);
+    expect(COVERAGE.approvals.measure(empty.ledger)).toBe('no recoveries');
+    expect(COVERAGE.recoveries.measure(empty.ledger)).toBe('0 opened (ever)');
+  });
+
+  it('never calls a measurement "live": nothing in the report is a live feed', () => {
+    for (const c of Object.values(COVERAGE)) expect(`${c.what} ${c.why}`).not.toMatch(/\blive\b/i);
   });
 
   it('ranks the liveness oracle among the highest-severity leaks', () => {

@@ -4,6 +4,7 @@ import {
   world, asGuardian, openAndApprove, idCommit, vetoCommit,
   ID_SECRET, ID_SALT, VETO_SECRET, VETO_SALT, EPH_A, EPH_B, DELAY, SLACK,
 } from './fixtures.js';
+import { assertNoLeak } from '../src/leakscan.js';
 
 const hex = (u) => Buffer.from(u).toString('hex');
 const NEW_ID = () => pureCircuits.idCommitOf(fieldOf(70), bytes32(71));
@@ -264,37 +265,42 @@ describe('finalize', () => {
   });
 });
 
+// Every privacy assertion goes through assertNoLeak, which first requires the
+// secret to be FOUND in the private transcript. (These tests once searched for
+// Field secrets big-endian while the runtime stores them little-endian, so they
+// could never fail. test/leakscan.test.js pins the scanner itself.)
 describe('privacy', () => {
-  const scan = (sim) => JSON.stringify(sim.publicTranscript, (_k, v) =>
-    typeof v === 'bigint' ? v.toString(16)
-      : v instanceof Uint8Array ? hex(v) : v);
-
   it('never leaks the guardian secret or salt on approval', () => {
     const { sim, id, guardians } = world();
     const rid = sim.call('openRecovery', id, EPH_A);
     asGuardian(sim, guardians[0]);
     sim.call('approveRecovery', id, rid);
-    const blob = scan(sim);
-    expect(blob).not.toContain(hex(guardians[0].secret));
-    expect(blob).not.toContain(hex(guardians[0].salt));
+    assertNoLeak(sim.lastProofData, { guardianSecret: guardians[0].secret, leafSalt: guardians[0].salt });
   });
 
-  it('never leaks the identity secret or salt on finalize', () => {
+  it('never leaks the identity secret, its salt or the device key on finalize', () => {
     const { sim, id, guardians } = world();
     const rid = openAndApprove(sim, id, guardians, 2);
     sim.advance(DELAY + SLACK + 1);
     sim.call('finalizeRecovery', rid, NEW_ID(), NEW_VETO());
-    const blob = scan(sim);
-    expect(blob).not.toContain(ID_SECRET.toString(16));
-    expect(blob).not.toContain(hex(ID_SALT));
+    assertNoLeak(sim.lastProofData, {
+      identitySecret: ID_SECRET, idSalt: ID_SALT, ephemeralSk: sim.ps.ephemeralSk,
+    });
   });
 
-  it('never leaks the veto secret on veto', () => {
+  it('never leaks the veto secret or salt on veto', () => {
     const { sim, id, guardians } = world();
     const rid = openAndApprove(sim, id, guardians, 2);
     sim.call('vetoRecovery', rid);
-    const blob = scan(sim);
-    expect(blob).not.toContain(VETO_SECRET.toString(16));
-    expect(blob).not.toContain(hex(VETO_SALT));
+    assertNoLeak(sim.lastProofData, { vetoSecret: VETO_SECRET, vetoSalt: VETO_SALT });
+  });
+
+  it('never leaks the identity secret or salt on enrolment or when adding a guardian', () => {
+    const { sim, id } = world();
+    sim.ps.guardianSecret = bytes32(150); sim.ps.leafSalt = bytes32(151);
+    sim.call('addGuardian', id);
+    assertNoLeak(sim.lastProofData, {
+      identitySecret: ID_SECRET, idSalt: ID_SALT, guardianSecret: bytes32(150), leafSalt: bytes32(151),
+    });
   });
 });

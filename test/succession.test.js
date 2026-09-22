@@ -4,6 +4,7 @@ import {
   world, asGuardian, openAndApprove, succeed,
   ID_SECRET, ID_SALT, EPH_A, EPH_B, EPH_C, DELAY, SLACK,
 } from './fixtures.js';
+import { assertNoLeak, encodingsOf, flatten } from '../src/leakscan.js';
 
 const hex = (u) => Buffer.from(u).toString('hex');
 
@@ -207,18 +208,28 @@ describe('proveHeadOwnership', () => {
       .toThrow(/not the head owner/);
   });
 
-  it('leaks no path sibling and exactly one Merkle root', () => {
-    const { sim, id, idRoot } = world();
-    sim.ps.lineagePath = sim.ledger.lineage.findPathForLeaf(
-      pureCircuits.lineageLeafOf(idRoot, id));
-    sim.call('proveHeadOwnership', idRoot, id);
-    const blob = JSON.stringify(sim.publicTranscript, (_k, v) =>
-      typeof v === 'bigint' ? v.toString(16)
-        : v instanceof Uint8Array ? Buffer.from(v).toString('hex') : v);
-    expect(blob).not.toContain(Buffer.from(ID_SALT).toString('hex'));
-    // The path's siblings must never reach the transcript.
-    const sibs = sim.ps.lineagePath.path.map((e) => e.sibling.field.toString(16));
-    for (const s of sibs) if (s.length > 8) expect(blob).not.toContain(s);
+  it('discloses the root it checks against, and no path sibling or identity secret', () => {
+    const { sim, id, idRoot, guardians } = world();
+    // Two recoveries, so the lineage tree holds real (non-empty) sibling hashes.
+    const g1 = succeed(sim, id, guardians, 1, EPH_A);
+    const g2 = succeed(sim, g1.newId, guardians, 2, EPH_B);
+    const path = sim.ledger.lineage.findPathForLeaf(pureCircuits.lineageLeafOf(idRoot, g2.newId));
+    sim.ps.lineagePath = path;
+    sim.call('proveHeadOwnership', idRoot, g2.newId);
+
+    // Siblings that are real node hashes reveal tree structure. Each must be
+    // seen privately (the positive control) and never publicly.
+    const secrets = { identitySecret: g2.secret, idSalt: g2.salt };
+    path.path.forEach((e, i) => {
+      if (e.sibling.field > 0xffffffffffffffffn) secrets[`sibling${i}`] = e.sibling.field;
+    });
+    expect(Object.keys(secrets).length).toBeGreaterThan(2);
+    assertNoLeak(sim.lastProofData, secrets);
+
+    // The one thing the path DOES disclose: the root it is checked against.
+    const pd = sim.lastProofData;
+    const pub = flatten([pd.input, pd.output, pd.publicTranscript]);
+    expect(encodingsOf(sim.ledger.lineage.root().field).some((f) => pub.includes(f))).toBe(true);
   });
 });
 
