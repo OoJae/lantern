@@ -573,6 +573,12 @@ reading §4.4.
   burned by an adversary through one `rotateGuardianSet` on an identity they
   control, because contexts are globally unique.
 - The committee size is fixed at three by the constructor's signature.
+- The chain records come from a single-node local chain. Behaviour under real network
+  latency, multiple nodes or reorganisations is not tested.
+- The browser build is reproducible on one machine and in CI (two builds hash the
+  same); across machines and operating systems it is not proven.
+- Every role in the local-chain runs shares one proof server, which sees each
+  prover's witnesses. That is a demo convenience, not the deployment model (§4.2b).
 
 **If this continued past the hackathon, we would fix, in order:** rate-limit
 `openRecovery` (§6.4); reconstruct in a disposable worker (§6.5); make the committee

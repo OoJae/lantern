@@ -11,7 +11,9 @@ export default function Demo() {
   const [busy, setBusy] = useState(false);
   const [enumeration, setEnumeration] = useState(null);
   const [review, setReview] = useState(null);
+  const [playing, setPlaying] = useState(false);
   const railRef = useRef(null);
+  const deepLinked = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,13 +45,31 @@ export default function Demo() {
 
   const next = () => run(() => true);
   const playBeat = () => run((step, batch) => step.beat !== batch[0].beat);
-  const playAll = () => run(() => false);
+  const playAll = () => { setPlaying(false); run(() => false); };
   const restart = () => {
+    setPlaying(false);
     setSession(engine.newSession());
     setRecords([]);
     setEnumeration(null);
     setReview(null);
   };
+
+  // Deep link: /demo?beat=7 runs the story up to and including the first step of beat 7.
+  useEffect(() => {
+    if (!session || deepLinked.current) return;
+    deepLinked.current = true;
+    const beat = Number(new URLSearchParams(window.location.search).get('beat'));
+    if (beat > 0 && beat <= 10) run((step, batch) => batch.at(-1).beat >= beat);
+    if (new URLSearchParams(window.location.search).get('autoplay') === '1') setPlaying(true);
+  }, [session, run]);
+
+  // Autoplay: one step at a time, at reading pace, until the end or until paused.
+  useEffect(() => {
+    if (!playing || busy || !session) return undefined;
+    if (session.runner.done) { setPlaying(false); return undefined; }
+    const t = setTimeout(() => run(() => true), 1400);
+    return () => clearTimeout(t);
+  }, [playing, busy, session, records.length, run]);
 
   // Keep the current beat in view on narrow screens, where the rail scrolls sideways.
   useEffect(() => {
@@ -132,14 +152,17 @@ export default function Demo() {
           {done && <Summary records={records} />}
 
           <div className="controls">
-            <button type="button" className="primary" onClick={next} disabled={busy || done}>
+            <button type="button" className="primary" onClick={() => { setPlaying(false); next(); }} disabled={busy || done}>
               {nextStep?.kind === 'clock' ? `Skip ${engine.duration(nextStep.seconds)} (simulated clock)` : 'Next step'}
+            </button>
+            <button type="button" onClick={() => setPlaying((p) => !p)} disabled={done} aria-pressed={playing}>
+              {playing ? 'Pause' : 'Autoplay'}
             </button>
             <button type="button" onClick={playBeat} disabled={busy || done}>Play this beat</button>
             <button type="button" onClick={playAll} disabled={busy || done}>Run to the end</button>
             <button type="button" onClick={restart} disabled={busy}>Start again, new secrets</button>
           </div>
-          <p className="hint">Tip: the → key takes the next step.</p>
+          <p className="hint">Tip: the → key takes the next step. Link straight to a beat with <code>/demo?beat=7</code>.</p>
         </div>
 
         <aside className="side-col" aria-label="State" tabIndex={0}>

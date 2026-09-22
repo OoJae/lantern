@@ -56,3 +56,21 @@ test('the clock step says it is simulated', async ({ page }) => {
   await expect(page.locator('.step.clock')).toContainText('simulated clock');
   await expect(page.locator('.step.clock')).toContainText('72 h 10 min');
 });
+
+test('a deep link opens the story at a beat', async ({ page }) => {
+  await page.goto('/demo?beat=7');
+  await expect(page.locator('[data-ready="true"]')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Jihoon turns');
+  await expect(page.locator('.step')).toHaveCount(1);
+});
+
+test('autoplay steps on its own, and pauses', async ({ page }) => {
+  await page.goto('/demo');
+  await expect(page.locator('[data-ready="true"]')).toBeVisible();
+  await page.getByRole('button', { name: 'Autoplay' }).click();
+  await expect(page.locator('.step')).toHaveCount(2, { timeout: 10_000 });
+  await page.getByRole('button', { name: 'Pause' }).click();
+  const n = await page.locator('.step').count();
+  await page.waitForTimeout(2000);
+  await expect(page.locator('.step')).toHaveCount(n);
+});
