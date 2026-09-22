@@ -1,5 +1,10 @@
 node_modules/
-contracts/managed/
+# Build artifacts are ignored EXCEPT the generated contract module, which is
+# committed (~32K) so `npm install && npm test` is green with no Compact
+# toolchain and no Docker. CI recompiles from source and fails on any drift.
+contracts/managed/*
+!contracts/managed/contract/
+contracts/managed/contract/*.map
 *.tgz
 .DS_Store
 dist/
