@@ -1,12 +1,14 @@
 # Security Model
 
-**Scope.** The contracts in `contracts/src/` and the field and Shamir layer in
-`src/`. Every claim below names the file, circuit or test that establishes it.
-Verified against compact 0.31.1 / compact-runtime 0.16.0.
+**Scope.** The contracts in `contracts/src/`, and the client code in `src/`: the
+field and Shamir layer, identity derivation (`src/identity.js`), the leak scanner
+(`src/leakscan.js`), the canonical host snapshot (`src/host/snapshot.js`) and the
+attack engine. Every claim below names the file, circuit or test that establishes
+it. Verified against compact 0.31.1 / compact-runtime 0.16.0.
 
-**Out of scope, and not built here:** share transport, the front-end that
-generates secrets, wallet integration, DUST sponsorship. Where one of those
-layers would change a conclusion, the conclusion says so.
+**Out of scope, and not built here:** share transport between owner and
+guardians, production wallet UX, and login. Where one of those layers would change
+a conclusion, the conclusion says so.
 
 **Nothing here is audited, and nothing is deployed to mainnet.**
 
@@ -17,7 +19,7 @@ layers would change a conclusion, the conclusion says so.
 > **Don't take the privacy claims on trust — run them:**
 > `npm run attack` names every guardian of three vulnerable designs from public
 > data alone, fails against this one, and prints what this one still leaks,
-> measured live. It is also a test: it exits non-zero if either result changes.
+> measured from its ledger. It is also a test: it exits non-zero if either result changes.
 
 ---
 
@@ -40,8 +42,9 @@ secret. Here is exactly what that is worth.
 | Guardians survive a recovery, so an identity can be recovered again | **Held** | stable `idRoot`; leaves bind a guardian context, not the rotating commitment |
 | A downstream contract keeps working across a key loss | **Held, in-contract** | `hostGatedAction` reads `retiredIdentities` directly |
 | An *independently deployed* contract keeps working | **Not yet held** | `requireCurrentOwnerAttested` checks that a pair is in the signed snapshot, not who is calling. The fix is scheduled; until then it is a membership predicate, not an authorisation. §4.4 |
+| Nothing trusts the fee payer | **Held** | no circuit uses the caller's coin key or any token operation; every check is a commitment opening or a signature. `test/authentication.test.js` |
 | Guardian *count* and *threshold* stay private | **Not held** | `thresholds` is public; `n` is recoverable from transaction history |
-| t colluding guardians cannot take the identity | **Not held.** Nothing here claims otherwise | §4.3 |
+| t colluding guardians cannot take the identity | **Not held.** Nothing here claims otherwise. Until your recovery finalizes they can also act as you | §4.3 |
 
 **The one-line version:** Lantern turns *"your private state is gone forever"*
 into *"your private state can be restored, correctly, by people you chose — and if
@@ -103,6 +106,20 @@ has lost their key. See the liveness oracle, §5.
 **That anything is reversible.** `retiredIdentities.insert` is permanent. A
 successful hostile recovery stays visible in `idRoots` and `lineage` forever.
 
+### What each party holds
+
+| Holder | Holds | Can rebuild |
+|---|---|---|
+| The owner's device | identity secret, veto secret, both salts | — |
+| The veto card (printed, or a second device) | veto secret | its salt, derived from it |
+| Each guardian | one Shamir share of the identity secret; their own guardian secret and leaf salt | nothing alone |
+| Any *t* guardians together | *t* shares | the identity secret **and its salt** — the salt is derived from the secret (`src/identity.js`), so the share set is the complete recovery kit. Never the veto secret |
+
+The salts are `SHA-256("lantern:idsalt:v1" ‖ be32(secret))` and
+`SHA-256("lantern:vetosalt:v1" ‖ be32(secret))`. Hiding is unaffected: both secrets
+are uniform over the 255-bit scalar field. After every recovery the new owner deals
+fresh shares of the new secret — the old shares rebuild a retired one.
+
 ### Why there is no in-circuit Lagrange interpolation
 
 We measured it at roughly 1% of one Merkle path — cost was not the reason. For any
@@ -132,7 +149,8 @@ Each primitive, where it is used, what it buys, and what it costs.
 | **Value-scoped read commitments** | proved in `test/concurrency.test.js` | two guardians proving against the same state do not invalidate each other | undocumented upstream — answered by experiment, with a negative control proving a real conflict *is* detected |
 | **No readable clock** | `claimedNow()` bracketed by `blockTimeGte`/`blockTimeLt` | the asserts force `lo ≤ blockTime < lo + 600s`, so the recovery lock, run from `lo + 600s`, can never end earlier than 72h after the opening block. An honest prover gets the longest lock; a lying one can shorten it by at most the 10-minute slack. Attestation acceptance starts at `lo`, so a lying sealer can only *shorten* it | block-scale precision, not seconds |
 | **In-circuit Jubjub Schnorr** | Foundation module `schnorr.compact`, used by `attestVote` / `rotateVote` | committee attestation is a real signature check. ~1,900 rows per verify | one signature per circuit, so cost is flat in quorum |
-| **Compact module as a shared predicate** | `ownergate.compact` | two independently written contracts provably agree on what "current owner" means | a module cannot reach a ledger, so the host supplies the facts |
+| **Compact module as a shared predicate** | `ownergate.compact`, `identity.compact` | two independently written contracts provably agree on what "current owner" and "identity commitment" mean | a module cannot reach a ledger, so the host supplies the facts |
+| **ContractMaintenanceAuthority** | every deployment | **a ledger-level admin outside the contract logic.** `deployContract` installs the deployer's key as a 1-of-1 authority that can insert and remove verifier keys — i.e. replace any circuit's rules | freeze it: one maintenance update replacing it with an empty committee, threshold 1, leaves no signature set that can ever change the contract (spike S5, `docs/spikes.md`). An unfrozen deployment is only as trustworthy as that key |
 
 Measured cost: `npm run cost`. Every circuit is **ZKIR v2** — the deployable
 ledger-8 path — and nothing exceeds **k=14**.
@@ -197,7 +215,9 @@ The adversary the design is aimed at.
 
 *Confidentiality: **Lost** · Integrity: **Lost** · Availability: **Degraded***
 
-**Can.** Take the identity. *t* shares reconstruct the secret, *t* tokens satisfy
+**Can.** Act as you at every host from the moment they pool their shares until
+your recovery finalizes — they hold your identity secret (§4.5). And take the
+identity. *t* shares reconstruct the secret, *t* tokens satisfy
 `approveRecovery`, and the reconstructed secret opens `idCommit` — so
 `finalizeRecovery` proves exactly what it is meant to prove and installs a
 successor they control. No chain can prevent this: the decisive act, releasing a
@@ -275,9 +295,11 @@ identity root. Or stop signing, which bricks the gate once the window lapses.
 - **Forge undetectably** — the canonical root is recomputable from Lantern's
   public ledger by anyone (`src/host/snapshot.js`), so signing any other root is
   publicly falsifiable.
-- **Act without a quorum** — there is no admin. The committee is installed
-  atomically by the constructor, and after deployment *only a quorum* can change
-  a key (`openRotation` / `rotateVote` / `sealRotation`).
+- **Act without a quorum** — there is no admin *in the contract logic*. The
+  committee is installed atomically by the constructor, and after deployment
+  *only a quorum* can change a key (`openRotation` / `rotateVote` /
+  `sealRotation`). The ledger-level maintenance authority is separate: see its
+  row in §3, and freeze it.
 - **Keep a leaked key useful** — a rotation replaces the key *and* bumps the
   generation, and every signed digest and proposal id binds the generation, so one
   rotation voids every signature the old key made and strands every vote in flight.
@@ -325,7 +347,7 @@ block every recovery, but cannot take the identity without *t* guardians.
 ## 5. Leakage
 
 The measured version is `npm run attack`, which reads every field of the shipped
-ledger live and classifies it; a test fails CI if a field is ever added without
+ledger and classifies it; a test fails CI if a field is ever added without
 being classified. The full per-field reasoning lives in `src/attack/leaks.mjs`.
 The three that matter most:
 
@@ -405,14 +427,20 @@ consequence.
    an owner who has lost the veto card cannot rotate until a recovery issues a new
    one. A recovery can: `finalizeRecovery` installs a fresh veto commitment.
 
-9. **Three derivations rely on `transientHash`**: `lineageLeafOf`, `ephemeralPkOf`
+9. **Guardian tokens outlive the recovery that follows them.** Leaves bind the
+   identity *root's* guardian context, which a recovery deliberately keeps. So
+   tokens minted by anyone who held both your identity secret and your veto card
+   still count for the successor. Rotate the guardian set after any recovery that
+   followed a compromise.
+
+10. **Three derivations rely on `transientHash`**: `lineageLeafOf`, `ephemeralPkOf`
    and `gateNullifierOf`. Its output is not guaranteed stable across toolchain
    upgrades. Every Merkle root in the contract already depends on it —
    `merkleTreePathRoot` uses it for all 20 levels — so this adds no exposure
    that was not already there, but in-flight recoveries would not survive such an
    upgrade.
 
-10. **The trees are global and finite.** `guardians`, `lineage` and the host's
+11. **The trees are global and finite.** `guardians`, `lineage` and the host's
    `snapshot` are depth-20: 1,048,576 leaves each, shared by every identity, and
    enrolment is permissionless. Exhausting one costs one transaction per leaf.
 
@@ -455,7 +483,9 @@ before it was fixed, and each has a regression test named after it.
 
 ## 8. Operational guidance
 
-**Owners.** Keep `vetoSecret` on media that will survive losing your device (§6.6).
+**Owners.** Keep `vetoSecret` on media that will survive losing your device (§6.6),
+and apart from it: the veto card is what stops a thief with your device from
+adding guardians, evicting yours or vetoing your recovery.
 Choose *t* assuming *t* colluding guardians win, and never above the number of
 guardians you will actually add (§6.2). Watch `recoveries`: one you did not start is
 an attack in progress, and you have 72 hours. **Veto it**, and if you suspect a
@@ -469,9 +499,13 @@ belongs to the person asking: your approval can only ever be redeemed by the hol
 of that key's secret. Your approval is a permanent public nullifier; it does not
 name you, but it correlates you in time with the `openRecovery` before it.
 
+**After a recovery.** Deal fresh shares of the new identity secret — the old ones
+rebuild a retired secret — and, if the loss was a compromise rather than an
+accident, rotate the guardian set with the new veto card (§6.9).
+
 **Host integrators.** Prefer the in-contract gate: import `ownergate.compact` and
-call `ownershipHolds` with facts read from Lantern's own ledger, as
-`hostGatedAction` does. Use `host.compact` only if you cannot compile against
+`identity.compact` and call `ownershipHolds` with facts read from Lantern's own
+ledger, as `hostGatedAction` does. Use `host.compact` only if you cannot compile against
 Lantern, only for decisions that tolerate 24 hours of staleness, and only after
 reading §4.4.
 
