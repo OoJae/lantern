@@ -12,7 +12,8 @@
     "compile": "bash scripts/compile.sh",
     "test": "vitest run",
     "test:watch": "vitest",
-    "cost": "bash scripts/cost.sh"
+    "cost": "bash scripts/cost.sh",
+    "test:concurrent": "vitest run test/concurrency.test.js"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0",
