@@ -21,6 +21,12 @@ const MIN_HEX = 16;
 
 const toHex = (u) => Array.from(u, (b) => b.toString(16).padStart(2, '0')).join('');
 
+function trimTrailingZeros(u) {
+  let n = u.length;
+  while (n > 0 && u[n - 1] === 0) n--;
+  return u.slice(0, n);
+}
+
 function fieldBytesLE(x) {
   const out = [];
   for (let v = x; v > 0n; v >>= 8n) out.push(Number(v & 0xffn));
@@ -35,7 +41,11 @@ export function encodingsOf(secret) {
     const le = fieldBytesLE(secret);
     forms = [toHex(le), toHex(le.slice().reverse()), secret.toString(16), secret.toString(10)];
   } else if (secret instanceof Uint8Array) {
-    forms = [toHex(secret), toHex(secret.slice().reverse())];
+    // The runtime stores Bytes<N> with trailing zero bytes trimmed, exactly as
+    // it trims a Field's high zero bytes. So a secret ending in 0x00 appears
+    // shorter than itself, and must be searched for in that form too.
+    const trimmed = trimTrailingZeros(secret);
+    forms = [toHex(secret), toHex(secret.slice().reverse()), toHex(trimmed), toHex(trimmed.slice().reverse())];
   } else {
     throw new Error(`cannot scan a secret of type ${typeof secret}`);
   }

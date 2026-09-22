@@ -54,6 +54,20 @@ describe('leakscan', () => {
       .toThrow(/LEAK: idSalt/);
   });
 
+  it('finds a byte secret that ends in zero bytes, which the runtime stores trimmed', () => {
+    // Found by the browser demo's fresh entropy: about one run in eight drew a
+    // secret ending in 0x00, and the scanner could see it on neither side.
+    const sim = enrolled();
+    const secret = new Uint8Array(32).fill(0xab); secret[30] = 0; secret[31] = 0;
+    sim.ps.guardianSecret = secret; sim.ps.leafSalt = bytes32(9);
+    sim.call('addGuardian', pureCircuits.idCommitOf(ID_SECRET, ID_SALT));
+    const priv = flatten(sim.lastProofData.privateTranscriptOutputs);
+    expect(priv).not.toContain(toHex(secret));                      // stored trimmed
+    expect(scanProofData(sim.lastProofData, { guardianSecret: secret }).guardianSecret.private).toBe(true);
+    expect(() => assertNoLeak(withPlantedLeak(sim.lastProofData, secret.slice(0, 30)), { guardianSecret: secret }))
+      .toThrow(/LEAK: guardianSecret/);
+  });
+
   it('refuses to pass a secret it never saw: absence proves nothing', () => {
     const pd = enrolled().lastProofData;
     expect(() => assertNoLeak(pd, { neverInTheCircuit: bytes32(4242) }))
