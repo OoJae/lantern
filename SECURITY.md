@@ -31,10 +31,11 @@ secret. Here is exactly what that is worth.
 |---|---|---|
 | A recovery cannot install a wrong secret | **Held** | `finalizeRecovery` asserts `idCommitOf(identitySecret(), idSalt()) == idCommit` |
 | A recovery cannot happen silently | **Held** | every approval writes a public nullifier; `recoveries` and `approvals` are publicly readable |
-| A recovery cannot happen instantly | **Held** | 72h delay, enforced against the *pessimistic* open-time bound |
+| A recovery cannot finalize early | **Held** | no earlier than 72h after the block that opened it: the timelock runs from the *later* of the two bounds recorded at open |
 | A recovery is vetoable by a secret no guardian holds | **Held** | `vetoRecovery`, gated on `vetoSecret`, which is never Shamir-shared |
 | Approvals go to the device the guardians were shown | **Held** | `finalizeRecovery` requires the ephemeral secret behind the approved public key |
 | Evicting guardians stops their recovery — even one that already reached quorum | **Held** | the guardian context is frozen into the recovery at open and re-checked at finalize |
+| Holding only your identity secret — a stolen laptop, malware, or guardians who pooled their shares — cannot mint guardians, evict yours, veto, or stop your recovery | **Held** | `addGuardian` and `rotateGuardianSet` also require the veto secret; `vetoRecovery` requires only it. §4.5 |
 | Guardian *identities* stay private | **Held** — and demonstrated | salted `persistentCommit` leaves; `npm run attack` |
 | Guardians survive a recovery, so an identity can be recovered again | **Held** | stable `idRoot`; leaves bind a guardian context, not the rotating commitment |
 | A downstream contract keeps working across a key loss | **Held, in-contract** | `hostGatedAction` reads `retiredIdentities` directly |
@@ -129,7 +130,7 @@ Each primitive, where it is used, what it buys, and what it costs.
 | **`Set` non-membership in-circuit** | `!retiredIdentities.member(…)` | **headship.** "C is the current owner of R" is a *negative* claim, and no append-only structure can express it. This single primitive is why the in-contract gate is sound | only available to a contract that owns the ledger — §4.4 |
 | **Increment-only `Counter` + `lessThan`** | quorum checks in `finalizeRecovery`, `sealEpoch`, `sealRotation` | quorum by *comparison*, never `read()`: the boolean is monotone, so a concurrent approval cannot invalidate a finalize proof | progress is still publicly readable |
 | **Value-scoped read commitments** | proved in `test/concurrency.test.js` | two guardians proving against the same state do not invalidate each other | undocumented upstream — answered by experiment, with a negative control proving a real conflict *is* detected |
-| **No readable clock** | `claimedNow()` bracketed by `blockTimeGte`/`blockTimeLt` | a lying prover's best move is the honest one: adversarial choice can only *lengthen* the recovery lock and only *shorten* attestation acceptance | block-scale precision, not seconds |
+| **No readable clock** | `claimedNow()` bracketed by `blockTimeGte`/`blockTimeLt` | the asserts force `lo ≤ blockTime < lo + 600s`, so the recovery lock, run from `lo + 600s`, can never end earlier than 72h after the opening block. An honest prover gets the longest lock; a lying one can shorten it by at most the 10-minute slack. Attestation acceptance starts at `lo`, so a lying sealer can only *shorten* it | block-scale precision, not seconds |
 | **In-circuit Jubjub Schnorr** | Foundation module `schnorr.compact`, used by `attestVote` / `rotateVote` | committee attestation is a real signature check. ~1,900 rows per verify | one signature per circuit, so cost is flat in quorum |
 | **Compact module as a shared predicate** | `ownergate.compact` | two independently written contracts provably agree on what "current owner" means | a module cannot reach a ledger, so the host supplies the facts |
 
@@ -138,7 +139,7 @@ ledger-8 path — and nothing exceeds **k=14**.
 
 ---
 
-## 4. Four adversaries, scored separately
+## 4. Five adversaries, scored separately
 
 Each is scored on confidentiality / integrity / availability: **Held**,
 **Degraded**, or **Lost**. We have tried to be harsh.
@@ -208,8 +209,13 @@ another recovery the owner must individually veto. §6.
 
 **Cannot.**
 - Act **silently** — every approval is a permanent public nullifier.
-- Act **instantly** — 72 hours, measured from the pessimistic bound; a lying
-  prover can only make it longer.
+- Act **early** — no finalize lands earlier than 72 hours after the block that
+  opened the recovery. A lying prover can shave at most the 10-minute slack off an
+  honest prover's lock, never below 72 hours.
+- **Evict the honest guardians, or kill your recovery.** Holding *t* shares gives
+  them the identity secret, and a guardian-set rotation kills every recovery in
+  flight — so rotation also requires the **veto secret**, which they never had.
+  `test/succession.test.js › colluders who pooled shares cannot stop the owner recovery finalizing`.
 - **Veto.** `vetoSecret` is generated independently and never Shamir-shared, so
   guardians holding every share of the identity secret learn nothing about it. This
   was a real flaw in an earlier design, where veto and finalize proved the same
@@ -267,6 +273,39 @@ permissionless. Or stop signing, which bricks the gate once the window lapses.
 - **Stretch the window** — it starts at the *earliest* possible seal time, so a
   lying sealer can only shorten acceptance.
 - **Touch Lantern.** Nothing in `host.compact` can write to Lantern's ledger.
+
+### 4.5 E — anyone holding the identity secret, but not the veto card
+
+A thief with the lost laptop, malware on the owner's device, or *t* guardians who
+pooled their shares. This is the adversary a recovery system exists for: the
+identity secret is exactly what a lost device leaks.
+
+*Confidentiality: **Lost** for that identity · Integrity: **Held** · Availability: **Held***
+
+**Can.** Act as the owner at every host until the owner's recovery finalizes:
+`hostGatedAction` and `proveHeadOwnership` accept the secret, because until then it
+*is* the current owner's secret. That window is the honest cost of any recovery
+scheme, and it closes the moment `finalizeRecovery` retires the commitment. Open
+recoveries (anyone can, §5).
+
+**Cannot.**
+- **Mint guardians.** `addGuardian` requires the veto secret. Without that, the
+  secret alone was enough to mint *t* tokens, self-approve a recovery for the
+  thief's own device, and take the identity unless the owner vetoed within 72
+  hours. `test/succession.test.js › a thief holding only the identity secret cannot mint a quorum and take the identity`.
+- **Evict the guardians or kill the owner's recovery.** `rotateGuardianSet`
+  requires the veto secret. Without that, one rotation killed the owner's recovery
+  even after it reached quorum and evicted the guardians for good.
+  `test/succession.test.js › the stolen-device lockout: the thief cannot kill a recovery that reached quorum`.
+- **Veto.** `vetoRecovery` opens the veto commitment, not the identity commitment.
+- **Redeem the owner's approvals.** They are bound to the new device's ephemeral key.
+
+**Pooled shares are the one case that still takes the identity** — *t* guardians
+colluding hold *t* real tokens, not minted ones. That is adversary C (§4.3), and
+the answer there is the 72-hour window and the veto.
+
+**A thief who has the veto card too** holds everything the owner holds. They can
+block every recovery, but cannot take the identity without *t* guardians.
 
 ---
 
@@ -348,14 +387,19 @@ consequence.
    the veto moot. Whoever can influence ordering in the final block can favour
    either side — though the real boundary is the 72-hour window, not the block.
 
-8. **Three derivations rely on `transientHash`**: `lineageLeafOf`, `ephemeralPkOf`
+8. **Rotating the guardian set needs the veto card.** This is what stops anyone
+   holding a stolen identity secret from evicting your guardians (§4.5). The cost:
+   an owner who has lost the veto card cannot rotate until a recovery issues a new
+   one. A recovery can: `finalizeRecovery` installs a fresh veto commitment.
+
+9. **Three derivations rely on `transientHash`**: `lineageLeafOf`, `ephemeralPkOf`
    and `gateNullifierOf`. Its output is not guaranteed stable across toolchain
    upgrades. Every Merkle root in the contract already depends on it —
    `merkleTreePathRoot` uses it for all 20 levels — so this adds no exposure
    that was not already there, but in-flight recoveries would not survive such an
    upgrade.
 
-9. **The trees are global and finite.** `guardians`, `lineage` and the host's
+10. **The trees are global and finite.** `guardians`, `lineage` and the host's
    `snapshot` are depth-20: 1,048,576 leaves each, shared by every identity, and
    enrolment is permissionless. Exhausting one costs one transaction per leaf.
 
@@ -381,6 +425,10 @@ before it was fixed, and each has a regression test named after it.
 | Committee slots were front-runnable | an attacker could claim a slot at deployment | *removed: committee installed atomically by the constructor* |
 | One root per epoch, first come first served | a squatted junk root forced a gap, letting an **older** epoch pass as latest | `regression: a junk-root proposal cannot block an epoch` |
 | Staleness window started at claimed time + slack | a hostile sealer could stretch 24h to 24h 10m | `a sealer cannot stretch the staleness window with its claimed time` |
+| Rotation was gated on the identity secret alone | whoever held it — a thief with the lost laptop, or guardians who pooled shares — could kill the owner's recovery after it reached quorum and evict the guardians: **permanent lockout**. Our own earlier fix (rotation kills in-flight recoveries) made it possible | `the stolen-device lockout: the thief cannot kill a recovery that reached quorum` |
+| The idSalt could not be rebuilt from shares | shares alone could never finalize a recovery; a test hid it by handing the device the salt | `any 2 of 3 shares rebuild the secret AND the salt` |
+| Privacy tests searched for Field secrets big-endian | the runtime stores them little-endian, so the tests **could never fail** | `test/leakscan.test.js` — every scan must find the secret privately first |
+| The attack demo's shipped target derived guardian secrets from their names | target 3 held by luck: the attack happened not to try that formula | `two independent builds share no guardian leaf, secret or salt` |
 
 ---
 
@@ -391,7 +439,9 @@ Choose *t* assuming *t* colluding guardians win, and never above the number of
 guardians you will actually add (§6.2). Watch `recoveries`: one you did not start is
 an attack in progress, and you have 72 hours. **Veto it**, and if you suspect a
 guardian, **rotate the guardian set** — that now kills any recovery already in
-flight, reached quorum or not.
+flight, reached quorum or not. Both need the veto card, so keep it somewhere a
+thief who takes your device will not also find it. After a recovery, deal fresh
+shares for the new identity secret and rotate the guardian set.
 
 **Guardians.** Before approving, confirm out of band that the ephemeral public key
 belongs to the person asking: your approval can only ever be redeemed by the holder

@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// Lantern's identity and veto commitments, as an importable module.
+//
+// Lantern and every contract that authenticates a Lantern identity owner must
+// agree, byte for byte, on what an identity commitment IS. Defining it once
+// here makes that agreement structural rather than a matter of copying two
+// circuits and hoping they stay in step. test/identity.test.js pins both
+// against fixed vectors.
+//
+// Domain separation, twice over: an explicit domain string, and a distinct
+// Bytes<N> length per domain, so two preimages of different purpose can never
+// collide even before their content is considered.
+module identity {
+  import CompactStandardLibrary;
+
+  struct IdPreimage   { domain: Bytes<13>; secret: Field; }
+  struct VetoPreimage { domain: Bytes<15>; secret: Field; }
+
+  export pure circuit idCommitOf(secret: Field, salt: Bytes<32>): Bytes<32> {
+    return persistentCommit<IdPreimage>(
+      IdPreimage { domain: pad(13, "lantern:id:v1"), secret: secret }, salt);
+  }
+
+  export pure circuit vetoCommitOf(secret: Field, salt: Bytes<32>): Bytes<32> {
+    return persistentCommit<VetoPreimage>(
+      VetoPreimage { domain: pad(15, "lantern:veto:v1"), secret: secret }, salt);
+  }
+}

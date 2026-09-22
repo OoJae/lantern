@@ -79,10 +79,11 @@ function buildShipped() {
     'identitySecret', 'idSalt', 'vetoSecret', 'vetoSalt', 'claimedNow', 'ephemeralSk',
   ]);
   const idSecret = randomFieldElement(), idSalt = rand32();
+  const vetoSecret = randomFieldElement(), vetoSalt = rand32();
   const idCommit = Lantern.pureCircuits.idCommitOf(idSecret, idSalt);
-  Object.assign(sim.ps, { identitySecret: idSecret, idSalt });
-  sim.call('enrollIdentity', idCommit,
-    Lantern.pureCircuits.vetoCommitOf(randomFieldElement(), rand32()), 2n);
+  // The owner holds both; adding guardians needs the veto card too.
+  Object.assign(sim.ps, { identitySecret: idSecret, idSalt, vetoSecret, vetoSalt });
+  sim.call('enrollIdentity', idCommit, Lantern.pureCircuits.vetoCommitOf(vetoSecret, vetoSalt), 2n);
 
   const secrets = TRUE_GUARDIANS.map((n) => ({
     name: n, secret: rand32(), salt: rand32(),

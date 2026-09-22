@@ -127,6 +127,7 @@ describe('cross-identity approval inflation (regression)', () => {
     const mSecret = fieldOf(500), mSalt = bytes32(501);
     const mId = pureCircuits.idCommitOf(mSecret, mSalt);
     sim.ps.identitySecret = mSecret; sim.ps.idSalt = mSalt;
+    sim.ps.vetoSecret = fieldOf(502); sim.ps.vetoSalt = bytes32(503);
     sim.call('enrollIdentity', mId, pureCircuits.vetoCommitOf(fieldOf(502), bytes32(503)), 2n);
     sim.ps.guardianSecret = bytes32(600); sim.ps.leafSalt = bytes32(601);
     const mLeaf = sim.call('addGuardian', mId);

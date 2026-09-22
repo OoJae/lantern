@@ -3,6 +3,7 @@ pragma language_version >= 0.22;
 import CompactStandardLibrary;
 import "schnorr" prefix Schnorr_;
 import "ownergate" prefix Gate_;
+import "identity" prefix Id_;
 
 // ---------------------------------------------------------------------------
 // DOMAIN-SEPARATED PREIMAGES
@@ -16,10 +17,12 @@ import "ownergate" prefix Gate_;
 // Struct FIELD NAMES contribute nothing to a commitment; only the shape does.
 // Exact-length Bytes<N> also keeps every preimage inside two SHA-256 blocks,
 // where pad(32, ...) would spill a third and cost ~2200 rows each.
+//
+// The identity and veto commitments live in the shared `identity` module
+// (identity.compact), so any contract authenticating a Lantern owner computes
+// them with the same code.
 // ---------------------------------------------------------------------------
 
-struct IdPreimage      { domain: Bytes<13>; secret: Field; }
-struct VetoPreimage    { domain: Bytes<15>; secret: Field; }
 struct RidPreimage     { domain: Bytes<14>; idCommit: Bytes<32>; ephemeralPk: Bytes<32>; }
 struct LinPreimage     { domain: Bytes<18>; idRoot: Bytes<32>; member: Bytes<32>; }
 struct GatePreimage    { domain: Bytes<15>; secret: Field; nonce: Bytes<32>; }
@@ -50,14 +53,13 @@ struct RecoveryRecord {
 // impossible. Verified: exported pure circuits emit no proving key.
 // ---------------------------------------------------------------------------
 
+// Re-exported from the shared module so the client's pureCircuits keep them.
 export pure circuit idCommitOf(secret: Field, salt: Bytes<32>): Bytes<32> {
-  return persistentCommit<IdPreimage>(
-    IdPreimage { domain: pad(13, "lantern:id:v1"), secret: secret }, salt);
+  return Id_idCommitOf(secret, salt);
 }
 
 export pure circuit vetoCommitOf(secret: Field, salt: Bytes<32>): Bytes<32> {
-  return persistentCommit<VetoPreimage>(
-    VetoPreimage { domain: pad(15, "lantern:veto:v1"), secret: secret }, salt);
+  return Id_vetoCommitOf(secret, salt);
 }
 
 // NOTE: argument 2 is now the guardian CONTEXT, not the identity commitment.
@@ -218,6 +220,14 @@ export circuit enrollIdentity(
 
 // Also authenticated: otherwise a stranger unilaterally becomes a full quorum
 // for any identity by inserting their own leaves.
+//
+// And authenticated by the VETO secret as well as the identity secret. With the
+// identity secret alone, whoever held it -- a thief with the lost laptop, or
+// malware -- could mint t guardian tokens of their own, open a recovery for
+// their own device, approve it t times and take the identity with no guardian
+// involved, stopped only by a veto within 72h. The identity secret is exactly
+// what a lost device leaks; the veto card is exactly what it does not.
+// Measured cost: k=14, 15,783 rows -- inside the band, with 601 rows to spare.
 export circuit addGuardian(idCommit: Bytes<32>): Bytes<32> {
   assert(idCommitOf(identitySecret(), idSalt()) == idCommit, "not the identity owner");
   assert(enrolled.member(disclose(idCommit)), "identity not enrolled");
@@ -228,6 +238,8 @@ export circuit addGuardian(idCommit: Bytes<32>): Bytes<32> {
   // finalizeRecovery retires an identity but never removes it from `enrolled`,
   // so `enrolled` alone is not a liveness check.
   assert(!retiredIdentities.member(disclose(idCommit)), "identity retired");
+  assert(vetoCommits.lookup(disclose(idCommit)) == vetoCommitOf(vetoSecret(), vetoSalt()),
+         "adding a guardian requires the veto secret");
 
   const idRoot = idRoots.lookup(disclose(idCommit));
   const ctx = guardianCtx.lookup(disclose(idRoot));
@@ -243,11 +255,21 @@ export circuit addGuardian(idCommit: Bytes<32>): Bytes<32> {
 // Honest limitation: this is set-level rotation, not per-guardian removal.
 // Per-guardian removal without disclosing a leaf is not achievable on an
 // append-only tree with the primitives 0.31.1 provides. See SECURITY.md.
+//
+// Rotation needs the identity secret AND the veto secret. A rotation kills
+// every in-flight recovery (finalizeRecovery re-checks the context), so if the
+// identity secret alone were enough, anyone holding it -- a thief with the lost
+// laptop, malware, or guardians who pooled their shares -- could kill the
+// owner's recovery at any stage and evict the guardians, locking the owner out
+// for good. The identity secret is exactly what a lost device leaks; the veto
+// card is exactly what it does not.
 export circuit rotateGuardianSet(idCommit: Bytes<32>, newCtx: Bytes<32>): [] {
   assert(idCommitOf(identitySecret(), idSalt()) == idCommit, "not the identity owner");
   assert(enrolled.member(disclose(idCommit)), "identity not enrolled");
   assert(!retiredIdentities.member(disclose(idCommit)), "identity retired");
   assert(!usedGuardianCtx.member(disclose(newCtx)), "context already used");
+  assert(vetoCommits.lookup(disclose(idCommit)) == vetoCommitOf(vetoSecret(), vetoSalt()),
+         "rotating the guardian set requires the veto secret");
   const idRoot = idRoots.lookup(disclose(idCommit));
   usedGuardianCtx.insert(disclose(newCtx));
   guardianCtx.insert(disclose(idRoot), disclose(newCtx));
@@ -264,8 +286,12 @@ export circuit openRecovery(idCommit: Bytes<32>, ephemeralPk: Bytes<32>): Bytes<
   const rid = recoveryIdOf(idCommit, ephemeralPk);
   assert(!recoveries.member(disclose(rid)), "recovery already open");
 
-  // Bracket the claimed time and store BOTH bounds. A lying prover's best move
-  // is the honest one: adversarial choice can only LENGTHEN the lock.
+  // Bracket the claimed time and store BOTH bounds. The asserts force
+  // lo <= blockTime < lo + slack, so hi = lo + slack is always LATER than the
+  // block that opened the recovery, and the timelock (enforced against hi) can
+  // never expire earlier than 72h after that block. An honest prover gives the
+  // longest lock; a lying one can shorten it by at most the slack, never
+  // below 72h.
   const lo = claimedNow();
   const hi = (lo + openSlackSeconds()) as Uint<64>;
   assert(blockTimeGte(disclose(lo)), "claimed time is in the future");
@@ -369,7 +395,8 @@ export circuit finalizeRecovery(
   assert(ephemeralPkOf(ephemeralSk()) == rec.ephemeralPk,
          "not the device the guardians approved");
 
-  // Timelock against the PESSIMISTIC bound recorded at open.
+  // Timelock against the LATER bound recorded at open: no earlier than 72h
+  // after the block that opened this recovery.
   assert(blockTimeGte((rec.openedAtHi + recoveryDelaySeconds()) as Uint<64>),
          "timelock has not elapsed");
 

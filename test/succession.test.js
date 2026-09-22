@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { pureCircuits, bytes32, fieldOf } from './simulator.js';
 import {
-  world, asGuardian, openAndApprove, succeed,
-  ID_SECRET, ID_SALT, EPH_A, EPH_B, EPH_C, DELAY, SLACK,
+  world, asGuardian, openAndApprove, succeed, ephSkFor,
+  ID_SECRET, ID_SALT, VETO_SECRET as VETO_SECRET_OLD, VETO_SALT as VETO_SALT_OLD,
+  EPH_A, EPH_B, EPH_C, DELAY, SLACK,
 } from './fixtures.js';
 import { assertNoLeak, encodingsOf, flatten } from '../src/leakscan.js';
 
@@ -320,5 +321,102 @@ describe('regression: a guardian-set rotation kills a recovery that already reac
     expect(() => sim.call('finalizeRecovery', rid,
       pureCircuits.idCommitOf(fieldOf(70), bytes32(71)),
       pureCircuits.vetoCommitOf(fieldOf(80), bytes32(81)))).not.toThrow();
+  });
+});
+
+// Regression (D5). Rotation was authenticated by the identity secret alone.
+// Because a rotation kills every in-flight recovery, anyone holding that
+// secret -- a thief with the lost laptop, malware, or guardians who pooled
+// their shares -- could kill the owner's recovery even after it reached
+// quorum, and evict the guardians so they could never approve for her again:
+// a permanent lockout. Reproduced before the fix. Rotation now also requires
+// the veto secret, which a lost device does not hold.
+describe('regression: holding the identity secret is not enough to rotate or mint guardians', () => {
+  const NEW_ID = () => pureCircuits.idCommitOf(fieldOf(70), bytes32(71));
+  const NEW_VETO = () => pureCircuits.vetoCommitOf(fieldOf(80), bytes32(81));
+  /** Whoever holds the lost device's identity secret but not the veto card. */
+  const asSecretHolder = (sim) => { sim.ps.vetoSecret = fieldOf(6060); sim.ps.vetoSalt = bytes32(6061); };
+
+  it('a secret-holder without the veto card cannot evict the guardians', () => {
+    const { sim, id, idRoot } = world({ n: 3 });
+    const ctxBefore = hex(sim.ledger.guardianCtx.lookup(idRoot));
+    asSecretHolder(sim);
+    expect(() => sim.call('rotateGuardianSet', id, bytes32(901)))
+      .toThrow(/rotating the guardian set requires the veto secret/);
+    // Presenting the identity secret AS the veto secret does not work either.
+    sim.ps.vetoSecret = ID_SECRET; sim.ps.vetoSalt = ID_SALT;
+    expect(() => sim.call('rotateGuardianSet', id, bytes32(901)))
+      .toThrow(/requires the veto secret/);
+    expect(hex(sim.ledger.guardianCtx.lookup(idRoot))).toBe(ctxBefore);
+  });
+
+  it('the stolen-device lockout: the thief cannot kill a recovery that reached quorum', () => {
+    const { sim, id, guardians } = world({ n: 3 });
+    const rid = openAndApprove(sim, id, guardians, 2, EPH_A);   // the owner's new phone
+    const card = { vetoSecret: sim.ps.vetoSecret, vetoSalt: sim.ps.vetoSalt };
+
+    asSecretHolder(sim);
+    expect(() => sim.call('rotateGuardianSet', id, bytes32(902))).toThrow(/requires the veto secret/);
+    sim.ps.vetoSecret = ID_SECRET; sim.ps.vetoSalt = ID_SALT;
+    expect(() => sim.call('vetoRecovery', rid)).toThrow(/veto secret does not open/);
+
+    Object.assign(sim.ps, card);
+    sim.ps.ephemeralSk = ephSkFor(EPH_A);
+    sim.advance(DELAY + SLACK + 1);
+    expect(() => sim.call('finalizeRecovery', rid, NEW_ID(), NEW_VETO())).not.toThrow();
+    expect(sim.ledger.retiredIdentities.member(id)).toBe(true);
+  });
+
+  it('colluders who pooled shares cannot stop the owner recovery finalizing', () => {
+    const { sim, id, guardians } = world({ n: 3 });
+    const card = { vetoSecret: sim.ps.vetoSecret, vetoSalt: sim.ps.vetoSalt };
+    // The owner's new phone: guardian 0 and guardian 1 approve.
+    const ownerRid = openAndApprove(sim, id, guardians, 2, EPH_A);
+    // Guardians 1 and 2 collude. Their pooled shares rebuild the identity
+    // secret; they open a recovery for THEIR device and approve it.
+    sim.ps.ephemeralSk = ephSkFor(EPH_C);
+    const theirRid = sim.call('openRecovery', id, EPH_C);
+    for (const g of guardians.slice(1)) { asGuardian(sim, g); sim.call('approveRecovery', id, theirRid); }
+
+    asSecretHolder(sim);
+    expect(() => sim.call('rotateGuardianSet', id, bytes32(903))).toThrow(/requires the veto secret/);
+    sim.ps.ephemeralSk = ephSkFor(EPH_C);
+    sim.advance(DELAY + SLACK + 1);
+    expect(() => sim.call('finalizeRecovery', ownerRid, NEW_ID(), NEW_VETO()))
+      .toThrow(/not the device the guardians approved/);
+
+    // The owner, holding the veto card, kills their recovery and finalizes her own.
+    Object.assign(sim.ps, card);
+    sim.call('vetoRecovery', theirRid);
+    sim.ps.ephemeralSk = ephSkFor(EPH_C);
+    expect(() => sim.call('finalizeRecovery', theirRid, NEW_ID(), NEW_VETO())).toThrow(/recovery vetoed/);
+    sim.ps.ephemeralSk = ephSkFor(EPH_A);
+    expect(() => sim.call('finalizeRecovery', ownerRid, NEW_ID(), NEW_VETO())).not.toThrow();
+  });
+
+  it('a thief holding only the identity secret cannot mint a quorum and take the identity', () => {
+    // Reproduced before the fix: with no guardian involved, the thief minted
+    // two guardian tokens, opened a recovery for their own device, approved it
+    // twice and finalized 72h later. Only a veto in time could have stopped it.
+    const { sim, id } = world({ n: 3 });
+    asSecretHolder(sim);
+    sim.ps.guardianSecret = bytes32(3000); sim.ps.leafSalt = bytes32(3100);
+    expect(() => sim.call('addGuardian', id)).toThrow(/adding a guardian requires the veto secret/);
+    expect(sim.ledger.guardians.firstFree()).toBe(3n);
+  });
+
+  it('the owner, holding both the secret and the veto card, still rotates', () => {
+    const { sim, id, idRoot } = world({ n: 3 });
+    sim.call('rotateGuardianSet', id, bytes32(904));
+    expect(hex(sim.ledger.guardianCtx.lookup(idRoot))).toBe(hex(bytes32(904)));
+  });
+
+  it('after a recovery, the successor rotates with its NEW veto card, not the old one', () => {
+    const { sim, id, guardians } = world({ n: 3 });
+    const g1 = succeed(sim, id, guardians, 1, EPH_A);
+    sim.ps.vetoSecret = VETO_SECRET_OLD; sim.ps.vetoSalt = VETO_SALT_OLD;
+    expect(() => sim.call('rotateGuardianSet', g1.newId, bytes32(905))).toThrow(/requires the veto secret/);
+    sim.ps.vetoSecret = g1.vSecret; sim.ps.vetoSalt = g1.vSalt;
+    expect(() => sim.call('rotateGuardianSet', g1.newId, bytes32(905))).not.toThrow();
   });
 });
