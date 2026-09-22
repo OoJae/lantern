@@ -23,6 +23,9 @@ export type ImpureCircuits<PS> = {
                  threshold_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   addGuardian(context: __compactRuntime.CircuitContext<PS>,
               idCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  rotateGuardianSet(context: __compactRuntime.CircuitContext<PS>,
+                    idCommit_0: Uint8Array,
+                    newCtx_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   openRecovery(context: __compactRuntime.CircuitContext<PS>,
                idCommit_0: Uint8Array,
                ephemeralPk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
@@ -43,6 +46,9 @@ export type ProvableCircuits<PS> = {
                  threshold_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   addGuardian(context: __compactRuntime.CircuitContext<PS>,
               idCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  rotateGuardianSet(context: __compactRuntime.CircuitContext<PS>,
+                    idCommit_0: Uint8Array,
+                    newCtx_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   openRecovery(context: __compactRuntime.CircuitContext<PS>,
                idCommit_0: Uint8Array,
                ephemeralPk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
@@ -59,9 +65,7 @@ export type ProvableCircuits<PS> = {
 export type PureCircuits = {
   idCommitOf(secret_0: bigint, salt_0: Uint8Array): Uint8Array;
   vetoCommitOf(secret_0: bigint, salt_0: Uint8Array): Uint8Array;
-  guardianLeafOf(secret_0: Uint8Array,
-                 idCommit_0: Uint8Array,
-                 salt_0: Uint8Array): Uint8Array;
+  guardianLeafOf(secret_0: Uint8Array, ctx_0: Uint8Array, salt_0: Uint8Array): Uint8Array;
   recoveryIdOf(idCommit_0: Uint8Array, ephemeralPk_0: Uint8Array): Uint8Array;
   approvalNullifierOf(secret_0: Uint8Array,
                       idCommit_0: Uint8Array,
@@ -81,7 +85,7 @@ export type Circuits<PS> = {
                salt_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   guardianLeafOf(context: __compactRuntime.CircuitContext<PS>,
                  secret_0: Uint8Array,
-                 idCommit_0: Uint8Array,
+                 ctx_0: Uint8Array,
                  salt_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   recoveryIdOf(context: __compactRuntime.CircuitContext<PS>,
                idCommit_0: Uint8Array,
@@ -104,6 +108,9 @@ export type Circuits<PS> = {
                  threshold_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   addGuardian(context: __compactRuntime.CircuitContext<PS>,
               idCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  rotateGuardianSet(context: __compactRuntime.CircuitContext<PS>,
+                    idCommit_0: Uint8Array,
+                    newCtx_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   openRecovery(context: __compactRuntime.CircuitContext<PS>,
                idCommit_0: Uint8Array,
                ephemeralPk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
@@ -147,16 +154,38 @@ export type Ledger = {
     findPathForLeaf(leaf_0: Uint8Array): __compactRuntime.MerkleTreePath<Uint8Array> | undefined;
     history(): Iterator<__compactRuntime.MerkleTreeDigest>
   };
+  idRoots: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(key_0: Uint8Array): boolean;
+    lookup(key_0: Uint8Array): Uint8Array;
+    [Symbol.iterator](): Iterator<[Uint8Array, Uint8Array]>
+  };
+  guardianCtx: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(key_0: Uint8Array): boolean;
+    lookup(key_0: Uint8Array): Uint8Array;
+    [Symbol.iterator](): Iterator<[Uint8Array, Uint8Array]>
+  };
+  usedGuardianCtx: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(elem_0: Uint8Array): boolean;
+    [Symbol.iterator](): Iterator<Uint8Array>
+  };
   recoveries: {
     isEmpty(): boolean;
     size(): bigint;
     member(key_0: Uint8Array): boolean;
     lookup(key_0: Uint8Array): { idCommit: Uint8Array,
+                                 idRoot: Uint8Array,
                                  ephemeralPk: Uint8Array,
                                  openedAtLo: bigint,
                                  openedAtHi: bigint
                                };
     [Symbol.iterator](): Iterator<[Uint8Array, { idCommit: Uint8Array,
+  idRoot: Uint8Array,
   ephemeralPk: Uint8Array,
   openedAtLo: bigint,
   openedAtHi: bigint

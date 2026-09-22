@@ -27,7 +27,7 @@ export function world({ n = 2, threshold = 2, now = DEFAULT_NOW } = {}) {
     const leaf = sim.call('addGuardian', id);
     guardians.push({ secret: bytes32(100 + i), salt: bytes32(200 + i), leaf });
   }
-  return { sim, id, guardians };
+  return { sim, id, idRoot: id, guardians };
 }
 
 /** Act as guardian `g`: load their witness material and their Merkle path. */
@@ -46,4 +46,21 @@ export function openAndApprove(sim, id, guardians, k, eph = EPH_A) {
     sim.call('approveRecovery', id, rid);
   }
   return rid;
+}
+
+/**
+ * Run one full recovery and rebind the sim to the SUCCESSOR's identity.
+ * This is the helper the whole Phase 3 suite hangs off.
+ */
+export function succeed(sim, id, guardians, gen = 1, eph = EPH_A) {
+  const secret = fieldOf(700 + gen), salt = bytes32(110 + gen);
+  const vSecret = fieldOf(800 + gen), vSalt = bytes32(140 + gen);
+  const newId = pureCircuits.idCommitOf(secret, salt);
+  const rid = openAndApprove(sim, id, guardians, 2, eph);
+  sim.advance(DELAY + SLACK + 1);
+  sim.call('finalizeRecovery', rid, newId, pureCircuits.vetoCommitOf(vSecret, vSalt));
+  // The new device holds the successor's material.
+  sim.ps.identitySecret = secret; sim.ps.idSalt = salt;
+  sim.ps.vetoSecret = vSecret;    sim.ps.vetoSalt = vSalt;
+  return { newId, secret, salt, vSecret, vSalt };
 }

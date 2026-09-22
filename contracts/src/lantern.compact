@@ -21,7 +21,7 @@ struct IdPreimage      { domain: Bytes<13>; secret: Field; }
 struct VetoPreimage    { domain: Bytes<15>; secret: Field; }
 struct RidPreimage     { domain: Bytes<14>; idCommit: Bytes<32>; ephemeralPk: Bytes<32>; }
 struct SuccPreimage    { domain: Bytes<15>; prev: Bytes<32>; next: Bytes<32>; }
-struct LeafPreimage    { domain: Bytes<19>; secret: Bytes<32>; idCommit: Bytes<32>; }
+struct LeafPreimage    { domain: Bytes<19>; secret: Bytes<32>; ctx: Bytes<32>; }
 struct ApprovePreimage { domain: Bytes<18>; secret: Bytes<32>; idCommit: Bytes<32>; rid: Bytes<32>; }
 struct VetoNulPreimage { domain: Bytes<18>; secret: Field; rid: Bytes<32>; }
 
@@ -29,6 +29,7 @@ struct VetoNulPreimage { domain: Bytes<18>; secret: Field; rid: Bytes<32>; }
 // reading it free of read-commitment contention.
 struct RecoveryRecord {
   idCommit: Bytes<32>;
+  idRoot: Bytes<32>;
   ephemeralPk: Bytes<32>;
   openedAtLo: Uint<64>;
   openedAtHi: Uint<64>;
@@ -52,9 +53,14 @@ export pure circuit vetoCommitOf(secret: Field, salt: Bytes<32>): Bytes<32> {
     VetoPreimage { domain: pad(15, "lantern:veto:v1"), secret: secret }, salt);
 }
 
-export pure circuit guardianLeafOf(secret: Bytes<32>, idCommit: Bytes<32>, salt: Bytes<32>): Bytes<32> {
+// NOTE: argument 2 is now the guardian CONTEXT, not the identity commitment.
+// The shape is unchanged (three Bytes<32>), so this is a silent-breakage hazard
+// for any client built against the old semantics -- hence this comment.
+// ctx is bound to an identity root by the `guardianCtx` ledger map, which is
+// what lets a guardian set survive a rotation AND be evicted wholesale.
+export pure circuit guardianLeafOf(secret: Bytes<32>, ctx: Bytes<32>, salt: Bytes<32>): Bytes<32> {
   return persistentCommit<LeafPreimage>(
-    LeafPreimage { domain: pad(19, "lantern:guardian:v1"), secret: secret, idCommit: idCommit }, salt);
+    LeafPreimage { domain: pad(19, "lantern:guardian:v1"), secret: secret, ctx: ctx }, salt);
 }
 
 // Binds the identity. Keying on ephemeralPk alone would let a stranger who
@@ -93,6 +99,19 @@ export ledger thresholds: Map<Bytes<32>, Uint<8>>;
 export ledger vetoCommits: Map<Bytes<32>, Bytes<32>>;
 
 export ledger guardians: HistoricMerkleTree<20, Bytes<32>>;
+
+// Any commitment -> its GENESIS root. Seeded as a fixed point at enrolment and
+// carried forward by finalizeRecovery, so the root outlives every rotation.
+// Insert-only per key, so it never binds a read-modify-write.
+export ledger idRoots: Map<Bytes<32>, Bytes<32>>;
+
+// idRoot -> the current guardian context. Rotating this evicts the entire
+// guardian set at once, without ever disclosing a leaf.
+export ledger guardianCtx: Map<Bytes<32>, Bytes<32>>;
+
+// Global uniqueness of contexts. Load-bearing, not hygiene: without it Bob sets
+// his ctx equal to Alice's and mints leaves valid for HER recoveries.
+export ledger usedGuardianCtx: Set<Bytes<32>>;
 
 export ledger recoveries: Map<Bytes<32>, RecoveryRecord>;
 export ledger approvals: Map<Bytes<32>, Counter>;
@@ -147,9 +166,15 @@ export circuit enrollIdentity(
   assert(idCommitOf(identitySecret(), idSalt()) == idCommit, "enroller does not hold the identity secret");
   assert(disclose(threshold) >= 2, "threshold must be at least 2");
   assert(!enrolled.member(disclose(idCommit)), "identity already enrolled");
+  assert(!usedGuardianCtx.member(disclose(idCommit)), "context already used");
   enrolled.insert(disclose(idCommit));
   thresholds.insert(disclose(idCommit), disclose(threshold));
   vetoCommits.insert(disclose(idCommit), disclose(vetoCommit));
+
+  // Genesis: the identity is its own root, and the root is its own first ctx.
+  idRoots.insert(disclose(idCommit), disclose(idCommit));
+  guardianCtx.insert(disclose(idCommit), disclose(idCommit));
+  usedGuardianCtx.insert(disclose(idCommit));
 }
 
 // Also authenticated: otherwise a stranger unilaterally becomes a full quorum
@@ -157,9 +182,36 @@ export circuit enrollIdentity(
 export circuit addGuardian(idCommit: Bytes<32>): Bytes<32> {
   assert(idCommitOf(identitySecret(), idSalt()) == idCommit, "not the identity owner");
   assert(enrolled.member(disclose(idCommit)), "identity not enrolled");
-  const leaf = guardianLeafOf(guardianSecret(), idCommit, leafSalt());
+  // WITHOUT THIS, a thief holding the retired secret could mint guardian leaves
+  // AFTER the victim recovered -- and because leaves bind the permanent root,
+  // those leaves would be valid for the victim's NEW identity. Mint t of them,
+  // self-approve, wait out the timelock, take the identity. Repeatably.
+  // finalizeRecovery retires an identity but never removes it from `enrolled`,
+  // so `enrolled` alone is not a liveness check.
+  assert(!retiredIdentities.member(disclose(idCommit)), "identity retired");
+
+  const idRoot = idRoots.lookup(disclose(idCommit));
+  const ctx = guardianCtx.lookup(disclose(idRoot));
+  const leaf = guardianLeafOf(guardianSecret(), ctx, leafSalt());
   guardians.insert(disclose(leaf));
   return disclose(leaf);
+}
+
+// Evicts the WHOLE guardian set in one action by rotating the context every
+// leaf commits to. No leaf is ever disclosed, so this leaks nothing about who
+// the guardians were -- unlike a revocation list, which would make every
+// approval by a given guardian linkable across every recovery.
+// Honest limitation: this is set-level rotation, not per-guardian removal.
+// Per-guardian removal without disclosing a leaf is not achievable on an
+// append-only tree with the primitives 0.31.1 provides. See SECURITY.md.
+export circuit rotateGuardianSet(idCommit: Bytes<32>, newCtx: Bytes<32>): [] {
+  assert(idCommitOf(identitySecret(), idSalt()) == idCommit, "not the identity owner");
+  assert(enrolled.member(disclose(idCommit)), "identity not enrolled");
+  assert(!retiredIdentities.member(disclose(idCommit)), "identity retired");
+  assert(!usedGuardianCtx.member(disclose(newCtx)), "context already used");
+  const idRoot = idRoots.lookup(disclose(idCommit));
+  usedGuardianCtx.insert(disclose(newCtx));
+  guardianCtx.insert(disclose(idRoot), disclose(newCtx));
 }
 
 // ---------------------------------------------------------------------------
@@ -180,8 +232,13 @@ export circuit openRecovery(idCommit: Bytes<32>, ephemeralPk: Bytes<32>): Bytes<
   assert(blockTimeGte(disclose(lo)), "claimed time is in the future");
   assert(blockTimeLt(disclose(hi)), "claimed time is too far in the past");
 
+  // Frozen into the write-once record, so approve/finalize read it for free
+  // and can never disagree about which root is in play.
+  const idRoot = idRoots.lookup(disclose(idCommit));
+
   recoveries.insert(disclose(rid), RecoveryRecord {
     idCommit: disclose(idCommit),
+    idRoot: disclose(idRoot),
     ephemeralPk: disclose(ephemeralPk),
     openedAtLo: disclose(lo),
     openedAtHi: disclose(hi)
@@ -203,7 +260,10 @@ export circuit approveRecovery(idCommit: Bytes<32>, rid: Bytes<32>): [] {
 
   // Leaf-binding assert BEFORE checkRoot. Midnight's own PrivateVoting and
   // midnight-rwa examples omit this; without it any valid path is accepted.
-  assert(path.leaf == guardianLeafOf(secret, idCommit, leafSalt()),
+  // The guardian set belongs to the identity ROOT, not the rotating commitment
+  // -- which is what lets the ORIGINAL guardians recover a SUCCESSOR identity.
+  const ctx = guardianCtx.lookup(disclose(rec.idRoot));
+  assert(path.leaf == guardianLeafOf(secret, ctx, leafSalt()),
          "path does not bind to this guardian leaf");
 
   // HistoricMerkleTree accepts PAST roots, which keeps concurrent approvals
@@ -279,4 +339,8 @@ export circuit finalizeRecovery(
   enrolled.insert(disclose(newIdCommit));
   thresholds.insert(disclose(newIdCommit), t);
   vetoCommits.insert(disclose(newIdCommit), disclose(newVetoCommit));
+  // THE SUCCESSION: the successor inherits the genesis root, so every guardian
+  // leaf keeps working across the rotation. guardianCtx is deliberately
+  // untouched -- the guardian set survives.
+  idRoots.insert(disclose(newIdCommit), disclose(rec.idRoot));
 }

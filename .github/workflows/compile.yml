@@ -26,7 +26,7 @@ jobs:
       - name: Assert proving keys were generated
         run: |
           set -euo pipefail
-          for c in enrollIdentity addGuardian openRecovery approveRecovery vetoRecovery finalizeRecovery; do
+          for c in enrollIdentity addGuardian rotateGuardianSet openRecovery approveRecovery vetoRecovery finalizeRecovery; do
             test -s "contracts/managed/keys/${c}.prover"   || { echo "missing prover key: $c";   exit 1; }
             test -s "contracts/managed/keys/${c}.verifier" || { echo "missing verifier key: $c"; exit 1; }
           done

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as rt from '@midnight-ntwrk/compact-runtime';
 import { world, asGuardian, EPH_A } from './fixtures.js';
+import { bytes32 } from './simulator.js';
 
 /**
  * SPIKE B -- read-commitment contention.
@@ -98,6 +99,42 @@ describe('read-commitment contention (Spike B)', () => {
         gas: { readTime: 10n ** 12n, computeTime: 10n ** 12n, bytesWritten: 10n ** 9n, bytesDeleted: 10n ** 9n },
         effects: b.context.currentQueryContext.effects,
         program: b.proofData.publicTranscript,
+      },
+      rt.CostModel.initialCostModel(),
+    )).toThrow();
+  });
+
+  // approveRecovery now reads guardianCtx on the hot path. Spike B says that
+  // read is value-scoped, so concurrent approvals still do not conflict -- but
+  // a guardian-set rotation landing mid-flight MUST invalidate a pending
+  // approval. That is correct behaviour, and proving it is a better story than
+  // claiming it cannot happen.
+  it('a guardian-set rotation mid-flight invalidates a pending approval', () => {
+    const { sim, id, guardians } = world();
+    const rid = sim.call('openRecovery', id, EPH_A);
+    const S0 = sim.ctx.currentQueryContext.state;
+    const addr = sim.address;
+
+    asGuardian(sim, guardians[0]);
+    const ctx = rt.createCircuitContext(
+      addr, sim.zswap, S0, sim.privateState, undefined, undefined, sim.now,
+    );
+    ctx.currentQueryContext.block = {
+      ...ctx.currentQueryContext.block, secondsSinceEpoch: BigInt(sim.now),
+    };
+    const pending = sim.contract.impureCircuits.approveRecovery(ctx, id, rid);
+
+    // The owner rotates the guardian set before the approval lands.
+    sim.call('rotateGuardianSet', id, bytes32(777));
+    const S1 = sim.ctx.currentQueryContext.state;
+
+    const qc = new rt.QueryContext(S1, addr);
+    qc.block = { ...qc.block, secondsSinceEpoch: BigInt(sim.now) };
+    expect(() => qc.runTranscript(
+      {
+        gas: { readTime: 10n ** 12n, computeTime: 10n ** 12n, bytesWritten: 10n ** 9n, bytesDeleted: 10n ** 9n },
+        effects: pending.context.currentQueryContext.effects,
+        program: pending.proofData.publicTranscript,
       },
       rt.CostModel.initialCostModel(),
     )).toThrow();
