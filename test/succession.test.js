@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { pureCircuits, bytes32, fieldOf } from './simulator.js';
 import {
   world, asGuardian, openAndApprove, succeed,
-  ID_SECRET, ID_SALT, EPH_A, EPH_B, DELAY, SLACK,
+  ID_SECRET, ID_SALT, EPH_A, EPH_B, EPH_C, DELAY, SLACK,
 } from './fixtures.js';
 
 const hex = (u) => Buffer.from(u).toString('hex');
@@ -33,7 +33,7 @@ describe('succession: a SECOND recovery', () => {
     const { sim, id, idRoot, guardians } = world();
     const g1 = succeed(sim, id, guardians, 1, EPH_A);
     const g2 = succeed(sim, g1.newId, guardians, 2, EPH_B);
-    const g3 = succeed(sim, g2.newId, guardians, 3, bytes32(22));
+    const g3 = succeed(sim, g2.newId, guardians, 3, EPH_C);
     for (const c of [g1.newId, g2.newId, g3.newId]) {
       expect(hex(sim.ledger.idRoots.lookup(c))).toBe(hex(idRoot));
     }
@@ -157,7 +157,7 @@ describe('proveSuccession', () => {
     const { sim, id, idRoot, guardians } = world();
     const g1 = succeed(sim, id, guardians, 1, EPH_A);
     const g2 = succeed(sim, g1.newId, guardians, 2, EPH_B);
-    const g3 = succeed(sim, g2.newId, guardians, 3, bytes32(22));
+    const g3 = succeed(sim, g2.newId, guardians, 3, EPH_C);
     loadPath(sim, idRoot, g3.newId);
     expect(() => sim.call('proveSuccession', idRoot, g3.newId)).not.toThrow();
   });

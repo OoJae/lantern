@@ -33,6 +33,7 @@ export const defaultPrivateState = () => ({
   vetoSecret: fieldOf(60),
   vetoSalt: bytes32(61),
   claimedNow: undefined, // undefined => tell the truth (use the block time)
+  ephemeralSk: undefined,
 });
 
 export class LanternSim {
@@ -50,6 +51,7 @@ export class LanternSim {
       leafSalt: w('leafSalt'),
       guardianPath: w('guardianPath'),
       lineagePath: w('lineagePath'),
+      ephemeralSk: w('ephemeralSk'),
       identitySecret: w('identitySecret'),
       idSalt: w('idSalt'),
       vetoSecret: w('vetoSecret'),

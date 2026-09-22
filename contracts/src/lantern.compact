@@ -23,6 +23,7 @@ struct VetoPreimage    { domain: Bytes<15>; secret: Field; }
 struct RidPreimage     { domain: Bytes<14>; idCommit: Bytes<32>; ephemeralPk: Bytes<32>; }
 struct LinPreimage     { domain: Bytes<18>; idRoot: Bytes<32>; member: Bytes<32>; }
 struct GatePreimage    { domain: Bytes<15>; secret: Field; nonce: Bytes<32>; }
+struct EphPreimage     { domain: Bytes<14>; sk: Bytes<32>; }
 struct LeafPreimage    { domain: Bytes<19>; secret: Bytes<32>; ctx: Bytes<32>; }
 struct ApprovePreimage { domain: Bytes<18>; secret: Bytes<32>; idCommit: Bytes<32>; rid: Bytes<32>; }
 struct VetoNulPreimage { domain: Bytes<18>; secret: Field; rid: Bytes<32>; }
@@ -103,6 +104,16 @@ export pure circuit lineageLeafOf(idRoot: Bytes<32>, member: Bytes<32>): Bytes<3
 
 // Compact has no module-level const; the schnorr module declares its constants
 // inside circuits for the same reason.
+// The public half of a recovering device's ephemeral key. transientHash, for
+// the same reason as lineageLeafOf: measured +670 rows on finalizeRecovery,
+// where persistentHash would add ~4,520. Even so it moves finalizeRecovery from
+// 7,891 to 8,561 rows -- 369 past the k=13 ceiling of 8,192, so k=14. Binding
+// approvals to the device the guardians were shown is worth the band.
+export pure circuit ephemeralPkOf(sk: Bytes<32>): Bytes<32> {
+  return upgradeFromTransient(transientHash<EphPreimage>(
+    EphPreimage { domain: pad(14, "lantern:eph:v1"), sk: sk }));
+}
+
 export pure circuit openSlackSeconds(): Uint<64> { return 600; }
 export pure circuit recoveryDelaySeconds(): Uint<64> { return 259200; } // 72h
 
@@ -172,6 +183,10 @@ witness vetoSalt(): Bytes<32>;
 // There is no readable clock in Compact; the prover claims one and the circuit
 // brackets it between two block-time predicates.
 witness claimedNow(): Uint<64>;
+
+// The recovering device's ephemeral secret. Its public half is what guardians
+// are shown and approve; finalizeRecovery requires the matching secret.
+witness ephemeralSk(): Bytes<32>;
 witness lineagePath(): MerkleTreePath<20, Bytes<32>>;
 
 // ---------------------------------------------------------------------------
@@ -345,6 +360,14 @@ export circuit finalizeRecovery(
   // lose the identity anyway. Now the rotation is decisive.
   assert(guardianCtx.lookup(disclose(rec.idRoot)) == rec.ctx,
          "guardian set was rotated since this recovery opened");
+
+  // Guardians approve a SPECIFIC device: the ephemeral public key they were
+  // shown, bound into rid. Without this, anyone else who held the identity
+  // secret could finalise using approvals given to a different device.
+  // Both operands are witness-derived or already public, feeding an assert,
+  // so the secret key never reaches the chain.
+  assert(ephemeralPkOf(ephemeralSk()) == rec.ephemeralPk,
+         "not the device the guardians approved");
 
   // Timelock against the PESSIMISTIC bound recorded at open.
   assert(blockTimeGte((rec.openedAtHi + recoveryDelaySeconds()) as Uint<64>),

@@ -233,7 +233,7 @@ export type Ledger = {
     lookup(key_0: bigint): bigint;
     [Symbol.iterator](): Iterator<[bigint, bigint]>
   };
-  attestedAtHi: {
+  attestedAtLo: {
     isEmpty(): boolean;
     size(): bigint;
     member(key_0: bigint): boolean;

@@ -47,7 +47,12 @@ export ledger voteNullifiers: Set<Bytes<32>>;
 
 // --- sealed output the gate consumes ----------------------------------------
 export ledger attestedRoots: Map<Uint<32>, Field>;
-export ledger attestedAtHi: Map<Uint<32>, Uint<64>>;
+// The EARLIEST time the seal could have happened. Starting the staleness
+// window here makes it conservative: blockTimeGte(lo) guarantees lo <= the real
+// seal time, so a lying sealer can only SHORTEN acceptance, never extend it.
+// (It previously started from lo + slack, which let a hostile sealer stretch a
+// 24h window to 24h 10m.)
+export ledger attestedAtLo: Map<Uint<32>, Uint<64>>;
 // The number of sealed epochs, and therefore the only epoch that may be sealed
 // next. Contiguity is what makes "not the latest epoch" a sound check.
 export ledger latestEpoch: Counter;
@@ -216,7 +221,7 @@ export circuit sealEpoch(epoch: Uint<32>, snapshotRoot: Field): [] {
   assert(blockTimeLt(disclose(hi)), "claimed time is too far in the past");
 
   attestedRoots.insert(disclose(epoch), disclose(snapshotRoot));
-  attestedAtHi.insert(disclose(epoch), disclose(hi));
+  attestedAtLo.insert(disclose(epoch), disclose(lo));
   latestEpoch.increment(1);
 }
 
@@ -282,7 +287,7 @@ export circuit requireCurrentOwnerAttested(
   // Sound only because epochs seal contiguously: with no gaps, "epoch+1 is not
   // sealed" really does mean "epoch is the latest".
   assert(!attestedRoots.member((disclose(epoch) + 1) as Uint<32>), "not the latest epoch");
-  assert(blockTimeLt((attestedAtHi.lookup(disclose(epoch)) + maxStalenessSeconds()) as Uint<64>),
+  assert(blockTimeLt((attestedAtLo.lookup(disclose(epoch)) + maxStalenessSeconds()) as Uint<64>),
          "attestation is stale");
 
   const path = snapshotPath();

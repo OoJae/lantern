@@ -4,8 +4,20 @@ export const ID_SECRET = fieldOf(50);
 export const ID_SALT = bytes32(51);
 export const VETO_SECRET = fieldOf(60);
 export const VETO_SALT = bytes32(61);
-export const EPH_A = bytes32(20);
-export const EPH_B = bytes32(21);
+// Ephemeral device keys. Guardians approve the PUBLIC half; finalizeRecovery
+// requires the matching secret, so every public key here has a registered sk.
+const EPH_REGISTRY = new Map();
+const hexOf = (u) => Buffer.from(u).toString('hex');
+export function ephKey(i) {
+  const sk = bytes32(900 + i);
+  const pk = pureCircuits.ephemeralPkOf(sk);
+  EPH_REGISTRY.set(hexOf(pk), sk);
+  return pk;
+}
+export const ephSkFor = (pk) => EPH_REGISTRY.get(hexOf(pk));
+export const EPH_A = ephKey(0);
+export const EPH_B = ephKey(1);
+export const EPH_C = ephKey(2);
 
 export const idCommit = () => pureCircuits.idCommitOf(ID_SECRET, ID_SALT);
 export const vetoCommit = () => pureCircuits.vetoCommitOf(VETO_SECRET, VETO_SALT);
@@ -40,6 +52,7 @@ export function asGuardian(sim, g) {
 
 /** Open a recovery and collect `k` guardian approvals. */
 export function openAndApprove(sim, id, guardians, k, eph = EPH_A) {
+  sim.ps.ephemeralSk = ephSkFor(eph);
   const rid = sim.call('openRecovery', id, eph);
   for (let i = 0; i < k; i++) {
     asGuardian(sim, guardians[i]);

@@ -256,6 +256,24 @@ describe('the attested gate', () => {
     expect(() => h.call('requireCurrentOwnerAttested', 0n, ROOT, HEAD)).toThrow(/stale/);
   });
 
+  // Regression. The window used to start at the claimed time PLUS slack, so a
+  // hostile sealer could stretch 24h to 24h 10m. It now starts at the claimed
+  // time itself, which blockTimeGte guarantees is no later than the real seal.
+  // At this instant the OLD code would still accept; the new code must not.
+  it('a sealer cannot stretch the staleness window with its claimed time', () => {
+    const h = new HostSim();
+    const leaf = h.call('appendSnapshotLeaf', ROOT, HEAD);
+    const root = h.snapshotRoot();
+    h.call('openEpoch', 0n, root);
+    h.vote(0, 0, root);
+    h.vote(1, 0, root);
+    h.ps.claimedNow = h.now - 500;          // earliest bracket the seal allows
+    h.call('sealEpoch', 0n, root);
+    h.ps.snapshotPath = h.ledger.snapshot.findPathForLeaf(leaf);
+    h.advance(Number(hostPure.maxStalenessSeconds()) - 400);
+    expect(() => h.call('requireCurrentOwnerAttested', 0n, ROOT, HEAD)).toThrow(/stale/);
+  });
+
   it('rejects an unattested epoch', () => {
     const { h, leaf } = attestedHost();
     h.ps.snapshotPath = h.ledger.snapshot.findPathForLeaf(leaf);

@@ -81,7 +81,7 @@ function buildV0(mode) {
 function buildShipped() {
   const sim = new Sim(Lantern, [
     'guardianSecret', 'leafSalt', 'guardianPath', 'lineagePath',
-    'identitySecret', 'idSalt', 'vetoSecret', 'vetoSalt', 'claimedNow',
+    'identitySecret', 'idSalt', 'vetoSecret', 'vetoSalt', 'claimedNow', 'ephemeralSk',
   ]);
   const idSecret = 0x1234567890abcdefn * 99991n, idSalt = demoEntropy('idSalt');
   const idCommit = Lantern.pureCircuits.idCommitOf(idSecret, idSalt);

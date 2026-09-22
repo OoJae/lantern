@@ -49,7 +49,7 @@ jobs:
           # the same compiled code the circuit does. If one ever acquires a
           # .zkir it has stopped being pure and the parity guarantee is gone.
           for p in idCommitOf vetoCommitOf guardianLeafOf recoveryIdOf \
-                   approvalNullifierOf vetoNullifierOf lineageLeafOf gateNullifierOf; do
+                   approvalNullifierOf vetoNullifierOf lineageLeafOf gateNullifierOf ephemeralPkOf; do
             if [ -e "contracts/managed/zkir/${p}.zkir" ]; then
               echo "::error::${p} is no longer a pure circuit"; exit 1
             fi

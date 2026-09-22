@@ -196,6 +196,17 @@ describe('finalize', () => {
       pureCircuits.lineageLeafOf(id, NEW_ID()))).toBeDefined();
   });
 
+  // Regression. rec.ephemeralPk used to be stored and never read again, so
+  // anyone else holding the identity secret could finalise with approvals the
+  // guardians gave to a DIFFERENT device.
+  it('rejects a finaliser who is not the device the guardians approved', () => {
+    const { sim, id, guardians } = world();
+    const rid = openAndApprove(sim, id, guardians, 2);
+    sim.advance(DELAY + SLACK + 1);
+    sim.ps.ephemeralSk = bytes32(4040);   // right identity secret, wrong device
+    expect(() => finalize(sim, rid)).toThrow(/not the device the guardians approved/);
+  });
+
   it('rejects a secret that does not open the commitment', () => {
     const { sim, id, guardians } = world();
     const rid = openAndApprove(sim, id, guardians, 2);

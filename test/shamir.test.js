@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { split, reconstruct } from '../src/shamir.js';
 import { R, randomFieldElement, inv, mul, add, mod } from '../src/field.js';
 import { LanternSim, pureCircuits, bytes32, fieldOf } from './simulator.js';
-import { asGuardian, EPH_A, DELAY, SLACK } from './fixtures.js';
+import { asGuardian, EPH_A, ephSkFor, DELAY, SLACK } from './fixtures.js';
 
 describe('field', () => {
   it('is the BLS12-381 scalar field', () => {
@@ -77,6 +77,8 @@ describe('shamir x circuit (end to end)', () => {
       sim.ps.leafSalt = bytes32(200 + i);
       guardians.push({ secret: bytes32(100 + i), salt: bytes32(200 + i), leaf: sim.call('addGuardian', id) });
     }
+    // The recovering device holds the ephemeral secret the guardians approved.
+    sim.ps.ephemeralSk = ephSkFor(EPH_A);
     const rid = sim.call('openRecovery', id, EPH_A);
     for (const g of guardians) { asGuardian(sim, g); sim.call('approveRecovery', id, rid); }
     sim.advance(DELAY + SLACK + 1);

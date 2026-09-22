@@ -14,6 +14,7 @@ export type Witnesses<PS> = {
   vetoSecret(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, bigint];
   vetoSalt(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
   claimedNow(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, bigint];
+  ephemeralSk(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
   lineagePath(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, { leaf: Uint8Array,
                                                                             path: { sibling: { field: bigint
                                                                                              },
@@ -98,6 +99,7 @@ export type PureCircuits = {
                       rid_0: Uint8Array): Uint8Array;
   vetoNullifierOf(secret_0: bigint, rid_0: Uint8Array): Uint8Array;
   lineageLeafOf(idRoot_0: Uint8Array, member_0: Uint8Array): Uint8Array;
+  ephemeralPkOf(sk_0: Uint8Array): Uint8Array;
   openSlackSeconds(): bigint;
   recoveryDelaySeconds(): bigint;
   gateNullifierOf(secret_0: bigint, nonce_0: Uint8Array): Uint8Array;
@@ -127,6 +129,7 @@ export type Circuits<PS> = {
   lineageLeafOf(context: __compactRuntime.CircuitContext<PS>,
                 idRoot_0: Uint8Array,
                 member_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  ephemeralPkOf(context: __compactRuntime.CircuitContext<PS>, sk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   openSlackSeconds(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, bigint>;
   recoveryDelaySeconds(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, bigint>;
   enrollIdentity(context: __compactRuntime.CircuitContext<PS>,
