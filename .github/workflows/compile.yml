@@ -26,11 +26,25 @@ jobs:
       - name: Assert proving keys were generated
         run: |
           set -euo pipefail
-          for c in enrollIdentity addGuardian approveRecovery; do
+          for c in enrollIdentity addGuardian openRecovery approveRecovery vetoRecovery finalizeRecovery; do
             test -s "contracts/managed/keys/${c}.prover"   || { echo "missing prover key: $c";   exit 1; }
             test -s "contracts/managed/keys/${c}.verifier" || { echo "missing verifier key: $c"; exit 1; }
           done
           echo "all circuits produced prover + verifier keys"
+
+      - name: Assert pure circuits generate no proving key
+        run: |
+          set -euo pipefail
+          # The derivation layer is `export pure circuit`, so the client calls
+          # the same compiled code the circuit does. If one ever acquires a
+          # .zkir it has stopped being pure and the parity guarantee is gone.
+          for p in idCommitOf vetoCommitOf guardianLeafOf recoveryIdOf \
+                   approvalNullifierOf vetoNullifierOf successionEdgeOf; do
+            if [ -e "contracts/managed/zkir/${p}.zkir" ]; then
+              echo "::error::${p} is no longer a pure circuit"; exit 1
+            fi
+          done
+          echo "all 7 derivations are pure and key-free"
 
       - name: Assert the committed contract module matches source
         run: |

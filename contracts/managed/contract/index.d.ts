@@ -9,45 +9,135 @@ export type Witnesses<PS> = {
                                                                                      goes_left: boolean
                                                                                    }[]
                                                                            }];
+  identitySecret(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, bigint];
+  idSalt(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
+  vetoSecret(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, bigint];
+  vetoSalt(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
+  claimedNow(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, bigint];
 }
 
 export type ImpureCircuits<PS> = {
   enrollIdentity(context: __compactRuntime.CircuitContext<PS>,
                  idCommit_0: Uint8Array,
-                 vetoCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+                 vetoCommit_0: Uint8Array,
+                 threshold_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   addGuardian(context: __compactRuntime.CircuitContext<PS>,
               idCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  openRecovery(context: __compactRuntime.CircuitContext<PS>,
+               idCommit_0: Uint8Array,
+               ephemeralPk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   approveRecovery(context: __compactRuntime.CircuitContext<PS>,
                   idCommit_0: Uint8Array,
-                  ephemeralPk_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+                  rid_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  vetoRecovery(context: __compactRuntime.CircuitContext<PS>, rid_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  finalizeRecovery(context: __compactRuntime.CircuitContext<PS>,
+                   rid_0: Uint8Array,
+                   newIdCommit_0: Uint8Array,
+                   newVetoCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type ProvableCircuits<PS> = {
   enrollIdentity(context: __compactRuntime.CircuitContext<PS>,
                  idCommit_0: Uint8Array,
-                 vetoCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+                 vetoCommit_0: Uint8Array,
+                 threshold_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   addGuardian(context: __compactRuntime.CircuitContext<PS>,
               idCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  openRecovery(context: __compactRuntime.CircuitContext<PS>,
+               idCommit_0: Uint8Array,
+               ephemeralPk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   approveRecovery(context: __compactRuntime.CircuitContext<PS>,
                   idCommit_0: Uint8Array,
-                  ephemeralPk_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+                  rid_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  vetoRecovery(context: __compactRuntime.CircuitContext<PS>, rid_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  finalizeRecovery(context: __compactRuntime.CircuitContext<PS>,
+                   rid_0: Uint8Array,
+                   newIdCommit_0: Uint8Array,
+                   newVetoCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type PureCircuits = {
+  idCommitOf(secret_0: bigint, salt_0: Uint8Array): Uint8Array;
+  vetoCommitOf(secret_0: bigint, salt_0: Uint8Array): Uint8Array;
+  guardianLeafOf(secret_0: Uint8Array,
+                 idCommit_0: Uint8Array,
+                 salt_0: Uint8Array): Uint8Array;
+  recoveryIdOf(idCommit_0: Uint8Array, ephemeralPk_0: Uint8Array): Uint8Array;
+  approvalNullifierOf(secret_0: Uint8Array,
+                      idCommit_0: Uint8Array,
+                      rid_0: Uint8Array): Uint8Array;
+  vetoNullifierOf(secret_0: bigint, rid_0: Uint8Array): Uint8Array;
+  successionEdgeOf(prev_0: Uint8Array, next_0: Uint8Array): Uint8Array;
+  openSlackSeconds(): bigint;
+  recoveryDelaySeconds(): bigint;
 }
 
 export type Circuits<PS> = {
+  idCommitOf(context: __compactRuntime.CircuitContext<PS>,
+             secret_0: bigint,
+             salt_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  vetoCommitOf(context: __compactRuntime.CircuitContext<PS>,
+               secret_0: bigint,
+               salt_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  guardianLeafOf(context: __compactRuntime.CircuitContext<PS>,
+                 secret_0: Uint8Array,
+                 idCommit_0: Uint8Array,
+                 salt_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  recoveryIdOf(context: __compactRuntime.CircuitContext<PS>,
+               idCommit_0: Uint8Array,
+               ephemeralPk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  approvalNullifierOf(context: __compactRuntime.CircuitContext<PS>,
+                      secret_0: Uint8Array,
+                      idCommit_0: Uint8Array,
+                      rid_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  vetoNullifierOf(context: __compactRuntime.CircuitContext<PS>,
+                  secret_0: bigint,
+                  rid_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  successionEdgeOf(context: __compactRuntime.CircuitContext<PS>,
+                   prev_0: Uint8Array,
+                   next_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  openSlackSeconds(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, bigint>;
+  recoveryDelaySeconds(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, bigint>;
   enrollIdentity(context: __compactRuntime.CircuitContext<PS>,
                  idCommit_0: Uint8Array,
-                 vetoCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+                 vetoCommit_0: Uint8Array,
+                 threshold_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   addGuardian(context: __compactRuntime.CircuitContext<PS>,
               idCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  openRecovery(context: __compactRuntime.CircuitContext<PS>,
+               idCommit_0: Uint8Array,
+               ephemeralPk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   approveRecovery(context: __compactRuntime.CircuitContext<PS>,
                   idCommit_0: Uint8Array,
-                  ephemeralPk_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+                  rid_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  vetoRecovery(context: __compactRuntime.CircuitContext<PS>, rid_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  finalizeRecovery(context: __compactRuntime.CircuitContext<PS>,
+                   rid_0: Uint8Array,
+                   newIdCommit_0: Uint8Array,
+                   newVetoCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type Ledger = {
+  enrolled: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(elem_0: Uint8Array): boolean;
+    [Symbol.iterator](): Iterator<Uint8Array>
+  };
+  thresholds: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(key_0: Uint8Array): boolean;
+    lookup(key_0: Uint8Array): bigint;
+    [Symbol.iterator](): Iterator<[Uint8Array, bigint]>
+  };
+  vetoCommits: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(key_0: Uint8Array): boolean;
+    lookup(key_0: Uint8Array): Uint8Array;
+    [Symbol.iterator](): Iterator<[Uint8Array, Uint8Array]>
+  };
   guardians: {
     isFull(): boolean;
     checkRoot(rt_0: { field: bigint }): boolean;
@@ -57,11 +147,20 @@ export type Ledger = {
     findPathForLeaf(leaf_0: Uint8Array): __compactRuntime.MerkleTreePath<Uint8Array> | undefined;
     history(): Iterator<__compactRuntime.MerkleTreeDigest>
   };
-  approvedNullifiers: {
+  recoveries: {
     isEmpty(): boolean;
     size(): bigint;
-    member(elem_0: Uint8Array): boolean;
-    [Symbol.iterator](): Iterator<Uint8Array>
+    member(key_0: Uint8Array): boolean;
+    lookup(key_0: Uint8Array): { idCommit: Uint8Array,
+                                 ephemeralPk: Uint8Array,
+                                 openedAtLo: bigint,
+                                 openedAtHi: bigint
+                               };
+    [Symbol.iterator](): Iterator<[Uint8Array, { idCommit: Uint8Array,
+  ephemeralPk: Uint8Array,
+  openedAtLo: bigint,
+  openedAtHi: bigint
+}]>
   };
   approvals: {
     isEmpty(): boolean;
@@ -69,18 +168,38 @@ export type Ledger = {
     member(key_0: Uint8Array): boolean;
     lookup(key_0: Uint8Array): { read(): bigint }
   };
-  vetoCommits: {
-    isEmpty(): boolean;
-    size(): bigint;
-    member(key_0: Uint8Array): boolean;
-    lookup(key_0: Uint8Array): Uint8Array;
-    [Symbol.iterator](): Iterator<[Uint8Array, Uint8Array]>
-  };
-  enrolled: {
+  approvedNullifiers: {
     isEmpty(): boolean;
     size(): bigint;
     member(elem_0: Uint8Array): boolean;
     [Symbol.iterator](): Iterator<Uint8Array>
+  };
+  vetoNullifiers: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(elem_0: Uint8Array): boolean;
+    [Symbol.iterator](): Iterator<Uint8Array>
+  };
+  killed: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(elem_0: Uint8Array): boolean;
+    [Symbol.iterator](): Iterator<Uint8Array>
+  };
+  retiredIdentities: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(elem_0: Uint8Array): boolean;
+    [Symbol.iterator](): Iterator<Uint8Array>
+  };
+  succession: {
+    isFull(): boolean;
+    checkRoot(rt_0: { field: bigint }): boolean;
+    root(): __compactRuntime.MerkleTreeDigest;
+    firstFree(): bigint;
+    pathForLeaf(index_0: bigint, leaf_0: Uint8Array): __compactRuntime.MerkleTreePath<Uint8Array>;
+    findPathForLeaf(leaf_0: Uint8Array): __compactRuntime.MerkleTreePath<Uint8Array> | undefined;
+    history(): Iterator<__compactRuntime.MerkleTreeDigest>
   };
 }
 

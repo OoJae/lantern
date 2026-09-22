@@ -4,99 +4,279 @@ import CompactStandardLibrary;
 import "schnorr" prefix Schnorr_;
 
 // ---------------------------------------------------------------------------
-// PUBLIC LEDGER — every item here is hostile-readable. See SECURITY.md.
+// DOMAIN-SEPARATED PREIMAGES
+//
+// Two separate mechanisms, deliberately:
+//   1. an explicit domain string, and
+//   2. a DISTINCT Bytes<N> length per domain -- the length is part of the
+//      type alignment, so two preimages of different shape can never collide
+//      even before their content is considered.
+//
+// Struct FIELD NAMES contribute nothing to a commitment; only the shape does.
+// Exact-length Bytes<N> also keeps every preimage inside two SHA-256 blocks,
+// where pad(32, ...) would spill a third and cost ~2200 rows each.
 // ---------------------------------------------------------------------------
 
-// Guardian leaves are SALTED commitments. Unused slots are padded with random
-// commitments, never default<T>, which would leak the guardian count.
-export ledger guardians: HistoricMerkleTree<20, Bytes<32>>;
+struct IdPreimage      { domain: Bytes<13>; secret: Field; }
+struct VetoPreimage    { domain: Bytes<15>; secret: Field; }
+struct RidPreimage     { domain: Bytes<14>; idCommit: Bytes<32>; ephemeralPk: Bytes<32>; }
+struct SuccPreimage    { domain: Bytes<15>; prev: Bytes<32>; next: Bytes<32>; }
+struct LeafPreimage    { domain: Bytes<19>; secret: Bytes<32>; idCommit: Bytes<32>; }
+struct ApprovePreimage { domain: Bytes<18>; secret: Bytes<32>; idCommit: Bytes<32>; rid: Bytes<32>; }
+struct VetoNulPreimage { domain: Bytes<18>; secret: Field; rid: Bytes<32>; }
 
-// One-shot enforcement. Write-only on the hot path: no read-commitment contention.
-export ledger approvedNullifiers: Set<Bytes<32>>;
+// Written once by openRecovery and never mutated. Immutability is what makes
+// reading it free of read-commitment contention.
+struct RecoveryRecord {
+  idCommit: Bytes<32>;
+  ephemeralPk: Bytes<32>;
+  openedAtLo: Uint<64>;
+  openedAtHi: Uint<64>;
+}
 
-// Read-free increments, keyed per recovery rather than a shared hot cell.
-export ledger approvals: Map<Bytes<32>, Counter>;
+// ---------------------------------------------------------------------------
+// SHARED DERIVATIONS
+//
+// `export pure circuit` means the CLIENT calls this exact compiled code via
+// `pureCircuits`. Client/circuit drift is not mitigated here -- it is
+// impossible. Verified: exported pure circuits emit no proving key.
+// ---------------------------------------------------------------------------
 
-// idCommit -> commitment to the INDEPENDENT veto secret (never Shamir-shared).
-export ledger vetoCommits: Map<Bytes<32>, Bytes<32>>;
+export pure circuit idCommitOf(secret: Field, salt: Bytes<32>): Bytes<32> {
+  return persistentCommit<IdPreimage>(
+    IdPreimage { domain: pad(13, "lantern:id:v1"), secret: secret }, salt);
+}
+
+export pure circuit vetoCommitOf(secret: Field, salt: Bytes<32>): Bytes<32> {
+  return persistentCommit<VetoPreimage>(
+    VetoPreimage { domain: pad(15, "lantern:veto:v1"), secret: secret }, salt);
+}
+
+export pure circuit guardianLeafOf(secret: Bytes<32>, idCommit: Bytes<32>, salt: Bytes<32>): Bytes<32> {
+  return persistentCommit<LeafPreimage>(
+    LeafPreimage { domain: pad(19, "lantern:guardian:v1"), secret: secret, idCommit: idCommit }, salt);
+}
+
+// Binds the identity. Keying on ephemeralPk alone would let a stranger who
+// enrolled a throwaway identity inflate ANY victim's approval count.
+export pure circuit recoveryIdOf(idCommit: Bytes<32>, ephemeralPk: Bytes<32>): Bytes<32> {
+  return persistentHash<RidPreimage>(
+    RidPreimage { domain: pad(14, "lantern:rid:v1"), idCommit: idCommit, ephemeralPk: ephemeralPk });
+}
+
+export pure circuit approvalNullifierOf(secret: Bytes<32>, idCommit: Bytes<32>, rid: Bytes<32>): Bytes<32> {
+  return persistentHash<ApprovePreimage>(
+    ApprovePreimage { domain: pad(18, "lantern:approve:v1"), secret: secret, idCommit: idCommit, rid: rid });
+}
+
+export pure circuit vetoNullifierOf(secret: Field, rid: Bytes<32>): Bytes<32> {
+  return persistentHash<VetoNulPreimage>(
+    VetoNulPreimage { domain: pad(18, "lantern:vetonul:v1"), secret: secret, rid: rid });
+}
+
+export pure circuit successionEdgeOf(prev: Bytes<32>, next: Bytes<32>): Bytes<32> {
+  return persistentHash<SuccPreimage>(
+    SuccPreimage { domain: pad(15, "lantern:succ:v1"), prev: prev, next: next });
+}
+
+// Compact has no module-level const; the schnorr module declares its constants
+// inside circuits for the same reason.
+export pure circuit openSlackSeconds(): Uint<64> { return 600; }
+export pure circuit recoveryDelaySeconds(): Uint<64> { return 259200; } // 72h
+
+// ---------------------------------------------------------------------------
+// PUBLIC LEDGER -- every item here is hostile-readable. See SECURITY.md.
+// ---------------------------------------------------------------------------
 
 export ledger enrolled: Set<Bytes<32>>;
+export ledger thresholds: Map<Bytes<32>, Uint<8>>;
+export ledger vetoCommits: Map<Bytes<32>, Bytes<32>>;
+
+export ledger guardians: HistoricMerkleTree<20, Bytes<32>>;
+
+export ledger recoveries: Map<Bytes<32>, RecoveryRecord>;
+export ledger approvals: Map<Bytes<32>, Counter>;
+
+export ledger approvedNullifiers: Set<Bytes<32>>;
+export ledger vetoNullifiers: Set<Bytes<32>>;
+
+// A separate write-only Set rather than a `killed` field on RecoveryRecord:
+// mutating the record would be read-modify-write and would bind a
+// read-commitment on the whole record, making every finalize race every veto.
+export ledger killed: Set<Bytes<32>>;
+export ledger retiredIdentities: Set<Bytes<32>>;
+
+export ledger succession: HistoricMerkleTree<20, Bytes<32>>;
 
 constructor() {}
 
 // ---------------------------------------------------------------------------
-// PRIVATE WITNESSES — never leave the device.
+// PRIVATE WITNESSES -- never leave the device.
 // ---------------------------------------------------------------------------
 
 witness guardianSecret(): Bytes<32>;
 witness leafSalt(): Bytes<32>;
 witness guardianPath(): MerkleTreePath<20, Bytes<32>>;
 
+// Typed Field, not Bytes<32>: the Shamir domain and the commitment preimage
+// domain then become the SAME object. A 32-byte secret spans 256 bits while the
+// scalar field r is 255, so reduction would not be injective.
+witness identitySecret(): Field;
+witness idSalt(): Bytes<32>;
+
+// INDEPENDENT of identitySecret and never Shamir-shared.
+witness vetoSecret(): Field;
+witness vetoSalt(): Bytes<32>;
+
+// There is no readable clock in Compact; the prover claims one and the circuit
+// brackets it between two block-time predicates.
+witness claimedNow(): Uint<64>;
+
 // ---------------------------------------------------------------------------
 // ENROLMENT
 // ---------------------------------------------------------------------------
 
+// Authenticated by the commitment opening. Without this assert, anyone can
+// front-run an enrolment and bind THEIR vetoCommit to a victim's idCommit,
+// capturing the veto.
 export circuit enrollIdentity(
   idCommit: Bytes<32>,
-  vetoCommit: Bytes<32>
+  vetoCommit: Bytes<32>,
+  threshold: Uint<8>
 ): [] {
+  assert(idCommitOf(identitySecret(), idSalt()) == idCommit, "enroller does not hold the identity secret");
+  assert(disclose(threshold) >= 2, "threshold must be at least 2");
   assert(!enrolled.member(disclose(idCommit)), "identity already enrolled");
   enrolled.insert(disclose(idCommit));
+  thresholds.insert(disclose(idCommit), disclose(threshold));
   vetoCommits.insert(disclose(idCommit), disclose(vetoCommit));
 }
 
-// Adds one SALTED guardian leaf. The salt lives in the witness, so the leaf
-// preimage is unguessable and the tree is not enumerable offline.
-// Returns the leaf. It is inserted into a PUBLIC tree, so returning it
-// discloses nothing new -- and it lets the client locate its Merkle path later.
+// Also authenticated: otherwise a stranger unilaterally becomes a full quorum
+// for any identity by inserting their own leaves.
 export circuit addGuardian(idCommit: Bytes<32>): Bytes<32> {
-  const salt = leafSalt();
-  const secret = guardianSecret();
-  const leaf = persistentCommit<Vector<2, Bytes<32>>>(
-    [secret, idCommit],
-    salt
-  );
+  assert(idCommitOf(identitySecret(), idSalt()) == idCommit, "not the identity owner");
+  assert(enrolled.member(disclose(idCommit)), "identity not enrolled");
+  const leaf = guardianLeafOf(guardianSecret(), idCommit, leafSalt());
   guardians.insert(disclose(leaf));
   return disclose(leaf);
 }
 
 // ---------------------------------------------------------------------------
-// APPROVAL
+// RECOVERY
 // ---------------------------------------------------------------------------
 
-export circuit approveRecovery(
-  idCommit: Bytes<32>,
-  ephemeralPk: Bytes<32>
-): [] {
-  const salt = leafSalt();
+export circuit openRecovery(idCommit: Bytes<32>, ephemeralPk: Bytes<32>): Bytes<32> {
+  assert(enrolled.member(disclose(idCommit)), "identity not enrolled");
+  assert(!retiredIdentities.member(disclose(idCommit)), "identity retired");
+
+  const rid = recoveryIdOf(idCommit, ephemeralPk);
+  assert(!recoveries.member(disclose(rid)), "recovery already open");
+
+  // Bracket the claimed time and store BOTH bounds. A lying prover's best move
+  // is the honest one: adversarial choice can only LENGTHEN the lock.
+  const lo = claimedNow();
+  const hi = (lo + openSlackSeconds()) as Uint<64>;
+  assert(blockTimeGte(disclose(lo)), "claimed time is in the future");
+  assert(blockTimeLt(disclose(hi)), "claimed time is too far in the past");
+
+  recoveries.insert(disclose(rid), RecoveryRecord {
+    idCommit: disclose(idCommit),
+    ephemeralPk: disclose(ephemeralPk),
+    openedAtLo: disclose(lo),
+    openedAtHi: disclose(hi)
+  });
+  // Created exactly ONCE, here. approveRecovery only ever increments, so the
+  // hot path needs no conditional and binds no read-commitment.
+  approvals.insert(disclose(rid), default<Counter>);
+  return disclose(rid);
+}
+
+export circuit approveRecovery(idCommit: Bytes<32>, rid: Bytes<32>): [] {
+  assert(recoveries.member(disclose(rid)), "no such recovery");
+  const rec = recoveries.lookup(disclose(rid));
+  assert(rec.idCommit == idCommit, "recovery is not for this identity");
+  assert(!killed.member(disclose(rid)), "recovery vetoed");
+
   const secret = guardianSecret();
   const path = guardianPath();
 
   // Leaf-binding assert BEFORE checkRoot. Midnight's own PrivateVoting and
   // midnight-rwa examples omit this; without it any valid path is accepted.
-  const leaf = persistentCommit<Vector<2, Bytes<32>>>(
-    [secret, idCommit],
-    salt
-  );
-  assert(path.leaf == leaf, "path does not bind to this guardian leaf");
+  assert(path.leaf == guardianLeafOf(secret, idCommit, leafSalt()),
+         "path does not bind to this guardian leaf");
 
-  // HistoricMerkleTree accepts PAST roots, which is what makes concurrent
-  // approvals safe under read-commitment semantics.
-  // The root is witness-derived, so the disclosure is explicit and intentional:
-  // checkRoot reveals only WHICH historic root was used, never the path.
-  assert(
-    guardians.checkRoot(disclose(merkleTreePathRoot<20, Bytes<32>>(path))),
-    "guardian not in tree"
-  );
+  // HistoricMerkleTree accepts PAST roots, which keeps concurrent approvals
+  // valid. Disclosure reveals only WHICH historic root, never the path.
+  assert(guardians.checkRoot(disclose(merkleTreePathRoot<20, Bytes<32>>(path))),
+         "guardian not in tree");
 
-  // Nullifier binds to ephemeralPk, NOT to an epoch counter. A witnessed epoch
-  // would let ONE guardian mint t distinct nullifiers and satisfy any threshold
-  // single-handedly; reading an epoch counter would break the read-free claim.
-  const nul = persistentHash<Vector<3, Bytes<32>>>(
-    [secret, idCommit, ephemeralPk]
-  );
+  const nul = approvalNullifierOf(secret, idCommit, rid);
   assert(!approvedNullifiers.member(disclose(nul)), "guardian already approved");
   approvedNullifiers.insert(disclose(nul));
 
-  approvals.insert(disclose(ephemeralPk), default<Counter>);
+  approvals.lookup(disclose(rid)).increment(1);
+}
+
+// Owner-exclusive: gated on the INDEPENDENT veto secret, which no guardian
+// holds. A threshold of colluding guardians holds Shamir shares of
+// identitySecret and learns nothing about this one.
+export circuit vetoRecovery(rid: Bytes<32>): [] {
+  assert(recoveries.member(disclose(rid)), "no such recovery");
+  const rec = recoveries.lookup(disclose(rid));
+
+  const vs = vetoSecret();
+  assert(vetoCommits.lookup(disclose(rec.idCommit)) == vetoCommitOf(vs, vetoSalt()),
+         "veto secret does not open this identity's veto commitment");
+
+  // Binds to rid, so the owner can veto EVERY fraudulent recovery but cannot
+  // replay one veto onto the same recovery twice.
+  const vnul = vetoNullifierOf(vs, rid);
+  assert(!vetoNullifiers.member(disclose(vnul)), "veto already used for this recovery");
+  vetoNullifiers.insert(disclose(vnul));
+
+  assert(!killed.member(disclose(rid)), "recovery already killed");
+  killed.insert(disclose(rid));
+}
+
+// Proves the recovered secret is the RIGHT secret: it OPENS the original
+// commitment. Every other guardian scheme proves only that enough people clicked.
+export circuit finalizeRecovery(
+  rid: Bytes<32>,
+  newIdCommit: Bytes<32>,
+  newVetoCommit: Bytes<32>
+): [] {
+  assert(recoveries.member(disclose(rid)), "no such recovery");
+  const rec = recoveries.lookup(disclose(rid));
+  const idCommit = rec.idCommit;
+
+  assert(!killed.member(disclose(rid)), "recovery vetoed");
+  assert(!retiredIdentities.member(disclose(idCommit)), "identity already retired");
+
+  // Timelock against the PESSIMISTIC bound recorded at open.
+  assert(blockTimeGte((rec.openedAtHi + recoveryDelaySeconds()) as Uint<64>),
+         "timelock has not elapsed");
+
+  // Quorum by COMPARISON, never by reading the count out. `approvals` is
+  // increment-only, so the boolean is monotone: a committed `false` stays
+  // `false` as approvals grow, and a concurrent approval can never invalidate
+  // this proof -- where read() would bind an exact value that any approval breaks.
+  const t = thresholds.lookup(disclose(idCommit));
+  assert(!approvals.lookup(disclose(rid)).lessThan(t as Uint<64>), "not enough approvals");
+
+  // ---- THE CORE. Both operands are witness-derived and the comparison feeds
+  // an assert, not a ledger op, so this requires NO disclose() and reveals
+  // nothing -- not even one bit, since a failing assert produces no proof.
+  assert(idCommitOf(identitySecret(), idSalt()) == idCommit,
+         "reconstructed secret does not open idCommit");
+
+  // Retire and succeed ATOMICALLY. A two-transaction version would let anyone
+  // front-run enrolment on the now-public newIdCommit and capture its veto.
+  retiredIdentities.insert(disclose(idCommit));
+  succession.insert(disclose(successionEdgeOf(idCommit, newIdCommit)));
+
+  assert(!enrolled.member(disclose(newIdCommit)), "successor already enrolled");
+  enrolled.insert(disclose(newIdCommit));
+  thresholds.insert(disclose(newIdCommit), t);
+  vetoCommits.insert(disclose(newIdCommit), disclose(newVetoCommit));
 }
