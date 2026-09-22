@@ -1,0 +1,102 @@
+pragma language_version >= 0.22;
+
+import CompactStandardLibrary;
+import "schnorr" prefix Schnorr_;
+
+// ---------------------------------------------------------------------------
+// PUBLIC LEDGER — every item here is hostile-readable. See SECURITY.md.
+// ---------------------------------------------------------------------------
+
+// Guardian leaves are SALTED commitments. Unused slots are padded with random
+// commitments, never default<T>, which would leak the guardian count.
+export ledger guardians: HistoricMerkleTree<20, Bytes<32>>;
+
+// One-shot enforcement. Write-only on the hot path: no read-commitment contention.
+export ledger approvedNullifiers: Set<Bytes<32>>;
+
+// Read-free increments, keyed per recovery rather than a shared hot cell.
+export ledger approvals: Map<Bytes<32>, Counter>;
+
+// idCommit -> commitment to the INDEPENDENT veto secret (never Shamir-shared).
+export ledger vetoCommits: Map<Bytes<32>, Bytes<32>>;
+
+export ledger enrolled: Set<Bytes<32>>;
+
+constructor() {}
+
+// ---------------------------------------------------------------------------
+// PRIVATE WITNESSES — never leave the device.
+// ---------------------------------------------------------------------------
+
+witness guardianSecret(): Bytes<32>;
+witness leafSalt(): Bytes<32>;
+witness guardianPath(): MerkleTreePath<20, Bytes<32>>;
+
+// ---------------------------------------------------------------------------
+// ENROLMENT
+// ---------------------------------------------------------------------------
+
+export circuit enrollIdentity(
+  idCommit: Bytes<32>,
+  vetoCommit: Bytes<32>
+): [] {
+  assert(!enrolled.member(disclose(idCommit)), "identity already enrolled");
+  enrolled.insert(disclose(idCommit));
+  vetoCommits.insert(disclose(idCommit), disclose(vetoCommit));
+}
+
+// Adds one SALTED guardian leaf. The salt lives in the witness, so the leaf
+// preimage is unguessable and the tree is not enumerable offline.
+// Returns the leaf. It is inserted into a PUBLIC tree, so returning it
+// discloses nothing new -- and it lets the client locate its Merkle path later.
+export circuit addGuardian(idCommit: Bytes<32>): Bytes<32> {
+  const salt = leafSalt();
+  const secret = guardianSecret();
+  const leaf = persistentCommit<Vector<2, Bytes<32>>>(
+    [secret, idCommit],
+    salt
+  );
+  guardians.insert(disclose(leaf));
+  return disclose(leaf);
+}
+
+// ---------------------------------------------------------------------------
+// APPROVAL
+// ---------------------------------------------------------------------------
+
+export circuit approveRecovery(
+  idCommit: Bytes<32>,
+  ephemeralPk: Bytes<32>
+): [] {
+  const salt = leafSalt();
+  const secret = guardianSecret();
+  const path = guardianPath();
+
+  // Leaf-binding assert BEFORE checkRoot. Midnight's own PrivateVoting and
+  // midnight-rwa examples omit this; without it any valid path is accepted.
+  const leaf = persistentCommit<Vector<2, Bytes<32>>>(
+    [secret, idCommit],
+    salt
+  );
+  assert(path.leaf == leaf, "path does not bind to this guardian leaf");
+
+  // HistoricMerkleTree accepts PAST roots, which is what makes concurrent
+  // approvals safe under read-commitment semantics.
+  // The root is witness-derived, so the disclosure is explicit and intentional:
+  // checkRoot reveals only WHICH historic root was used, never the path.
+  assert(
+    guardians.checkRoot(disclose(merkleTreePathRoot<20, Bytes<32>>(path))),
+    "guardian not in tree"
+  );
+
+  // Nullifier binds to ephemeralPk, NOT to an epoch counter. A witnessed epoch
+  // would let ONE guardian mint t distinct nullifiers and satisfy any threshold
+  // single-handedly; reading an epoch counter would break the read-free claim.
+  const nul = persistentHash<Vector<3, Bytes<32>>>(
+    [secret, idCommit, ephemeralPk]
+  );
+  assert(!approvedNullifiers.member(disclose(nul)), "guardian already approved");
+  approvedNullifiers.insert(disclose(nul));
+
+  approvals.insert(disclose(ephemeralPk), default<Counter>);
+}

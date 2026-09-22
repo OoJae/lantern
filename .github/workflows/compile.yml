@@ -1,0 +1,33 @@
+# Proves judging step 1 -- "we clone your repository and compile it" -- on a
+# clean ubuntu-latest runner, before a judge ever clones.
+name: compile
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  compile:
+    name: compact 0.31.1
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: midnightntwrk/setup-compact-action@v1
+        with:
+          compact-version: '0.31.1'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compile contract
+        run: bash scripts/compile.sh
+
+      - name: Assert proving keys were generated
+        run: |
+          set -euo pipefail
+          for c in enrollIdentity addGuardian approveRecovery; do
+            test -s "contracts/managed/keys/${c}.prover"   || { echo "missing prover key: $c";   exit 1; }
+            test -s "contracts/managed/keys/${c}.verifier" || { echo "missing verifier key: $c"; exit 1; }
+          done
+          echo "all circuits produced prover + verifier keys"

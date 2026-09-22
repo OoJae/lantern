@@ -1,0 +1,10 @@
+node_modules/
+contracts/managed/
+*.tgz
+.DS_Store
+dist/
+.env
+.playwright-mcp/
+
+# Internal strategy notes — must never ship in a public submission repo
+buildplan.md

@@ -1,0 +1,24 @@
+{
+  "name": "lantern",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Private-state succession for Midnight: a hidden k-of-n guardian quorum authorises an identity rotation, and the chain proves the recovered secret is the right secret without anyone ever holding it.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "compile": "bash scripts/compile.sh",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "cost": "bash scripts/cost.sh"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "@midnight-ntwrk/ledger-v8": "8.1.0"
+  },
+  "devDependencies": {
+    "vitest": "4.1.11"
+  }
+}

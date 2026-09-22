@@ -1,0 +1,29 @@
+# Proves the contract's circuit logic -- including every assert rejection path
+# and the adversarial forged-witness cases -- with no Docker and no chain.
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: off-chain circuit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: midnightntwrk/setup-compact-action@v1
+        with:
+          compact-version: '0.31.1'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: npm ci || npm install --no-audit --no-fund
+      - run: bash scripts/compile.sh
+      - run: npm test
