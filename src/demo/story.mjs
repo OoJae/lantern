@@ -1,7 +1,7 @@
 // THE STORY. One script of beats, each step with its exact expected outcome.
 // Every executor runs this same script: the test suite, `npm run story`, the
 // browser demo and the local-chain runner. They differ only in what `x.call`
-// does -- an in-memory ledger, or a real proof and a real transaction.
+// does — an in-memory ledger, or a real proof and a real transaction.
 //
 // Runtime-free: the executor supplies the contract's pure circuits.
 //
@@ -34,7 +34,7 @@ export const BEATS = Object.freeze([
 
 /**
  * @param pure  the Lantern module's pureCircuits
- * @param rng   src/demo/rng.mjs -- seeded for tests, Web Crypto for demos
+ * @param rng   src/demo/rng.mjs — seeded for tests, Web Crypto for demos
  */
 export function createStory({ pure, rng }) {
   const hana = newIdentity(rng.field);
@@ -150,7 +150,7 @@ export function createStory({ pure, rng }) {
     // ---- 6 · refusals ----------------------------------------------------------
     call('6.1', 6, 'Minji', () => p.minji, 'approveRecovery', () => [w.id, w.rid],
       refuse('path does not bind to this guardian leaf'),
-      'Minji tries to approve Hana\'s recovery with her own guardian leaf. The leaf and its path are real -- for a different identity.'),
+      'Minji tries to approve Hana\'s recovery with her own guardian leaf. The leaf and its path are real — for a different identity.'),
     call('6.2', 6, 'Seo-yeon', () => p.seoyeon, 'approveRecovery', () => [w.id, w.rid],
       refuse('guardian already approved'),
       'Seo-yeon tries to approve a second time.'),
@@ -224,7 +224,7 @@ export function createStory({ pure, rng }) {
       refuse('not the current owner of this identity root'),
       'Jihoon tries the DApp again with the old secret.'),
     call('9.2', 9, 'Hana\'s new phone', () => p.phone, 'hostGatedAction', () => [w.id, w.newId, nonce()], ACCEPT,
-      'Hana\'s phone acts at the DApp. The DApp still stores the same single value -- her identity root -- and never had to change it.'),
+      'Hana\'s phone acts at the DApp. The DApp still stores the same single value — her identity root — and never had to change it.'),
 
     // ---- epilogue ------------------------------------------------------------------
     offchain('10.1', 10, 'Hana', 'Hana deals fresh shares of her new secret. The old shares rebuild a retired secret, so they are worthless.',
@@ -235,7 +235,7 @@ export function createStory({ pure, rng }) {
         return { detail: 'two new shares, off chain' };
       }),
     call('10.2', 10, 'Hana', phoneWithCard, 'rotateGuardianSet', () => [w.newId, rng.bytes32()], ACCEPT,
-      'With her new veto card she rotates the guardian set. Every old token is void -- Jihoon\'s included.'),
+      'With her new veto card she rotates the guardian set. Every old token is void — Jihoon\'s included.'),
     ...['seoyeon', 'mum'].map((g, i) =>
       call(`10.${i + 3}`, 10, 'Hana', () => ({ ...phoneWithCard(), guardianSecret: p[g].guardianSecret, leafSalt: p[g].leafSalt }),
         'addGuardian', () => [w.newId], ACCEPT, `She adds ${p[g].name} back, with a fresh token.`,
@@ -269,40 +269,61 @@ export function publicRecord(L) {
 
 const diff = (a, b) => Object.fromEntries(Object.keys(b).filter((k) => a[k] !== b[k]).map((k) => [k, b[k] - a[k]]));
 
-export async function runStory(story, x, { onStep = () => {} } = {}) {
-  const records = [];
-  for (const step of story.steps) {
-    const rec = { id: step.id, beat: step.beat, kind: step.kind, actor: step.actor, say: step.say };
-    if (step.kind === 'call') {
-      const ps = step.as();
-      const args = step.args();
-      rec.circuit = step.circuit;
-      rec.args = args.map(show);
-      rec.expect = step.expect.accept ? 'accepted' : `refused: ${step.expect.refuse}`;
-      const before = publicRecord(x.ledger());
-      try {
-        const result = await x.call(ps, step.circuit, args);
-        rec.outcome = 'accepted';
-        rec.result = show(result);
-        rec.publicChange = diff(before, publicRecord(x.ledger()));
-        if (x.scanLast) rec.scan = x.scanLast();
-        step.save?.(result);
-      } catch (e) {
-        rec.outcome = 'refused';
-        rec.message = messageOf(e);
-      }
-      rec.ok = step.expect.accept
-        ? rec.outcome === 'accepted'
-        : rec.outcome === 'refused' && rec.message.includes(step.expect.refuse);
-    } else if (step.kind === 'offchain') {
-      const out = (await step.run(x)) ?? {};
-      rec.detail = out.detail;
-      rec.ok = out.ok ?? true;
-    } else {
-      await x.advance(step.seconds);
-      rec.detail = duration(step.seconds);
-      rec.ok = true;
+/** Run one step against executor `x` and return its record. */
+export async function runStep(step, x) {
+  const rec = { id: step.id, beat: step.beat, kind: step.kind, actor: step.actor, say: step.say };
+  if (step.kind === 'call') {
+    const ps = step.as();
+    const args = step.args();
+    rec.circuit = step.circuit;
+    rec.args = args.map(show);
+    rec.expect = step.expect.accept ? 'accepted' : `refused: ${step.expect.refuse}`;
+    const before = publicRecord(x.ledger());
+    try {
+      const result = await x.call(ps, step.circuit, args);
+      rec.outcome = 'accepted';
+      rec.result = show(result);
+      rec.publicChange = diff(before, publicRecord(x.ledger()));
+      if (x.scanLast) rec.scan = x.scanLast();
+      step.save?.(result);
+    } catch (e) {
+      rec.outcome = 'refused';
+      rec.message = messageOf(e);
     }
+    rec.ok = step.expect.accept
+      ? rec.outcome === 'accepted'
+      : rec.outcome === 'refused' && rec.message.includes(step.expect.refuse);
+  } else if (step.kind === 'offchain') {
+    const out = (await step.run(x)) ?? {};
+    rec.detail = out.detail;
+    rec.ok = out.ok ?? true;
+  } else {
+    await x.advance(step.seconds);
+    rec.detail = duration(step.seconds);
+    rec.ok = true;
+  }
+  return rec;
+}
+
+/** Step through a story one step at a time (the browser's play button). */
+export function createRunner(story, x) {
+  let i = 0;
+  return {
+    get index() { return i; },
+    get done() { return i >= story.steps.length; },
+    peek() { return story.steps[i]; },
+    async next() {
+      if (i >= story.steps.length) throw new Error('the story is over');
+      return runStep(story.steps[i++], x);
+    },
+  };
+}
+
+export async function runStory(story, x, { onStep = () => {} } = {}) {
+  const runner = createRunner(story, x);
+  const records = [];
+  while (!runner.done) {
+    const rec = await runner.next();
     records.push(rec);
     await onStep(rec);
   }

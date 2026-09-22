@@ -17,7 +17,12 @@
     "attack": "node scripts/enumerate.mjs",
     "test:adversarial": "vitest run test/adversarial.test.js",
     "compile:shipped": "bash scripts/compile.sh --shipped-only",
-    "story": "node scripts/story.mjs"
+    "story": "node scripts/story.mjs",
+    "web:install": "npm ci --prefix web --no-audit --no-fund",
+    "web": "npm run dev --prefix web",
+    "web:build": "npm run build --prefix web",
+    "web:preview": "npm run preview --prefix web",
+    "web:e2e": "npm run build --prefix web && npm run e2e --prefix web"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0",

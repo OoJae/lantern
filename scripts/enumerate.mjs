@@ -11,9 +11,7 @@
 //
 // Exits non-zero if a vulnerable target is NOT fully broken, or if the shipped
 // contract IS. So this script is also a test.
-import { buildTargets } from '../src/attack/targets.mjs';
-import { runAttack } from '../src/attack/attack.mjs';
-import { leakReport } from '../src/attack/leaks.mjs';
+import { runEnumeration } from '../src/attack/run.mjs';
 import { ADDRESS_BOOK, TRUE_GUARDIANS } from '../src/attack/candidates.mjs';
 
 const args = new Set(process.argv.slice(2));
@@ -22,21 +20,7 @@ const color = !args.has('--no-color') && !args.has('--json') && !args.has('--mar
 const c = (code, s) => (color ? `\x1b[${code}m${s}\x1b[0m` : s);
 const bold = (s) => c('1', s), dim = (s) => c('2', s), red = (s) => c('31;1', s), green = (s) => c('32;1', s);
 
-const targets = buildTargets();
-const known = new Set();
-const results = targets.map((t) => {
-  const r = runAttack(t.view, { knownNames: [...known] });
-  for (const n of r.named) known.add(n);
-  const broken = r.named.size > 0;
-  return { t, r, broken, verdict: broken ? 'BROKEN' : 'HELD' };
-});
-
-// Invariants: 1/2a/2b fully named, 3 not named at all.
-const failures = results.filter(({ t, r }) =>
-  t.view.id === '3' ? r.named.size !== 0 : r.named.size !== t.truth.guardians);
-
-const shipped = results.find((x) => x.t.view.id === '3');
-const leaks = leakReport(shipped.t.view);
+const { results, failures, shipped, leaks } = runEnumeration();
 
 if (args.has('--json')) {
   console.log(JSON.stringify({

@@ -1,0 +1,30 @@
+# The browser demo: build it with the bundle checks, then drive it in Chromium at desktop and
+# phone widths -- the whole story, the attack page, the honesty claims and the network claim.
+name: web
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    name: build + e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # web/ resolves the runtime and the compiled contracts from the repo root.
+      - run: npm ci --no-audit --no-fund
+      - run: npm ci --prefix web --no-audit --no-fund
+      - run: npm run build --prefix web
+      - run: npx --prefix web playwright install --with-deps chromium
+      - run: npm run e2e --prefix web
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: web/test-results/
