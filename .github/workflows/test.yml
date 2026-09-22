@@ -9,24 +9,55 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
-    name: off-chain circuit tests
+  # Exactly what a judge does: clone, install, test. No Compact toolchain on
+  # the runner, so this passes only if the committed generated modules are
+  # complete on their own.
+  clean-clone:
+    name: clean clone · node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '24']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - run: npm ci --no-audit --no-fund
+
+      # One runtime instance, or StateValue objects from two copies of the
+      # WASM stop being interchangeable (the override in package.json).
+      - name: Assert a single onchain-runtime-v3
+        run: |
+          set -euo pipefail
+          n=$(npm ls @midnight-ntwrk/onchain-runtime-v3 --all --parseable | sort -u | wc -l)
+          test "$n" -eq 1 || { npm ls @midnight-ntwrk/onchain-runtime-v3 --all; exit 1; }
+
+      - run: npm test
+      # The adversarial demo is also an assertion: it exits non-zero if a
+      # vulnerable target is NOT fully broken, or if the shipped one IS.
+      - run: npm run attack -- --no-color
+
+  # The same suite against modules freshly compiled from source.
+  recompiled:
+    name: recompiled from source
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - uses: midnightntwrk/setup-compact-action@v1
         with:
           compact-version: '0.31.1'
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: npm ci || npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - run: bash scripts/compile.sh
       - run: npm test
-      # The adversarial demo is also an assertion: it exits non-zero if a
-      # vulnerable target is NOT fully broken, or if the shipped one IS.
       - run: npm run attack -- --no-color

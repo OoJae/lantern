@@ -20,7 +20,19 @@ contracts/managed-lantern-v0/contract/*.map
 .DS_Store
 dist/
 .env
+.env.*
 .playwright-mcp/
+.vercel/
+
+# web/ and devnet/ are standalone packages (own lockfiles). Their build output,
+# test reports, the devnet's rewritten 60-second-timelock build, and every
+# piece of wallet or chain state stay local.
+web/test-results/
+web/playwright-report/
+devnet/build/
+devnet/.state/
+devnet/logs/
+*.level/
 
 # Internal strategy notes — must never ship in a public submission repo
 buildplan.md
