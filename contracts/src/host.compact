@@ -1,0 +1,200 @@
+pragma language_version >= 0.22;
+
+// ---------------------------------------------------------------------------
+// LANTERN HOST — an INDEPENDENTLY DEPLOYED contract that gates on Lantern's
+// succession state without being able to call it.
+//
+// Cross-contract calls error at the ZKIR stage on 0.31.x and one contract
+// cannot read another's ledger, so a host that is not compiled into Lantern has
+// exactly one option: a relayed, committee-attested snapshot of who currently
+// owns what.
+//
+// READ THIS BEFORE TRUSTING IT. An append-only Merkle root proves MEMBERSHIP,
+// never NON-membership. "C is the CURRENT owner of R" is a negative claim, so
+// a host verifying a relayed root can accept a REVOKED owner for as long as the
+// staleness window allows. Lantern's in-contract gate (hostGatedAction) reads
+// retiredIdentities directly and is therefore STRICTLY MORE SOUND than this.
+// This exists because an independently deployed contract has no better option,
+// not because it is the better design. See SECURITY.md.
+// ---------------------------------------------------------------------------
+
+import CompactStandardLibrary;
+import "schnorr" prefix Schnorr_;
+
+struct CommitteeSlot { pkX: Field; pkY: Field; addedAtGen: Uint<32>; }
+struct OwnerPreimage { domain: Bytes<16>; root: Bytes<32>; current: Bytes<32>; }
+
+// --- committee, DELIBERATELY NOT `sealed` -----------------------------------
+// Every signature binds `gen`, so incrementing committeeGen atomically
+// invalidates every signature a compromised key has produced or could produce.
+// A sealed committee would make a leaked key permanent -- this project
+// refuting its own thesis in one keyword.
+export ledger committee: Map<Uint<8>, CommitteeSlot>;
+export ledger committeeGen: Counter;
+export ledger slotCount: Uint<8>;
+export ledger quorum: Uint<8>;
+export ledger lanternTag: Field;
+
+// --- per-epoch voting, mirroring Lantern's own open/approve/finalize ---------
+export ledger claimedRoot: Map<Uint<32>, Field>;
+export ledger attestVotes: Map<Uint<32>, Counter>;
+export ledger attestNullifiers: Set<Bytes<32>>;
+
+// --- sealed output the gate consumes ----------------------------------------
+export ledger attestedRoots: Map<Uint<32>, Field>;
+export ledger attestedAtHi: Map<Uint<32>, Uint<64>>;
+export ledger latestEpoch: Counter;
+
+export ledger gateActions: Counter;
+
+// The ownership snapshot, appendable by ANYONE. Its contents are not trusted --
+// the committee's job is to attest WHICH root correctly reflects Lantern's
+// public state, not to build the tree. A forged leaf is therefore useless
+// unless a quorum also signs the root containing it, and because the snapshot
+// is deterministically recomputable from Lantern's ledger by any observer,
+// such a signature is publicly falsifiable.
+export ledger snapshot: HistoricMerkleTree<20, Bytes<32>>;
+
+constructor(tag: Field, slots: Uint<8>, q: Uint<8>) {
+  lanternTag = disclose(tag);
+  slotCount = disclose(slots);
+  quorum = disclose(q);
+}
+
+witness claimedNow(): Uint<64>;
+witness snapshotPath(): MerkleTreePath<20, Bytes<32>>;
+
+export pure circuit attestSlackSeconds(): Uint<64> { return 600; }
+export pure circuit maxStalenessSeconds(): Uint<64> { return 86400; }
+
+// "lantern:attest:v1" and "lantern:rotate:v1" as Fields. Distinct domains, or a
+// rotation signature replays as an attestation.
+export pure circuit attestDomain(): Field {
+  return 0x6c616e7465726e3a6174746573743a7631 as Field;
+}
+
+// The snapshot leaf: one per live identity, deterministically recomputable
+// from Lantern's public ledger by anyone -- which is what makes a fraudulent
+// attestation publicly falsifiable.
+export pure circuit ownerLeafOf(root: Bytes<32>, current: Bytes<32>): Bytes<32> {
+  return upgradeFromTransient(transientHash<OwnerPreimage>(
+    OwnerPreimage { domain: pad(16, "lantern:owner:v1"), root: root, current: current }));
+}
+
+// Built from Fields directly. A persistentHash preimage here would cost
+// thousands of rows and buy nothing -- transientHash inside schnorrVerify is
+// Poseidon-family and effectively free.
+export pure circuit attestDigest(
+  tag: Field, gen: Uint<32>, epoch: Uint<32>, snapshotRoot: Field
+): Vector<4, Field> {
+  const packed = (gen as Field) * (4294967296 as Field) + (epoch as Field);
+  return [attestDomain(), tag, packed, snapshotRoot];
+}
+
+export pure circuit attestNulOf(gen: Uint<32>, epoch: Uint<32>, slot: Uint<8>): Bytes<32> {
+  return upgradeFromTransient(transientHash<Vector<3, Field>>(
+    [gen as Field, epoch as Field, slot as Field]));
+}
+
+// Permissionless: anyone may relay a (root, current) pair into the snapshot.
+export circuit appendSnapshotLeaf(root: Bytes<32>, current: Bytes<32>): Bytes<32> {
+  const leaf = ownerLeafOf(root, current);
+  snapshot.insert(disclose(leaf));
+  return disclose(leaf);
+}
+
+export circuit addCommitteeSlot(slot: Uint<8>, pkX: Field, pkY: Field): [] {
+  assert(disclose(slot) < slotCount, "slot out of range");
+  assert(!committee.member(disclose(slot)), "slot already filled");
+  committee.insert(disclose(slot), CommitteeSlot {
+    pkX: disclose(pkX), pkY: disclose(pkY),
+    addedAtGen: committeeGen.read() as Uint<32>
+  });
+}
+
+// Opens the epoch and pins the root, so attestVote never needs a conditional.
+export circuit openEpoch(epoch: Uint<32>, snapshotRoot: Field): [] {
+  assert(!attestedRoots.member(disclose(epoch)), "epoch already sealed");
+  assert(!claimedRoot.member(disclose(epoch)), "epoch already open");
+  claimedRoot.insert(disclose(epoch), disclose(snapshotRoot));
+  attestVotes.insert(disclose(epoch), default<Counter>);
+}
+
+// ONE signature. Constant cost at any quorum, any committee size.
+export circuit attestVote(
+  epoch: Uint<32>,
+  slot: Uint<8>,
+  pk: JubjubPoint,
+  sig: Schnorr_SchnorrSignature
+): [] {
+  assert(!attestedRoots.member(disclose(epoch)), "epoch already sealed");
+  assert(claimedRoot.member(disclose(epoch)), "epoch not open");
+  const root = claimedRoot.lookup(disclose(epoch));
+
+  const gen = committeeGen.read() as Uint<32>;
+  assert(disclose(slot) < slotCount, "slot out of range");
+  const c = committee.lookup(disclose(slot));
+  // Binding the supplied point to its slot by coordinate equality sidesteps
+  // the JubjubPoint-as-ledger-Map ICE. Two Field equalities, free.
+  assert(jubjubPointX(pk) == c.pkX && jubjubPointY(pk) == c.pkY,
+         "public key does not match this committee slot");
+
+  Schnorr_schnorrVerifyDigest(attestDigest(lanternTag, gen, epoch, root), sig, pk);
+
+  // One vote per slot per epoch per GENERATION.
+  const nul = attestNulOf(gen, epoch, disclose(slot));
+  assert(!attestNullifiers.member(disclose(nul)), "slot already voted this epoch");
+  attestNullifiers.insert(disclose(nul));
+
+  attestVotes.lookup(disclose(epoch)).increment(1);
+}
+
+export circuit sealEpoch(epoch: Uint<32>): [] {
+  assert(!attestedRoots.member(disclose(epoch)), "epoch already sealed");
+  assert(claimedRoot.member(disclose(epoch)), "epoch not open");
+  // Quorum by COMPARISON, never read(): the counter is increment-only, so the
+  // boolean is monotone and a concurrent vote cannot invalidate this proof.
+  assert(!attestVotes.lookup(disclose(epoch)).lessThan(quorum as Uint<64>),
+         "quorum not reached");
+
+  const lo = claimedNow();
+  const hi = (lo + attestSlackSeconds()) as Uint<64>;
+  assert(blockTimeGte(disclose(lo)), "claimed time is in the future");
+  assert(blockTimeLt(disclose(hi)), "claimed time is too far in the past");
+
+  attestedRoots.insert(disclose(epoch), claimedRoot.lookup(disclose(epoch)));
+  attestedAtHi.insert(disclose(epoch), disclose(hi));
+  latestEpoch.increment(1);
+}
+
+// Rotating the generation invalidates every signature the old committee could
+// ever produce, in one transaction, with no per-key revocation list.
+export circuit rotateCommittee(): [] {
+  committeeGen.increment(1);
+}
+
+// ---------------------------------------------------------------------------
+// THE GATE
+// ---------------------------------------------------------------------------
+export circuit requireCurrentOwnerAttested(
+  epoch: Uint<32>,
+  rootIdCommit: Bytes<32>,
+  currentIdCommit: Bytes<32>
+): [] {
+  assert(attestedRoots.member(disclose(epoch)), "epoch not attested");
+  // Latest-epoch-only. Accepting ANY attested epoch would let the holder of a
+  // revoked commitment replay an old snapshot forever -- the append-only
+  // membership problem reappearing one level up.
+  assert(!attestedRoots.member((disclose(epoch) + 1) as Uint<32>), "not the latest epoch");
+  assert(blockTimeLt((attestedAtHi.lookup(disclose(epoch)) + maxStalenessSeconds()) as Uint<64>),
+         "attestation is stale");
+
+  const path = snapshotPath();
+  // Leaf-binding assert BEFORE the root check, as everywhere else in this repo.
+  assert(path.leaf == ownerLeafOf(rootIdCommit, currentIdCommit),
+         "path does not bind to this ownership leaf");
+  assert(merkleTreePathRoot<20, Bytes<32>>(path).field == attestedRoots.lookup(disclose(epoch)),
+         "ownership leaf is not in the attested snapshot");
+
+  gateActions.increment(1);
+}

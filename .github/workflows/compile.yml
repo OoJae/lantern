@@ -32,6 +32,16 @@ jobs:
           done
           echo "all circuits produced prover + verifier keys"
 
+      - name: Assert the independently deployed host compiled
+        run: |
+          set -euo pipefail
+          for c in appendSnapshotLeaf addCommitteeSlot openEpoch attestVote \
+                   sealEpoch rotateCommittee requireCurrentOwnerAttested; do
+            test -s "contracts/managed-host/keys/${c}.prover"   || { echo "missing host prover key: $c";   exit 1; }
+            test -s "contracts/managed-host/keys/${c}.verifier" || { echo "missing host verifier key: $c"; exit 1; }
+          done
+          echo "host contract produced prover + verifier keys"
+
       - name: Assert pure circuits generate no proving key
         run: |
           set -euo pipefail

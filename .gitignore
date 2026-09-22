@@ -5,6 +5,9 @@ node_modules/
 contracts/managed/*
 !contracts/managed/contract/
 contracts/managed/contract/*.map
+contracts/managed-host/*
+!contracts/managed-host/contract/
+contracts/managed-host/contract/*.map
 *.tgz
 .DS_Store
 dist/
