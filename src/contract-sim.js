@@ -26,6 +26,8 @@ export function createContractSim({ rt, mod, witnesses, now = 1_700_000_000, cto
     setTime(t) { clock = t; syncBlock(); },
     advance(dt) { clock += dt; syncBlock(); },
     get ledger() { return mod.ledger(ctx.currentQueryContext.state); },
+    /** The raw contract state (a ChargedState), for tools that build transactions from it. */
+    get state() { return ctx.currentQueryContext.state; },
     get pure() { return mod.pureCircuits; },
     get lastProofData() { return lastProofData; },
     /** Run `circuit` with `ps` as the private state. Throws the circuit's own message on refusal. */

@@ -12,4 +12,6 @@ docker info >/dev/null 2>&1 || { echo "devnet: Docker is not running" >&2; exit 
 bash compile.sh
 echo "devnet: starting the local chain (node, indexer, proof server)…"
 docker compose -f compose.yml up -d --wait
+# `run.sh bench`: prove the SHIPPED finalizeRecovery (72 h lock) without submitting it.
+if [ "${1:-}" = "bench" ]; then shift; exec node src/bench.mjs "$@"; fi
 exec node src/main.mjs "$@"

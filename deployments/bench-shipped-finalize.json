@@ -1,0 +1,15 @@
+{
+  "what": "The SHIPPED finalizeRecovery (72 h timelock), proved on the local proof server. Prove-only: not submitted.",
+  "recordedAt": "2026-09-22T23:46:50.383Z",
+  "circuit": "finalizeRecovery",
+  "timelockSeconds": 259200,
+  "recoveryOpenedHoursAgo": 73,
+  "negativeControl": "the same finalize 71 h after the open was refused locally: timelock has not elapsed",
+  "executeAndBuildSeconds": 0.2,
+  "proveSeconds": [
+    0.9,
+    0.9,
+    0.8
+  ],
+  "verifierKeySha256": "f9baaa7dc6f4d73602e4d6a840132cc19b455b6025fffd46ccc343e853a2578d"
+}

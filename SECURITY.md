@@ -484,7 +484,10 @@ consequence.
     `npm run devnet:verify` shows `finalizeRecovery` is the only circuit whose verifier key
     differs from the shipped build. The lock still runs from the later of the two
     open-time bounds, so on the devnet a finalize waits about ten minutes, not one. The
-    shipped 72-hour `finalizeRecovery` has not been proved against a chain here.
+    shipped 72-hour `finalizeRecovery` is proved by `npm run devnet:bench`, prove-only,
+    with the shipped keys: 0.8–0.9 s, and the same finalize 71 hours after an open is
+    refused locally (`deployments/bench-shipped-finalize.json`). It is not submitted to
+    a chain: a recovery cannot be 72 hours old in a laptop session.
 
 11. **Three derivations rely on `transientHash`**: `lineageLeafOf`, `ephemeralPkOf`
    and `gateNullifierOf`. Its output is not guaranteed stable across toolchain

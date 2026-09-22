@@ -25,7 +25,8 @@
     "web:e2e": "npm run build --prefix web && npm run e2e --prefix web",
     "devnet": "bash devnet/run.sh",
     "devnet:verify": "node devnet/src/verify.mjs",
-    "devnet:down": "docker compose -f devnet/compose.yml down -v"
+    "devnet:down": "docker compose -f devnet/compose.yml down -v",
+    "devnet:bench": "bash devnet/run.sh bench"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0",
