@@ -1,16 +1,11 @@
 // Arithmetic in the BLS12-381 scalar field -- the field Compact's `Field` type
-// actually uses. Cross-checked against the runtime at load time, so a toolchain
-// curve change fails loudly instead of silently producing wrong shares.
+// actually uses. test/shamir.test.js checks R against every runtime copy the
+// repo ships with (root and devnet), so a toolchain curve change fails CI
+// loudly instead of silently producing wrong shares.
 //
-// Portable: Web Crypto via globalThis, so the same module runs in Node and in
-// the browser demo. test/portable.test.js keeps it that way.
-import { MAX_FIELD } from '@midnight-ntwrk/compact-runtime';
-
-export const R = BigInt(MAX_FIELD) + 1n;
-
-if (R !== 52435875175126190479447740508185965837690552500527637822603658699938581184513n) {
-  throw new Error(`unexpected scalar field modulus ${R}; Lantern's Shamir layer is calibrated to BLS12-381`);
-}
+// Imports nothing: portable to the browser, and free of any one runtime copy,
+// so the local-chain runner can use it alongside its own.
+export const R = 52435875175126190479447740508185965837690552500527637822603658699938581184513n;
 
 export const mod = (a) => ((a % R) + R) % R;
 export const add = (a, b) => mod(a + b);

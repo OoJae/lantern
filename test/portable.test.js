@@ -66,6 +66,18 @@ describe('portability of src/', () => {
     expect(hits).toEqual([]);
   });
 
+  it('only the bindings and the attack harness import the runtime or a compiled contract', () => {
+    // Everything else in src/ receives them by injection, so the local-chain
+    // runner can hand it a different runtime copy and the browser its own.
+    const ALLOWED = ['attack/sim.mjs', 'attack/targets.mjs', 'bindings/root.mjs'];
+    const importers = sourceFiles(SRC)
+      .filter((f) => codeLines(readFileSync(f, 'utf8'))
+        .some(({ line }) => /from\s+['"](@midnight-ntwrk\/|[^'"]*contracts\/managed)/.test(line)))
+      .map((f) => f.slice(SRC.length))
+      .sort();
+    expect(importers).toEqual(ALLOWED);
+  });
+
   it('guardianIdOf is byte-identical to node:crypto for every address-book name', () => {
     expect(ADDRESS_BOOK).toHaveLength(64);
     for (const name of ADDRESS_BOOK) {

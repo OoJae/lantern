@@ -16,7 +16,8 @@
     "test:concurrent": "vitest run test/concurrency.test.js",
     "attack": "node scripts/enumerate.mjs",
     "test:adversarial": "vitest run test/adversarial.test.js",
-    "compile:shipped": "bash scripts/compile.sh --shipped-only"
+    "compile:shipped": "bash scripts/compile.sh --shipped-only",
+    "story": "node scripts/story.mjs"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0",

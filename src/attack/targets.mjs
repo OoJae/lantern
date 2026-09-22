@@ -9,6 +9,7 @@ import * as PublicGuardians from '../../contracts/managed-public-guardians/contr
 import * as LanternV0 from '../../contracts/managed-lantern-v0/contract/index.js';
 import * as Lantern from '../../contracts/managed/contract/index.js';
 import { Sim } from './sim.mjs';
+import { observerView } from './view.mjs';
 import { TRUE_GUARDIANS, guardianIdOf } from './candidates.mjs';
 import { randomFieldElement } from '../field.js';
 
@@ -19,12 +20,8 @@ export const SLOTS = 8;                                    // 2b's slot range
 const slotBytes = (i) => { const b = new Uint8Array(32); b[31] = i; return b; };
 const rand32 = () => globalThis.crypto.getRandomValues(new Uint8Array(32));
 
-const view = (id, label, scheme, publicParams, sim) => Object.freeze({
-  id, label, scheme,
-  publicParams: Object.freeze(publicParams),
-  ledger: sim.ledger,
-  pureCircuits: sim.mod.pureCircuits,
-});
+const view = (id, label, scheme, publicParams, sim) =>
+  observerView(id, label, scheme, publicParams, sim.ledger, sim.mod.pureCircuits);
 
 // --- 1 · the transparent baseline ------------------------------------------
 function buildPublicGuardians() {

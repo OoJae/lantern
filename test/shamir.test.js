@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { MAX_FIELD } from '@midnight-ntwrk/compact-runtime';
 import { split, reconstruct } from '../src/shamir.js';
 import { idSaltOf, recoverFromShares } from '../src/identity.js';
 import { R, randomFieldElement, inv, mul, add, mod } from '../src/field.js';
@@ -6,7 +7,8 @@ import { LanternSim, pureCircuits, bytes32, fieldOf } from './simulator.js';
 import { asGuardian, EPH_A, ephSkFor, DELAY, SLACK } from './fixtures.js';
 
 describe('field', () => {
-  it('is the BLS12-381 scalar field', () => {
+  it('is the BLS12-381 scalar field, exactly as the runtime defines it', () => {
+    expect(R).toBe(BigInt(MAX_FIELD) + 1n);
     expect(R).toBe(52435875175126190479447740508185965837690552500527637822603658699938581184513n);
     expect(R.toString(2).length).toBe(255);
   });
