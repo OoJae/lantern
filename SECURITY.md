@@ -42,6 +42,7 @@ secret. Here is exactly what that is worth.
 | Guardians survive a recovery, so an identity can be recovered again | **Held** | stable `idRoot`; leaves bind a guardian context, not the rotating commitment |
 | A downstream contract keeps working across a key loss | **Held, in-contract** | `hostGatedAction` reads `retiredIdentities` directly |
 | An *independently deployed* contract keeps working | **Not yet held** | `requireCurrentOwnerAttested` checks that a pair is in the signed snapshot, not who is calling. The fix is scheduled; until then it is a membership predicate, not an authorisation. §4.4 |
+| The rules of a deployed instance cannot change | **Held on the recorded local deployment** — not a property of the source | the run that deployed it replaced its maintenance authority with an empty committee; `npm run devnet:verify` re-checks that, and that every on-chain verifier key matches a fresh compile (`deployments/local-devnet.json`). Any other deployer can keep the key: check before you trust an instance |
 | Nothing trusts the fee payer | **Held** | no circuit uses the caller's coin key or any token operation; every check is a commitment opening or a signature. `test/authentication.test.js` |
 | Guardian *count* and *threshold* stay private | **Not held** | `thresholds` is public; `n` is recoverable from transaction history |
 | t colluding guardians cannot take the identity | **Not held.** Nothing here claims otherwise. Until your recovery finalizes they can also act as you | §4.3 |
@@ -422,10 +423,10 @@ consequence.
    the veto moot. Whoever can influence ordering in the final block can favour
    either side — though the real boundary is the 72-hour window, not the block.
 
-8. **Rotating the guardian set needs the veto card.** This is what stops anyone
-   holding a stolen identity secret from evicting your guardians (§4.5). The cost:
-   an owner who has lost the veto card cannot rotate until a recovery issues a new
-   one. A recovery can: `finalizeRecovery` installs a fresh veto commitment.
+8. **Rotating the guardian set, or adding a guardian, needs the veto card.** This
+   is what stops anyone holding a stolen identity secret from evicting your
+   guardians or minting their own (§4.5). The cost: an owner who has lost the veto
+   card can do neither until a recovery issues a new one. A recovery can: `finalizeRecovery` installs a fresh veto commitment.
 
 9. **Guardian tokens outlive the recovery that follows them.** Leaves bind the
    identity *root's* guardian context, which a recovery deliberately keeps. So
@@ -433,14 +434,23 @@ consequence.
    still count for the successor. Rotate the guardian set after any recovery that
    followed a compromise.
 
-10. **Three derivations rely on `transientHash`**: `lineageLeafOf`, `ephemeralPkOf`
+10. **The local-chain runs use a flavour with a 60-second timelock.** A 72-hour lock
+    cannot be waited out on a laptop, so `npm run devnet` compiles
+    `contracts/src/lantern.compact` with exactly one line changed
+    (`devnet/flavour.mjs`; `test/devnet.test.js` fails if any other line differs), and
+    `npm run devnet:verify` shows `finalizeRecovery` is the only circuit whose verifier key
+    differs from the shipped build. The lock still runs from the later of the two
+    open-time bounds, so on the devnet a finalize waits about ten minutes, not one. The
+    shipped 72-hour `finalizeRecovery` has not been proved against a chain here.
+
+11. **Three derivations rely on `transientHash`**: `lineageLeafOf`, `ephemeralPkOf`
    and `gateNullifierOf`. Its output is not guaranteed stable across toolchain
    upgrades. Every Merkle root in the contract already depends on it —
    `merkleTreePathRoot` uses it for all 20 levels — so this adds no exposure
    that was not already there, but in-flight recoveries would not survive such an
    upgrade.
 
-11. **The trees are global and finite.** `guardians`, `lineage` and the host's
+12. **The trees are global and finite.** `guardians`, `lineage` and the host's
    `snapshot` are depth-20: 1,048,576 leaves each, shared by every identity, and
    enrolment is permissionless. Exhausting one costs one transaction per leaf.
 

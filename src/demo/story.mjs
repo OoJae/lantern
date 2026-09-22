@@ -52,7 +52,9 @@ export function createStory({ pure, rng }) {
     minji: { name: 'Minji', identitySecret: minji.identitySecret, idSalt: minji.idSalt,
       vetoSecret: minji.vetoSecret, vetoSalt: minji.vetoSalt,
       guardianSecret: rng.bytes32(), leafSalt: rng.bytes32(), leaf: null },
-    phone: { name: 'Hana\'s new phone', ephemeralSk: rng.bytes32(), shares: [] },
+    // The phone that recovers an identity has lost everything, including any wallet: it holds
+    // no NIGHT and no DUST. On a chain, a sponsor pays its fees.
+    phone: { name: 'Hana\'s new phone', ephemeralSk: rng.bytes32(), shares: [], wallet: 'none' },
     rogue: null, // Jihoon, once he holds Mum's share
     sponsor: { name: 'the fee sponsor', ephemeralSk: rng.bytes32() },
   };
@@ -87,7 +89,9 @@ export function createStory({ pure, rng }) {
   const call = (id, beat, actor, as, circuit, args, expect, say, save) =>
     ({ id, beat, kind: 'call', actor, as, circuit, args, expect, say, save });
   const offchain = (id, beat, actor, say, run) => ({ id, beat, kind: 'offchain', actor, say, run });
-  const clock = (id, beat, seconds, say) => ({ id, beat, kind: 'clock', actor: 'time', seconds, say });
+  // `until` names what the wait is FOR, so an executor on a real chain can wait exactly that long:
+  // the timelock ends DELAY after the later of the two open-time bounds.
+  const clock = (id, beat, seconds, say, until) => ({ id, beat, kind: 'clock', actor: 'time', seconds, say, until });
 
   const steps = [
     // ---- 0 · thirty days earlier -------------------------------------------
@@ -124,7 +128,7 @@ export function createStory({ pure, rng }) {
     // ---- 3 · a new phone -------------------------------------------------------
     offchain('3.1', 3, 'Hana\'s new phone', 'The new phone makes a one-time device key. Its fingerprint is what the guardians will check.',
       () => ({ detail: `device fingerprint ${fingerprint(w.phonePk)}` })),
-    call('3.2', 3, 'Seo-yeon', () => ({ name: 'Seo-yeon' }), 'openRecovery', () => [w.id, w.phonePk], ACCEPT,
+    call('3.2', 3, 'Seo-yeon', () => ({ name: 'Seo-yeon', wallet: 'seo-yeon' }), 'openRecovery', () => [w.id, w.phonePk], ACCEPT,
       'Seo-yeon opens a recovery of Hana\'s identity, for that device key. Opening needs no secret; the new phone has none to offer.',
       (res) => { w.rid = res; }),
 
@@ -138,9 +142,9 @@ export function createStory({ pure, rng }) {
 
     // ---- 5 · the attacker ----------------------------------------------------
     offchain('5.1', 5, 'an attacker', 'An attacker reads the whole public ledger and tries every derivation it knows against Hana\'s guardian tree, starting from her real guardians\' names.',
-      (x) => {
+      async (x) => {
         const view = observerView('3', 'this ledger', 'commit(secret‖ctx, salt)',
-          { idCommit: w.id, idRoot: w.id, rids: [w.rid] }, x.ledger(), x.pure);
+          { idCommit: w.id, idRoot: w.id, rids: [w.rid] }, await x.ledger(), x.pure);
         const r = runAttack(view, { knownNames: Object.values(BOOK_NAME) });
         w.attack = { named: r.named.size, probes: r.probes, votes: r.votes };
         return { ok: r.named.size === 0 && r.votes === 0,
@@ -199,7 +203,8 @@ export function createStory({ pure, rng }) {
     call('8.2', 8, 'Hana\'s new phone', () => p.phone, 'finalizeRecovery', () => [w.rid, w.successorCommits.id, w.successorCommits.veto],
       refuse('timelock has not elapsed'),
       'Finalize now?'),
-    clock('8.3', 8, DELAY + SLACK + 10, `Wait out the timelock: ${duration(DELAY + SLACK + 10)}.`),
+    clock('8.3', 8, DELAY + SLACK + 10, `Wait out the timelock: ${duration(DELAY + SLACK + 10)}.`,
+      (L) => Number(L.recoveries.lookup(w.rid).openedAtHi) + DELAY + 5),
     call('8.4', 8, 'Hana\'s new phone', () => ({ ...p.phone, ...recoverFromShares([p.seoyeon.share, forged(p.mum.share, rng)]) }),
       'finalizeRecovery', () => [w.rid, w.successorCommits.id, w.successorCommits.veto],
       refuse('reconstructed secret does not open idCommit'),
@@ -249,11 +254,14 @@ export function createStory({ pure, rng }) {
 // THE RUNNER, shared by every executor.
 //
 // An executor provides:
-//   pure                      the contract's pure circuits
-//   ledger()                  the current public ledger view
-//   call(ps, circuit, args)   run a circuit as a persona; throw on refusal
-//   advance(seconds)          move time forward
-//   scanLast()                optional: a leak scan of the last accepted call
+//   pure                          the contract's pure circuits
+//   ledger()                      the current public ledger view (may be async)
+//   call(ps, circuit, args, rec)  run a circuit as a persona; throw on refusal. It may
+//                                 annotate `rec` (a chain executor adds tx ids and timings)
+//   advance(seconds, until)       move time forward; `until` is the block time the story
+//                                 actually needs, for executors that cannot skip time.
+//                                 May return a description of what it did
+//   scanLast()                    optional: a leak scan of the last accepted call
 // ---------------------------------------------------------------------------
 
 /** Counts of every public collection: what an accepted call visibly changed. */
@@ -278,12 +286,12 @@ export async function runStep(step, x) {
     rec.circuit = step.circuit;
     rec.args = args.map(show);
     rec.expect = step.expect.accept ? 'accepted' : `refused: ${step.expect.refuse}`;
-    const before = publicRecord(x.ledger());
+    const before = publicRecord(await x.ledger());
     try {
-      const result = await x.call(ps, step.circuit, args);
+      const result = await x.call(ps, step.circuit, args, rec);
       rec.outcome = 'accepted';
       rec.result = show(result);
-      rec.publicChange = diff(before, publicRecord(x.ledger()));
+      rec.publicChange = diff(before, publicRecord(await x.ledger()));
       if (x.scanLast) rec.scan = x.scanLast();
       step.save?.(result);
     } catch (e) {
@@ -298,8 +306,8 @@ export async function runStep(step, x) {
     rec.detail = out.detail;
     rec.ok = out.ok ?? true;
   } else {
-    await x.advance(step.seconds);
-    rec.detail = duration(step.seconds);
+    const until = step.until ? step.until(await x.ledger()) : undefined;
+    rec.detail = (await x.advance(step.seconds, until)) ?? duration(step.seconds);
     rec.ok = true;
   }
   return rec;
