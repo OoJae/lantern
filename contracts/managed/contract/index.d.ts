@@ -49,6 +49,10 @@ export type ImpureCircuits<PS> = {
   proveHeadOwnership(context: __compactRuntime.CircuitContext<PS>,
                      idRoot_0: Uint8Array,
                      head_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  hostGatedAction(context: __compactRuntime.CircuitContext<PS>,
+                  rootIdCommit_0: Uint8Array,
+                  currentIdCommit_0: Uint8Array,
+                  nonce_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type ProvableCircuits<PS> = {
@@ -78,6 +82,10 @@ export type ProvableCircuits<PS> = {
   proveHeadOwnership(context: __compactRuntime.CircuitContext<PS>,
                      idRoot_0: Uint8Array,
                      head_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  hostGatedAction(context: __compactRuntime.CircuitContext<PS>,
+                  rootIdCommit_0: Uint8Array,
+                  currentIdCommit_0: Uint8Array,
+                  nonce_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type PureCircuits = {
@@ -92,6 +100,7 @@ export type PureCircuits = {
   lineageLeafOf(idRoot_0: Uint8Array, member_0: Uint8Array): Uint8Array;
   openSlackSeconds(): bigint;
   recoveryDelaySeconds(): bigint;
+  gateNullifierOf(secret_0: bigint, nonce_0: Uint8Array): Uint8Array;
 }
 
 export type Circuits<PS> = {
@@ -146,6 +155,13 @@ export type Circuits<PS> = {
   proveHeadOwnership(context: __compactRuntime.CircuitContext<PS>,
                      idRoot_0: Uint8Array,
                      head_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  gateNullifierOf(context: __compactRuntime.CircuitContext<PS>,
+                  secret_0: bigint,
+                  nonce_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  hostGatedAction(context: __compactRuntime.CircuitContext<PS>,
+                  rootIdCommit_0: Uint8Array,
+                  currentIdCommit_0: Uint8Array,
+                  nonce_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type Ledger = {
@@ -253,6 +269,13 @@ export type Ledger = {
     pathForLeaf(index_0: bigint, leaf_0: Uint8Array): __compactRuntime.MerkleTreePath<Uint8Array>;
     findPathForLeaf(leaf_0: Uint8Array): __compactRuntime.MerkleTreePath<Uint8Array> | undefined;
     history(): Iterator<__compactRuntime.MerkleTreeDigest>
+  };
+  readonly gateActions: bigint;
+  gateNullifiers: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(elem_0: Uint8Array): boolean;
+    [Symbol.iterator](): Iterator<Uint8Array>
   };
 }
 

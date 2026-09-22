@@ -2,6 +2,7 @@ pragma language_version >= 0.22;
 
 import CompactStandardLibrary;
 import "schnorr" prefix Schnorr_;
+import "ownergate" prefix Gate_;
 
 // ---------------------------------------------------------------------------
 // DOMAIN-SEPARATED PREIMAGES
@@ -21,6 +22,7 @@ struct IdPreimage      { domain: Bytes<13>; secret: Field; }
 struct VetoPreimage    { domain: Bytes<15>; secret: Field; }
 struct RidPreimage     { domain: Bytes<14>; idCommit: Bytes<32>; ephemeralPk: Bytes<32>; }
 struct LinPreimage     { domain: Bytes<18>; idRoot: Bytes<32>; member: Bytes<32>; }
+struct GatePreimage    { domain: Bytes<15>; secret: Field; nonce: Bytes<32>; }
 struct LeafPreimage    { domain: Bytes<19>; secret: Bytes<32>; ctx: Bytes<32>; }
 struct ApprovePreimage { domain: Bytes<18>; secret: Bytes<32>; idCommit: Bytes<32>; rid: Bytes<32>; }
 struct VetoNulPreimage { domain: Bytes<18>; secret: Field; rid: Bytes<32>; }
@@ -138,6 +140,10 @@ export ledger retiredIdentities: Set<Bytes<32>>;
 // Descent records: (idRoot, member) for every identity in a lineage. A host
 // that has never met you can still verify you descend from a root it gates on.
 export ledger lineage: HistoricMerkleTree<20, Bytes<32>>;
+
+// Reference host state: a downstream DApp gating on "the current owner of R".
+export ledger gateActions: Counter;
+export ledger gateNullifiers: Set<Bytes<32>>;
 
 constructor() {}
 
@@ -392,4 +398,49 @@ export circuit proveSuccession(idRoot: Bytes<32>, head: Bytes<32>): [] {
 export circuit proveHeadOwnership(idRoot: Bytes<32>, head: Bytes<32>): [] {
   assert(idCommitOf(identitySecret(), idSalt()) == head, "not the head owner");
   proveSuccession(idRoot, head);
+}
+
+// ---------------------------------------------------------------------------
+// REFERENCE HOST GATE
+//
+// The downstream claim, in full: "the caller holds the secret behind a
+// commitment that is enrolled, NOT retired, and descends from identity root R."
+//
+// This is the thesis made executable. A host stores ONE value -- the identity
+// root -- and keeps working across every rotation, because it gates on the
+// current owner of that root rather than on a key that dies with a device.
+// ---------------------------------------------------------------------------
+
+export pure circuit gateNullifierOf(secret: Field, nonce: Bytes<32>): Bytes<32> {
+  return upgradeFromTransient(transientHash<GatePreimage>(
+    GatePreimage { domain: pad(15, "lantern:gate:v1"), secret: secret, nonce: nonce }));
+}
+
+export circuit hostGatedAction(
+  rootIdCommit: Bytes<32>,
+  currentIdCommit: Bytes<32>,
+  nonce: Bytes<32>
+): [] {
+  const path = lineagePath();
+  assert(path.leaf == lineageLeafOf(rootIdCommit, currentIdCommit),
+         "path does not bind to this lineage leaf");
+  const descends =
+    lineage.checkRoot(disclose(merkleTreePathRoot<20, Bytes<32>>(path)));
+
+  // The predicate lives in the shared module, so a second contract adopting
+  // Lantern cannot drift from this rule.
+  assert(Gate_ownershipHolds(
+           enrolled.member(disclose(currentIdCommit)),
+           retiredIdentities.member(disclose(currentIdCommit)),
+           descends),
+         "not the current owner of this identity root");
+
+  // And the caller must actually BE that owner.
+  assert(idCommitOf(identitySecret(), idSalt()) == currentIdCommit,
+         "caller does not hold the current identity secret");
+
+  const nul = gateNullifierOf(identitySecret(), nonce);
+  assert(!gateNullifiers.member(disclose(nul)), "action already performed");
+  gateNullifiers.insert(disclose(nul));
+  gateActions.increment(1);
 }

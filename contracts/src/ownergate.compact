@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// The Lantern ownership predicate, as an importable module.
+//
+// A host adopts Lantern's succession semantics with one import and one call,
+// rather than by copying three asserts and hoping they stay in step. The
+// module is deliberately STATELESS: a Compact module cannot reach a contract's
+// ledger, so the host supplies the three ledger facts and the module owns the
+// rule. That is what makes two independently written contracts provably agree
+// on what "current owner" means.
+//
+// The third fact is the one that cannot be obtained from an attested Merkle
+// root. Descent is a membership claim; "not retired" is a NON-membership claim,
+// and an append-only tree cannot express it. A host that reads `isRetired`
+// directly from Lantern's ledger is therefore strictly more sound than one
+// verifying a relayed snapshot root. See SECURITY.md.
+module ownergate {
+  import CompactStandardLibrary;
+
+  export struct OwnershipClaim {
+    rootIdCommit: Bytes<32>;
+    currentIdCommit: Bytes<32>;
+  }
+
+  export pure circuit ownershipHolds(
+    isEnrolled: Boolean,
+    isRetired: Boolean,
+    descendsFromRoot: Boolean
+  ): Boolean {
+    return isEnrolled && !isRetired && descendsFromRoot;
+  }
+}

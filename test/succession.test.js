@@ -221,3 +221,66 @@ describe('proveHeadOwnership', () => {
     for (const s of sibs) if (s.length > 8) expect(blob).not.toContain(s);
   });
 });
+
+// ---------------------------------------------------------------------------
+// THE THESIS, AS FOUR ASSERTIONS.
+//
+// "Downstream contracts keep working because they gate on the current owner of
+// an identity root rather than on a raw key." A host stores ONE value and
+// survives a key loss that would otherwise have ended the relationship.
+// ---------------------------------------------------------------------------
+describe('reference host gate: a DApp survives its user losing their key', () => {
+  const path = (sim, root, head) => {
+    sim.ps.lineagePath = sim.ledger.lineage.findPathForLeaf(
+      pureCircuits.lineageLeafOf(root, head));
+  };
+
+  it('1-4: the old key dies at the DApp, the new key inherits the relationship', () => {
+    const { sim, id, idRoot, guardians } = world();
+
+    // (1) The user acts at the downstream DApp. Nothing surprising.
+    path(sim, idRoot, id);
+    sim.call('hostGatedAction', idRoot, id, bytes32(1));
+    expect(sim.ledger.gateActions).toBe(1n);
+
+    // (2) The laptop is gone. Guardians recover; the identity rotates to C1.
+    const g1 = succeed(sim, id, guardians, 1);
+
+    // (3) The OLD key is now dead at the DApp -- enforced by the chain, not by
+    //     the DApp having been told anything.
+    path(sim, idRoot, id);
+    sim.ps.identitySecret = ID_SECRET; sim.ps.idSalt = ID_SALT;
+    expect(() => sim.call('hostGatedAction', idRoot, id, bytes32(2)))
+      .toThrow(/not the current owner/);
+
+    // (4) The successor inherits the relationship. Same root, new key.
+    sim.ps.identitySecret = g1.secret; sim.ps.idSalt = g1.salt;
+    path(sim, idRoot, g1.newId);
+    sim.call('hostGatedAction', idRoot, g1.newId, bytes32(3));
+    expect(sim.ledger.gateActions).toBe(2n);
+  });
+
+  it('is one-shot per (owner, nonce)', () => {
+    const { sim, id, idRoot } = world();
+    path(sim, idRoot, id);
+    sim.call('hostGatedAction', idRoot, id, bytes32(9));
+    path(sim, idRoot, id);
+    expect(() => sim.call('hostGatedAction', idRoot, id, bytes32(9)))
+      .toThrow(/already performed/);
+  });
+
+  it('rejects a descendant of a DIFFERENT root', () => {
+    const { sim, id, idRoot } = world();
+    path(sim, idRoot, id);
+    expect(() => sim.call('hostGatedAction', bytes32(4242), id, bytes32(4)))
+      .toThrow(/does not bind/);
+  });
+
+  it('rejects someone who descends but does not hold the secret', () => {
+    const { sim, id, idRoot } = world();
+    path(sim, idRoot, id);
+    sim.ps.identitySecret = fieldOf(5555);
+    expect(() => sim.call('hostGatedAction', idRoot, id, bytes32(5)))
+      .toThrow(/does not hold the current identity secret/);
+  });
+});
