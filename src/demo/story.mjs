@@ -230,6 +230,14 @@ export function createStory({ pure, rng }) {
       'Jihoon tries the DApp again with the old secret.'),
     call('9.2', 9, 'Hana\'s new phone', () => p.phone, 'hostGatedAction', () => [w.id, w.newId, nonce()], ACCEPT,
       'Hana\'s phone acts at the DApp. The DApp still stores the same single value — her identity root — and never had to change it.'),
+    call('9.3', 9, 'anyone', () => ({ name: 'anyone', lineage: { root: w.id, member: w.newId } }), 'proveSuccession',
+      () => [w.id, w.newId], ACCEPT,
+      'Anyone can prove the new commitment is the current head of Hana\'s root: descent is one Merkle membership proof, headship one non-membership check.'),
+    call('9.4', 9, 'anyone', () => ({ name: 'anyone', lineage: { root: w.id, member: w.id } }), 'proveSuccession',
+      () => [w.id, w.id], refuse('head has been superseded'),
+      'The same proof for the old commitment: it still descends from the root, but it is no longer the head.'),
+    call('9.5', 9, 'Hana\'s new phone', () => p.phone, 'proveHeadOwnership', () => [w.id, w.newId], ACCEPT,
+      'And the phone proves it holds the head\'s secret, without revealing it.'),
 
     // ---- epilogue ------------------------------------------------------------------
     offchain('10.1', 10, 'Hana', 'Hana deals fresh shares of her new secret. The old shares rebuild a retired secret, so they are worthless.',

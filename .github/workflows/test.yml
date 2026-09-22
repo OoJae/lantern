@@ -40,6 +40,10 @@ jobs:
       # The adversarial demo is also an assertion: it exits non-zero if a
       # vulnerable target is NOT fully broken, or if the shipped one IS.
       - run: npm run attack -- --no-color
+      # The whole story, as a terminal run; non-zero if any step goes unexpectedly.
+      - run: npm run story -- --no-color --seed ci
+      # The fee sponsor's policy. Dependency-free, so no devnet install is needed.
+      - run: node --test 'devnet/test/*.test.mjs'
 
   # The same suite against modules freshly compiled from source.
   recompiled:

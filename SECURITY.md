@@ -3,7 +3,8 @@
 **Scope.** The contracts in `contracts/src/`, and the client code in `src/`: the
 field and Shamir layer, identity derivation (`src/identity.js`), the leak scanner
 (`src/leakscan.js`), the canonical host snapshot (`src/host/snapshot.js`) and the
-attack engine. Every claim below names the file, circuit or test that establishes
+attack engine. Also the browser demo (`web/`, an instance of adversary B1), the
+local-chain runner (`devnet/`) and the fee-sponsor role (B2). Every claim below names the file, circuit or test that establishes
 it. Verified against compact 0.31.1 / compact-runtime 0.16.0.
 
 **Out of scope, and not built here:** share transport between owner and
@@ -42,7 +43,7 @@ secret. Here is exactly what that is worth.
 | Guardians survive a recovery, so an identity can be recovered again | **Held** | stable `idRoot`; leaves bind a guardian context, not the rotating commitment |
 | A downstream contract keeps working across a key loss | **Held, in-contract** | `hostGatedAction` reads `retiredIdentities` directly |
 | An *independently deployed* contract keeps working | **Not yet held** | `requireCurrentOwnerAttested` checks that a pair is in the signed snapshot, not who is calling. The fix is scheduled; until then it is a membership predicate, not an authorisation. §4.4 |
-| The rules of a deployed instance cannot change | **Held on the recorded local deployment** — not a property of the source | the run that deployed it replaced its maintenance authority with an empty committee; `npm run devnet:verify` re-checks that, and that every on-chain verifier key matches a fresh compile (`deployments/local-devnet.json`). Any other deployer can keep the key: check before you trust an instance |
+| The rules of a deployed instance cannot change | **Held on the recorded local deployment** — not a property of the source | the run that deployed it replaced its maintenance authority with an empty committee; `npm run devnet:verify` re-checks that, and that every on-chain verifier key matches a fresh compile (`deployments/`). Any other deployer can keep the key: check before you trust an instance |
 | Nothing trusts the fee payer | **Held** | no circuit uses the caller's coin key or any token operation; every check is a commitment opening or a signature. `test/authentication.test.js` |
 | Guardian *count* and *threshold* stay private | **Not held** | `thresholds` is public; `n` is recoverable from transaction history |
 | t colluding guardians cannot take the identity | **Not held.** Nothing here claims otherwise. Until your recovery finalizes they can also act as you | §4.3 |
@@ -158,7 +159,7 @@ ledger-8 path — and nothing exceeds **k=14**.
 
 ---
 
-## 4. Five adversaries, scored separately
+## 4. The adversaries, scored separately
 
 Each is scored on confidentiality / integrity / availability: **Held**,
 **Degraded**, or **Lost**. We have tried to be harsh.
@@ -186,10 +187,11 @@ recoveries (the nullifier binds `rid`) or across identities (it binds `idCommit`
 Invert a guardian leaf — `npm run attack` tries 268 derivations including known
 plaintext and names none. Learn any secret. Forge, delay, or deny anything.
 
-### 4.2 B — the app, sponsor, or login operator
+### 4.2 B1 — the front-end or login operator
 
-Whoever serves the front-end, runs the login, or sponsors transactions. Not built
-here — but it would be dishonest to score only the parts we wrote.
+Whoever serves the client that generates secrets. Not built for production here —
+but it would be dishonest to score only the parts we wrote. **The browser demo is an
+instance of B1:** it generates every secret in the page.
 
 *Confidentiality: **Lost** · Integrity: **Lost** · Availability: **Lost***
 
@@ -197,7 +199,6 @@ here — but it would be dishonest to score only the parts we wrote.
 happens in the client, so a malicious front-end exfiltrates them *before any
 commitment exists* — before any circuit here has anything to say. It can serve a
 client that computes a different `vetoCommit`, silently handing itself the veto.
-It can withhold a sponsored veto, and 72 hours is not long to notice.
 
 It also sits on an open upstream hazard: `midnight-js` issues **#1234** and
 **#1169** document silent private-state corruption, and the veto secret lives in
@@ -208,7 +209,41 @@ without guardian secrets, shorten the timelock, or make the chain lie about the
 current head.
 
 **The only real mitigations are off-chain:** reproducible front-end builds, a
-published bundle hash, and the ability to run the client locally.
+published bundle hash (`web/scripts/check-bundle.mjs` prints one), and the ability
+to run the client locally.
+
+### 4.2b B2 — the fee sponsor
+
+A funded wallet that pays DUST for someone else's transaction. The recovering phone
+needs one: by definition it has lost everything, including any wallet. Built and
+run: every `npm run devnet` run sponsors the phone (`devnet/src/{sponsor,device,policy}.mjs`),
+and its record carries the evidence per transaction.
+
+*Confidentiality: **Held** on chain; metadata **Lost** · Integrity: **Held** · Availability: **Degraded***
+
+**Can.** Refuse to pay. Learn metadata: which device asked, when, and for which
+circuit — a sponsor asked to pay for a `finalizeRecovery` knows a recovery is
+finishing, which sharpens the liveness oracle (§5).
+
+**Cannot.**
+- **Alter the transaction.** The device proves and binds it before the sponsor
+  sees it; binding fixes every contract call, so the sponsor can only add its own
+  fee-paying intent. Having refused, it cannot stop anyone else from paying for
+  the same bound transaction.
+- **Gain anything by paying.** No circuit authenticates by the fee payer
+  (`test/authentication.test.js`). The sponsor trying to finalize for itself is
+  refused — story step 8.5, *"not the device the guardians approved"*.
+
+**Rules we follow, and that a production sponsor must:**
+1. **A sponsor never proves for anyone.** A proof server sees the witnesses — the
+   secrets. The device proves locally, or on a proof server it trusts. *(In our
+   local-chain runs one proof server serves every role; they are separated only by
+   which wallet pays.)*
+2. **No veto path depends only on a guardian acting as sponsor.** The veto card
+   works with any sponsor, or with the owner's own wallet.
+3. **A hosted sponsor never pays for opens** except under a per-identity rate limit.
+   `devnet/src/policy.mjs` refuses them outright: paying for opens would give
+   anyone free use of the liveness oracle. A guardian pays for the open instead.
 
 ### 4.3 C — t colluding guardians
 

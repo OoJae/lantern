@@ -36,3 +36,5 @@ devnet/logs/
 
 # Internal strategy notes — must never ship in a public submission repo
 buildplan.md
+# --self-pay devnet runs are for debugging; the committed records are sponsored runs.
+deployments/*-self-pay.json

@@ -5,7 +5,7 @@ test('the whole story runs in the browser, exactly as expected', async ({ page }
   await openDemo(page);
   await page.getByRole('button', { name: 'Run to the end' }).click();
   await expect(page.getByTestId('summary')).toContainText('Every step went exactly as expected.');
-  await expect(page.getByTestId('summary')).toContainText('39 steps');
+  await expect(page.getByTestId('summary')).toContainText('42 steps');
 
   // Every secret any proof read: seen privately, absent publicly.
   const boxes = page.locator('.absent li');

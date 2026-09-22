@@ -7,8 +7,9 @@
 //   --quick       the core recovery only: enrol, guardians, the DApp, open, approve, the
 //                 timelock, finalize, and the DApp again. The full run adds the attacker,
 //                 the refusals of beats 6 and 7 and the epilogue.
-//   --sponsored   the recovering phone holds no wallet at all: a sponsor pays its fees, and
-//                 Seo-yeon pays for the open from her own wallet. Recorded separately.
+//   --self-pay    the genesis wallet pays for everything. By default the recovering phone
+//                 holds no wallet at all -- it has lost everything -- so a sponsor pays its
+//                 fees, and Seo-yeon pays for the open from her own wallet.
 //
 // One-shot: fresh contracts every run. The record is written only if every step goes as
 // expected, to deployments/local-devnet.json.
@@ -20,11 +21,11 @@ import { repoRoot } from './config.mjs';
 import { startWallet, readyToPay, GENESIS_SEED } from './wallet.mjs';
 import { loadBindings, LANTERN_ZK } from './bindings.mjs';
 import { devnetExecutor } from './executor.mjs';
-import { buildRecord, writeRecord, recordPath } from './record.mjs';
+import { buildRecord, writeRecord } from './record.mjs';
 import { flavour } from '../flavour.mjs';
 
 const quick = process.argv.includes('--quick');
-const sponsored = process.argv.includes('--sponsored');
+const sponsored = !process.argv.includes('--self-pay');
 // Dev-preset seeds, funded at genesis on the local chain only (docs/spikes.md, S2).
 const SPONSOR_SEED = GENESIS_SEED.replace(/1$/, '3');
 const GUARDIAN_SEED = GENESIS_SEED.replace(/1$/, '2');
@@ -73,10 +74,17 @@ const records = await runStory({ ...story, steps }, x, {
     const mark = r.ok ? green('✓') : red('✗ UNEXPECTED');
     if (r.kind === 'call') {
       const verdict = r.outcome === 'accepted' ? green('accepted') : cyan(`refused: "${r.message}"`);
-      log(`${mark} ${r.actor} → ${r.circuit}  ${verdict}${r.payer && sponsored ? dim(`  · paid by ${r.payer}`) : ''}`);
+      // A refusal happens locally, before anything is proved: nobody pays for it.
+      const paid = r.outcome === 'accepted' && r.payer && sponsored ? dim(`  · paid by ${r.payer}`) : '';
+      log(`${mark} ${r.actor} → ${r.circuit}  ${verdict}${paid}`);
       if (r.tx?.txId) {
-        const t = r.timings;
-        log(dim(`    block ${r.tx.blockHeight} · tx ${r.tx.txId.slice(0, 16)}… · prove ${t.prove} s${t.cold ? ' (cold)' : ''} · balance ${t.balance} s · submit and inclusion ${t.submit} s · finalized ${t.finalize} s after · total ${t.total} s`));
+        const t = r.timings, sp = r.sponsorship;
+        // A sponsored call hands its bound transaction to the sponsor inside `balance`, and the
+        // sponsor submits it: show the sponsor's own split instead.
+        const pay = sp
+          ? `sponsor balance ${sp.sponsorBalanceSeconds} s · sponsor submit and inclusion ${sp.sponsorSubmitSeconds} s`
+          : `balance ${t.balance} s · submit and inclusion ${t.submit} s`;
+        log(dim(`    block ${r.tx.blockHeight} · tx ${r.tx.txId.slice(0, 16)}… · prove ${t.prove} s${t.cold ? ' (cold)' : ''} · ${pay} · finalized ${t.finalize} s after · total ${t.total} s`));
       } else if (r.tx?.note) log(dim(`    ${r.tx.note}`));
     } else {
       log(`${mark} ${r.actor}: ${r.detail ?? ''}`);
@@ -96,7 +104,7 @@ if (bad.length) {
 }
 const mode = `${quick ? 'quick' : 'full'}${sponsored ? '+sponsored' : ''}`;
 const record = buildRecord({ mode, x, records, finalLedger, startedAt, flavourLine: changedLine, sponsored });
-writeRecord(record, sponsored);
+const file = writeRecord(record, { quick, selfPay: !sponsored });
 const s = record.summary;
 console.log(green(`  Every step went exactly as expected: ${s.accepted} accepted, ${s.refused} refused, ${s.transactions} transactions.`));
 console.log(`  proofs: ${s.proveSeconds.min}–${s.proveSeconds.max} s (median ${s.proveSeconds.median} s) · call to finalized: median ${s.callToFinalizedSeconds.median} s · ${s.wallClockMinutes} min in all`);
@@ -104,5 +112,5 @@ if (sponsored) {
   const ev = records.filter((r) => r.sponsorship);
   console.log(`  sponsored: ${ev.length} transactions from a device with no wallet; the device's intents spent ${ev.reduce((n, r) => n + r.sponsorship.userIntentDustSpends, 0)} DUST outputs, the sponsor's ${ev.reduce((n, r) => n + r.sponsorship.sponsorDustSpends, 0)}`);
 }
-console.log(dim(`  record: ${path.relative(repoRoot, recordPath(sponsored))} · check it against the chain: npm run devnet:verify${sponsored ? ' -- --sponsored' : ''}`));
+console.log(dim(`  record: ${path.relative(repoRoot, file)} · check it against the chain: npm run devnet:verify${quick ? ' -- --quick' : ''}`));
 process.exit(0);

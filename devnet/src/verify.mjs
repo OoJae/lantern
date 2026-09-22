@@ -26,7 +26,7 @@ const check = (name, ok, detail = '') => {
 };
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 
-const RECORD_PATH = recordPath(process.argv.includes('--sponsored'));
+const RECORD_PATH = recordPath({ quick: process.argv.includes('--quick'), selfPay: process.argv.includes('--self-pay') });
 if (!existsSync(RECORD_PATH)) { console.error(`devnet:verify: no record at ${RECORD_PATH}; run npm run devnet first`); process.exit(1); }
 const record = JSON.parse(readFileSync(RECORD_PATH, 'utf8'));
 const { Lantern } = await loadBindings();

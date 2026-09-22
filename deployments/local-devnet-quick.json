@@ -1,8 +1,8 @@
 {
   "what": "A real run of the Lantern story on a local Midnight chain: every accepted step is a proved, balanced, finalized transaction.",
   "network": "undeployed (local, single node)",
-  "recordedAt": "2026-09-22T22:07:20.825Z",
-  "mode": "quick",
+  "recordedAt": "2026-09-22T22:38:08.041Z",
+  "mode": "quick+sponsored",
   "machine": {
     "platform": "darwin arm64",
     "cpus": 10,
@@ -26,34 +26,35 @@
     "recoveryDelaySeconds": 60,
     "shipped": 259200
   },
-  "payer": "the genesis wallet paid every transaction (sponsorship is recorded separately)",
+  "payer": "per step: the recovering phone holds no wallet and a sponsor paid its fees; Seo-yeon paid for the open; the genesis wallet paid the rest",
   "contract": {
     "name": "Lantern (devnet flavour)",
-    "address": "b3340cb021a45afe1f3555de522d010ea0d094f68cb91aad25fe5a8e49deb2bf",
-    "txId": "002ced781d9fbbf282beb4c5afe76373c7934196ae3d6c275e1e8ea88ba418cf88",
-    "txHash": "deba59df01a06ec317c58feabd99229e0b1f4c69906e05291fb29444d36632ee",
-    "blockHeight": 629,
+    "address": "8346d3cdb31fa0b16f1aa0b7ad8962e319952402fc4713dfc51b3c3a10d02f93",
+    "txId": "000a4bef910ca896a9bf20fe5595be70f2e9424d3b5da215f976ef948417fc3593",
+    "txHash": "69ee26281554f562b4798e4589880982170e762fdb38b67d665190257f02955a",
+    "blockHeight": 930,
     "status": "SucceedEntirely",
     "timings": {
-      "execute": 0.2,
+      "execute": 0.1,
       "prove": 0,
-      "balance": 0.9,
-      "submit": 14.3,
-      "finalize": 1,
-      "total": 16.4
+      "balance": 1.7,
+      "submit": 21.4,
+      "finalize": 1.1,
+      "total": 24.3
     },
     "maintenanceAuthority": {
       "committee": 0,
       "threshold": 1,
       "counter": 1,
       "frozenBy": {
-        "txId": "004b4c54c0773d4bd83cacb7ea6b0abd5ea0341f00c03bb9ac88b32190655236d8",
-        "txHash": "dbb71c1762bddcde8d45c42dca6f8f752280f4fcb30ea8eb04d23e515faf014b",
-        "blockHeight": 632,
+        "txId": "00ae2b1ae33713aa57e95a307faa388f35f5925bb31a114ec63b808655fa8be01c",
+        "txHash": "60378eba91210a74510e5106291a3df74c073f624b80ad05f95a7cd4e5e604a7",
+        "blockHeight": 933,
         "status": "SucceedEntirely"
       }
     }
   },
+  "timingNotes": "seconds. execute: the circuit run locally; prove: the local proof server; balance: adding DUST; submit: until the node included the transaction in a block (about 6 s per block); finalize: until midnight-js saw it finalized. The first proof of a run is marked cold.",
   "steps": [
     {
       "id": "0.1",
@@ -63,24 +64,25 @@
       "say": "Hana enrols: a commitment to her identity secret, a commitment to a separate veto secret, threshold 2.",
       "circuit": "enrollIdentity",
       "args": [
-        "0d7dcb7f453195ab5a9161918abacce3e178f8cd2aa192689305b4387c3054e4",
-        "e7f705bcd829719ec9458cce0fbd33745eb95511370c47829a2579ecd7228398",
+        "bf6d8bb4a3455bab5dc1ae23b021e1ea49de302508c37d6047973ae954e0c5fb",
+        "95e65698de8e636e8fb9e5dca6a543488d434623e3bfcad53cc75716918f95b6",
         "2"
       ],
       "expect": "accepted",
       "tx": {
-        "txId": "0000ee2cea5fc00851fc62add207066b4430a70e5c43d8b892b19f8db362bf429d",
-        "txHash": "93f2c9ace8da519eeb838cb841bf5b3d30b587ba09def8b69d2aeedab5bdda91",
-        "blockHeight": 635,
+        "txId": "002dd9c36e82b7fadd90d3505ace787ec51dad30e5b9a683b16a6e8a2fd2efc385",
+        "txHash": "65d12196f270135fc3a776fe309f0091d91cf02615a83a02393a826b2574f10c",
+        "blockHeight": 937,
         "status": "SucceedEntirely"
       },
+      "payer": "the genesis wallet",
       "timings": {
         "execute": 0.1,
-        "prove": 1.5,
-        "balance": 0.6,
-        "submit": 14.1,
-        "finalize": 1,
-        "total": 17.4,
+        "prove": 2.8,
+        "balance": 1,
+        "submit": 19,
+        "finalize": 1.1,
+        "total": 24,
         "cold": true,
         "firstOfCircuit": true
       },
@@ -101,27 +103,28 @@
       "say": "Hana adds Seo-yeon as a guardian. The leaf is public; the secret inside it went to Seo-yeon out of band.",
       "circuit": "addGuardian",
       "args": [
-        "0d7dcb7f453195ab5a9161918abacce3e178f8cd2aa192689305b4387c3054e4"
+        "bf6d8bb4a3455bab5dc1ae23b021e1ea49de302508c37d6047973ae954e0c5fb"
       ],
       "expect": "accepted",
       "tx": {
-        "txId": "002a6a1bbd1be7ea64f87d3698e316746c4ca02b854e68a8dc82a74964c0824ac1",
-        "txHash": "5f10ef230e0a6848976f41eab73ab41dc3c411e09cce5065c1f91629687a32b5",
-        "blockHeight": 639,
+        "txId": "0025541c6ef8cdd7e0b2c6169bb89c7169d31bfe02f64647334143f8419625ebc9",
+        "txHash": "0c70a226779ae1c593ac240605f5ace785aeda10e5d8fbab1e2642cd44b59529",
+        "blockHeight": 941,
         "status": "SucceedEntirely"
       },
+      "payer": "the genesis wallet",
       "timings": {
         "execute": 0.1,
-        "prove": 3,
-        "balance": 0.6,
-        "submit": 19.4,
-        "finalize": 1,
-        "total": 24.1,
+        "prove": 2.7,
+        "balance": 1.5,
+        "submit": 18.8,
+        "finalize": 2.1,
+        "total": 25.3,
         "cold": false,
         "firstOfCircuit": true
       },
       "outcome": "accepted",
-      "result": "74b9977508f40859a2cd7621693bee7d84aa5755100e61549658c818bc8d86c9",
+      "result": "0344ca57fa1fe039e866ef00fa609b5922e8d595ee38f718b6bdd56caf07049e",
       "publicChange": {
         "guardianLeaves": 1
       },
@@ -135,27 +138,28 @@
       "say": "Hana adds Mum as a guardian. The leaf is public; the secret inside it went to Mum out of band.",
       "circuit": "addGuardian",
       "args": [
-        "0d7dcb7f453195ab5a9161918abacce3e178f8cd2aa192689305b4387c3054e4"
+        "bf6d8bb4a3455bab5dc1ae23b021e1ea49de302508c37d6047973ae954e0c5fb"
       ],
       "expect": "accepted",
       "tx": {
-        "txId": "006613eb36910019254bbb07ce3cb531ce4ff5a115e66526c519f83f132daf9142",
-        "txHash": "89305c0f2984e6dfbf4ce4ca77a3e540a2f00e0085c662e7ea9d0db1bc117ba9",
-        "blockHeight": 642,
+        "txId": "0043fe843dff7c0016c2344db4514508d3bcac6da7779fb16015b180ab800eede0",
+        "txHash": "9de42a231df6b925620b1443a838d755779f3439d5cd05d11ee1cd672bb1785b",
+        "blockHeight": 945,
         "status": "SucceedEntirely"
       },
+      "payer": "the genesis wallet",
       "timings": {
         "execute": 0.1,
-        "prove": 1.4,
-        "balance": 0.6,
-        "submit": 15.6,
+        "prove": 2.9,
+        "balance": 0.7,
+        "submit": 18,
         "finalize": 1,
-        "total": 18.7,
+        "total": 22.7,
         "cold": false,
         "firstOfCircuit": false
       },
       "outcome": "accepted",
-      "result": "9af2e960d1d3b2b9986dcae70e434b97bb4591c077719e63edf5d9b2325f16af",
+      "result": "32205be8a9fadaceacd0dca9c0b3806c0c3780b79e186c42def6281c8501bd75",
       "publicChange": {
         "guardianLeaves": 1
       },
@@ -169,27 +173,28 @@
       "say": "Hana adds Jihoon as a guardian. The leaf is public; the secret inside it went to Jihoon out of band.",
       "circuit": "addGuardian",
       "args": [
-        "0d7dcb7f453195ab5a9161918abacce3e178f8cd2aa192689305b4387c3054e4"
+        "bf6d8bb4a3455bab5dc1ae23b021e1ea49de302508c37d6047973ae954e0c5fb"
       ],
       "expect": "accepted",
       "tx": {
-        "txId": "002b157c658e8d8352de62697ec21dac768a42ec5406a7677b32955845cc505f3a",
-        "txHash": "c587fed5ff58486de29e8fd269dd40618fbd2074b576d6b12ecacc43558ddfe5",
-        "blockHeight": 645,
+        "txId": "0017cac6bf6d865267d7761f9b006a74abb10158a90295dbb344f13011bebfe996",
+        "txHash": "2950b3c17cd03809467c2defd818fbe6d07471eda1b8192750beecb6f3a6d4a6",
+        "blockHeight": 949,
         "status": "SucceedEntirely"
       },
+      "payer": "the genesis wallet",
       "timings": {
         "execute": 0.1,
-        "prove": 1.4,
-        "balance": 0.6,
-        "submit": 14.2,
+        "prove": 1.6,
+        "balance": 0.4,
+        "submit": 20.9,
         "finalize": 1,
-        "total": 17.3,
+        "total": 24,
         "cold": false,
         "firstOfCircuit": false
       },
       "outcome": "accepted",
-      "result": "f5f3e9247dbafecc909ab775c6ee2cd6f39e204074a4fd805246d45c13b8d784",
+      "result": "7b4cba422da885e0859ac529e7b4b5d201c69f32bd430acd984a16f8d700eda6",
       "publicChange": {
         "guardianLeaves": 1
       },
@@ -212,24 +217,25 @@
       "say": "The DApp stores one value, Hana's identity root, and asks: is the caller its current owner? Yes.",
       "circuit": "hostGatedAction",
       "args": [
-        "0d7dcb7f453195ab5a9161918abacce3e178f8cd2aa192689305b4387c3054e4",
-        "0d7dcb7f453195ab5a9161918abacce3e178f8cd2aa192689305b4387c3054e4",
-        "69f05b67d32be98c9ff7036b648f8f05a17e1a60230e4b9455ff3b9b8adb31d3"
+        "bf6d8bb4a3455bab5dc1ae23b021e1ea49de302508c37d6047973ae954e0c5fb",
+        "bf6d8bb4a3455bab5dc1ae23b021e1ea49de302508c37d6047973ae954e0c5fb",
+        "8dd92e75dbd6767fcd2a1efbf9fd2747ed4377b28f27a39fcd3986ad808891b8"
       ],
       "expect": "accepted",
       "tx": {
-        "txId": "00c12f4ece19d796378bdbbe8811ee0de2d4d2bcd428c5253a685f9077a5a63147",
-        "txHash": "e0f26218aef2280263e23f309bcd05de5948d5b64a3ea1ac22c96aa336f765e4",
-        "blockHeight": 649,
+        "txId": "008fdae07f53afc53dd78bade050b02519a38f8d62bd8609668281e978f3cbc4a0",
+        "txHash": "96a080ff23b5d188a062c64636f9333ba9146f9608a0661d5d53c2c6fbd69f2d",
+        "blockHeight": 952,
         "status": "SucceedEntirely"
       },
+      "payer": "the genesis wallet",
       "timings": {
         "execute": 0.1,
-        "prove": 2.5,
-        "balance": 0.6,
-        "submit": 20,
+        "prove": 0.9,
+        "balance": 0.3,
+        "submit": 15,
         "finalize": 1,
-        "total": 24.1,
+        "total": 17.3,
         "cold": false,
         "firstOfCircuit": true
       },
@@ -255,7 +261,7 @@
       "kind": "offchain",
       "actor": "Hana's new phone",
       "say": "The new phone makes a one-time device key. Its fingerprint is what the guardians will check.",
-      "detail": "device fingerprint D19E-CFDB",
+      "detail": "device fingerprint DAB0-8B66",
       "ok": true
     },
     {
@@ -266,28 +272,29 @@
       "say": "Seo-yeon opens a recovery of Hana's identity, for that device key. Opening needs no secret; the new phone has none to offer.",
       "circuit": "openRecovery",
       "args": [
-        "0d7dcb7f453195ab5a9161918abacce3e178f8cd2aa192689305b4387c3054e4",
-        "d19ecfdb8531724e0bee28d67e7fc02ddbc583456924e468822baf3bede10900"
+        "bf6d8bb4a3455bab5dc1ae23b021e1ea49de302508c37d6047973ae954e0c5fb",
+        "dab08b66c8c43dfb514ca5f51d5cde96cc77988a496d31157a8f8ed78c0d3e00"
       ],
       "expect": "accepted",
       "tx": {
-        "txId": "00c0f2566421486a5191b9363e1699c022c73f8020ef913aba70ddd9d7158476af",
-        "txHash": "8632283f240074156b848a4197e2d9908a698cd4062a7d5cd6a78e3911931057",
-        "blockHeight": 652,
+        "txId": "005f4979a5e5ad3b7ef187910148ab1d9c22963ee6295cb2b84880a528c6f06d23",
+        "txHash": "d6913a047ec4b0240f5ede6bf192cc694d1c06ea6143e0533706072c9d4329db",
+        "blockHeight": 955,
         "status": "SucceedEntirely"
       },
+      "payer": "Seo-yeon's own wallet",
       "timings": {
-        "execute": 0.1,
-        "prove": 1.4,
-        "balance": 0.6,
-        "submit": 14.2,
+        "execute": 0,
+        "prove": 0.7,
+        "balance": 0.4,
+        "submit": 15.2,
         "finalize": 1,
         "total": 17.3,
         "cold": false,
         "firstOfCircuit": true
       },
       "outcome": "accepted",
-      "result": "da36f89e1d5e499ac99532f79adcb40a7934fb6d5d052e6ed6f855001eed42a4",
+      "result": "f59e0cdb6df08a54a56c29fc17e15d2ab42c0a7e9f14bf30f143b361663a7f13",
       "publicChange": {
         "recoveries": 1
       },
@@ -301,21 +308,22 @@
       "say": "Seo-yeon compares the fingerprint with the one Hana reads to her over the phone, and approves.",
       "circuit": "approveRecovery",
       "args": [
-        "0d7dcb7f453195ab5a9161918abacce3e178f8cd2aa192689305b4387c3054e4",
-        "da36f89e1d5e499ac99532f79adcb40a7934fb6d5d052e6ed6f855001eed42a4"
+        "bf6d8bb4a3455bab5dc1ae23b021e1ea49de302508c37d6047973ae954e0c5fb",
+        "f59e0cdb6df08a54a56c29fc17e15d2ab42c0a7e9f14bf30f143b361663a7f13"
       ],
       "expect": "accepted",
       "tx": {
-        "txId": "00011dc2a3a1c5bf0c08d729cc20034f907afae3b1230f5521f47ef7d664f720cd",
-        "txHash": "b200773674d14fe0295cbe6820295982eac29604c0b9a7aa329e33a6663dadd5",
-        "blockHeight": 655,
+        "txId": "00669178ceadafe68f461d59be5b0183c70658627f7286bafcf435ffe8a71c90d6",
+        "txHash": "d6e72fe945380021b6f74d081a421771120cea10ad9f89b2b87ff80788afcb59",
+        "blockHeight": 958,
         "status": "SucceedEntirely"
       },
+      "payer": "the genesis wallet",
       "timings": {
-        "execute": 0.1,
-        "prove": 2.1,
-        "balance": 0.6,
-        "submit": 14.9,
+        "execute": 0,
+        "prove": 1.6,
+        "balance": 0.4,
+        "submit": 15.6,
         "finalize": 1,
         "total": 18.7,
         "cold": false,
@@ -336,21 +344,22 @@
       "say": "Mum does the same. Quorum: two of two needed.",
       "circuit": "approveRecovery",
       "args": [
-        "0d7dcb7f453195ab5a9161918abacce3e178f8cd2aa192689305b4387c3054e4",
-        "da36f89e1d5e499ac99532f79adcb40a7934fb6d5d052e6ed6f855001eed42a4"
+        "bf6d8bb4a3455bab5dc1ae23b021e1ea49de302508c37d6047973ae954e0c5fb",
+        "f59e0cdb6df08a54a56c29fc17e15d2ab42c0a7e9f14bf30f143b361663a7f13"
       ],
       "expect": "accepted",
       "tx": {
-        "txId": "00b1aaca1d9582e58970169879d6bddf1607fd5590e4e043344bcf0dc9956656d9",
-        "txHash": "720c9681c1836c021e9787e2914feff766999445b3e7ac687a4cf3f183835173",
-        "blockHeight": 658,
+        "txId": "0092fa53ebb22764118b8dd1455b15294b2f0e6a861727ae61d08d522eeab98e6c",
+        "txHash": "502c575e30d274e508790ffc7680143640e7e0a47a3cb0addd047315b967bdab",
+        "blockHeight": 961,
         "status": "SucceedEntirely"
       },
+      "payer": "the genesis wallet",
       "timings": {
-        "execute": 0.1,
-        "prove": 1.4,
-        "balance": 0.6,
-        "submit": 14.2,
+        "execute": 0,
+        "prove": 0.9,
+        "balance": 0.3,
+        "submit": 15.1,
         "finalize": 1,
         "total": 17.3,
         "cold": false,
@@ -398,9 +407,9 @@
       "say": "Finalize now?",
       "circuit": "finalizeRecovery",
       "args": [
-        "da36f89e1d5e499ac99532f79adcb40a7934fb6d5d052e6ed6f855001eed42a4",
-        "20f36f0b67c2548a62a8c71bb6bcf80f97b18b45b563785851118e8aa9d74c7d",
-        "714d98eb2593e3a7161ddfd8089048b20ad27c243e4c96f601f3ffc986dc4bdb"
+        "f59e0cdb6df08a54a56c29fc17e15d2ab42c0a7e9f14bf30f143b361663a7f13",
+        "717114619ea8b72535cd166d8261661c04283415880f6af0006e0a92cec45741",
+        "b3779f08613150b82f3cf85f5fb1c3129dba112b65c0ebdae4f35c1c62d99c0b"
       ],
       "expect": "refused: timelock has not elapsed",
       "outcome": "refused",
@@ -424,9 +433,9 @@
       "say": "Suppose one share had been tampered with in transit. The rebuilt secret is wrong, and the chain can tell.",
       "circuit": "finalizeRecovery",
       "args": [
-        "da36f89e1d5e499ac99532f79adcb40a7934fb6d5d052e6ed6f855001eed42a4",
-        "20f36f0b67c2548a62a8c71bb6bcf80f97b18b45b563785851118e8aa9d74c7d",
-        "714d98eb2593e3a7161ddfd8089048b20ad27c243e4c96f601f3ffc986dc4bdb"
+        "f59e0cdb6df08a54a56c29fc17e15d2ab42c0a7e9f14bf30f143b361663a7f13",
+        "717114619ea8b72535cd166d8261661c04283415880f6af0006e0a92cec45741",
+        "b3779f08613150b82f3cf85f5fb1c3129dba112b65c0ebdae4f35c1c62d99c0b"
       ],
       "expect": "refused: reconstructed secret does not open idCommit",
       "outcome": "refused",
@@ -441,9 +450,9 @@
       "say": "The sponsor who pays for Hana's transactions tries to finalize for itself.",
       "circuit": "finalizeRecovery",
       "args": [
-        "da36f89e1d5e499ac99532f79adcb40a7934fb6d5d052e6ed6f855001eed42a4",
-        "20f36f0b67c2548a62a8c71bb6bcf80f97b18b45b563785851118e8aa9d74c7d",
-        "714d98eb2593e3a7161ddfd8089048b20ad27c243e4c96f601f3ffc986dc4bdb"
+        "f59e0cdb6df08a54a56c29fc17e15d2ab42c0a7e9f14bf30f143b361663a7f13",
+        "717114619ea8b72535cd166d8261661c04283415880f6af0006e0a92cec45741",
+        "b3779f08613150b82f3cf85f5fb1c3129dba112b65c0ebdae4f35c1c62d99c0b"
       ],
       "expect": "refused: not the device the guardians approved",
       "outcome": "refused",
@@ -458,24 +467,34 @@
       "say": "The phone finalizes: the approved device, the right secret, after the timelock. The old commitment is retired and a successor takes its place.",
       "circuit": "finalizeRecovery",
       "args": [
-        "da36f89e1d5e499ac99532f79adcb40a7934fb6d5d052e6ed6f855001eed42a4",
-        "20f36f0b67c2548a62a8c71bb6bcf80f97b18b45b563785851118e8aa9d74c7d",
-        "714d98eb2593e3a7161ddfd8089048b20ad27c243e4c96f601f3ffc986dc4bdb"
+        "f59e0cdb6df08a54a56c29fc17e15d2ab42c0a7e9f14bf30f143b361663a7f13",
+        "717114619ea8b72535cd166d8261661c04283415880f6af0006e0a92cec45741",
+        "b3779f08613150b82f3cf85f5fb1c3129dba112b65c0ebdae4f35c1c62d99c0b"
       ],
       "expect": "accepted",
       "tx": {
-        "txId": "00b484373cae7b6adfd4a75149f5798a11a37347fff8cc7e2a90f4481a3927546e",
-        "txHash": "7dc027153bd134ea7eaddcbe260aec8508651a1b23bdc117981c95fe811fea5e",
-        "blockHeight": 759,
+        "txId": "008179a67459db051a1ec834305937fe8917e88c7fa396fb79300ed84e3a910e4b",
+        "txHash": "26c30fc6ec5fb79ced64d172561cb8962c6f48f3a974160d818eb90a97233196",
+        "blockHeight": 1061,
         "status": "SucceedEntirely"
+      },
+      "payer": "the sponsor (the device holds no wallet)",
+      "sponsorship": {
+        "circuit": "finalizeRecovery",
+        "deviceWallet": "none",
+        "fee": "564010000000001",
+        "userIntentDustSpends": 0,
+        "sponsorDustSpends": 1,
+        "sponsorBalanceSeconds": 0.6,
+        "sponsorSubmitSeconds": 15.6
       },
       "timings": {
         "execute": 0.1,
-        "prove": 2.9,
-        "balance": 0.8,
-        "submit": 20.1,
+        "prove": 2.5,
+        "balance": 16.2,
+        "submit": 0,
         "finalize": 1,
-        "total": 25.1,
+        "total": 19.8,
         "cold": false,
         "firstOfCircuit": true
       },
@@ -496,9 +515,9 @@
       "say": "Jihoon tries the DApp again with the old secret.",
       "circuit": "hostGatedAction",
       "args": [
-        "0d7dcb7f453195ab5a9161918abacce3e178f8cd2aa192689305b4387c3054e4",
-        "0d7dcb7f453195ab5a9161918abacce3e178f8cd2aa192689305b4387c3054e4",
-        "f015cdfc49bba71d41e10a08e9275ef906c72d91b5b77bbfa2ea3129e6c2c156"
+        "bf6d8bb4a3455bab5dc1ae23b021e1ea49de302508c37d6047973ae954e0c5fb",
+        "bf6d8bb4a3455bab5dc1ae23b021e1ea49de302508c37d6047973ae954e0c5fb",
+        "97de6c57e74fe19d4242d0a1a9f4076d3f8565f1718fe88e146ba5a032325f2f"
       ],
       "expect": "refused: not the current owner of this identity root",
       "outcome": "refused",
@@ -513,24 +532,34 @@
       "say": "Hana's phone acts at the DApp. The DApp still stores the same single value — her identity root — and never had to change it.",
       "circuit": "hostGatedAction",
       "args": [
-        "0d7dcb7f453195ab5a9161918abacce3e178f8cd2aa192689305b4387c3054e4",
-        "20f36f0b67c2548a62a8c71bb6bcf80f97b18b45b563785851118e8aa9d74c7d",
-        "ee85e5b23c23621af379df5eb33bfa6907ff68ebcc3941f2f2f0809a748254cf"
+        "bf6d8bb4a3455bab5dc1ae23b021e1ea49de302508c37d6047973ae954e0c5fb",
+        "717114619ea8b72535cd166d8261661c04283415880f6af0006e0a92cec45741",
+        "acfcd1a5e8f84a19768791e2b06c74705c5ddf9cbdb944db79e5e453079f9c6a"
       ],
       "expect": "accepted",
       "tx": {
-        "txId": "009962a313755206be3124bfcb52d66d2f7cc32d90a37ac3d96963d7a3175c2654",
-        "txHash": "db2f8103b79f627de6c55fbf0c7dc24ace0c37bddc21249595c92ddc0ea9e2ab",
-        "blockHeight": 762,
+        "txId": "001215dfe0292dfbdaba652cd88b5ff4935b86bc40c6fc1f292718b20a85d0cfe6",
+        "txHash": "631a5766e21a99813f70beea2e7903db9d88ce375c425c7693dd9ad95941896c",
+        "blockHeight": 1064,
         "status": "SucceedEntirely"
       },
+      "payer": "the sponsor (the device holds no wallet)",
+      "sponsorship": {
+        "circuit": "hostGatedAction",
+        "deviceWallet": "none",
+        "fee": "372850000000001",
+        "userIntentDustSpends": 0,
+        "sponsorDustSpends": 1,
+        "sponsorBalanceSeconds": 0.4,
+        "sponsorSubmitSeconds": 14.9
+      },
       "timings": {
-        "execute": 0.1,
-        "prove": 1.5,
-        "balance": 0.6,
-        "submit": 15.4,
+        "execute": 0,
+        "prove": 1,
+        "balance": 15.2,
+        "submit": 0,
         "finalize": 1,
-        "total": 18.6,
+        "total": 17.3,
         "cold": false,
         "firstOfCircuit": false
       },
@@ -539,6 +568,99 @@
       "publicChange": {
         "gateActions": 1
       },
+      "ok": true
+    },
+    {
+      "id": "9.3",
+      "beat": 9,
+      "kind": "call",
+      "actor": "anyone",
+      "say": "Anyone can prove the new commitment is the current head of Hana's root: descent is one Merkle membership proof, headship one non-membership check.",
+      "circuit": "proveSuccession",
+      "args": [
+        "bf6d8bb4a3455bab5dc1ae23b021e1ea49de302508c37d6047973ae954e0c5fb",
+        "717114619ea8b72535cd166d8261661c04283415880f6af0006e0a92cec45741"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "000d99c8ec50f46e6d7d27df7235e91dbf14a2eada2cac96c67abcad426f16740d",
+        "txHash": "95e02a4103e5afe451df3ec769f27ad337b9b3104b1e280437d1e47549a6572e",
+        "blockHeight": 1067,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0,
+        "prove": 0.7,
+        "balance": 0.3,
+        "submit": 16.6,
+        "finalize": 1,
+        "total": 18.7,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {},
+      "ok": true
+    },
+    {
+      "id": "9.4",
+      "beat": 9,
+      "kind": "call",
+      "actor": "anyone",
+      "say": "The same proof for the old commitment: it still descends from the root, but it is no longer the head.",
+      "circuit": "proveSuccession",
+      "args": [
+        "bf6d8bb4a3455bab5dc1ae23b021e1ea49de302508c37d6047973ae954e0c5fb",
+        "bf6d8bb4a3455bab5dc1ae23b021e1ea49de302508c37d6047973ae954e0c5fb"
+      ],
+      "expect": "refused: head has been superseded",
+      "outcome": "refused",
+      "message": "head has been superseded",
+      "ok": true
+    },
+    {
+      "id": "9.5",
+      "beat": 9,
+      "kind": "call",
+      "actor": "Hana's new phone",
+      "say": "And the phone proves it holds the head's secret, without revealing it.",
+      "circuit": "proveHeadOwnership",
+      "args": [
+        "bf6d8bb4a3455bab5dc1ae23b021e1ea49de302508c37d6047973ae954e0c5fb",
+        "717114619ea8b72535cd166d8261661c04283415880f6af0006e0a92cec45741"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "004951b58278da3a9740e00158f2e414b4256aa398c772089b177613fe10ae4b8b",
+        "txHash": "3ebc20d2b6628dbbdbc34f0f29e6b8bf72688b8cb81e7b00e1a1105755be2440",
+        "blockHeight": 1070,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the sponsor (the device holds no wallet)",
+      "sponsorship": {
+        "circuit": "proveHeadOwnership",
+        "deviceWallet": "none",
+        "fee": "342400000000001",
+        "userIntentDustSpends": 0,
+        "sponsorDustSpends": 1,
+        "sponsorBalanceSeconds": 0.4,
+        "sponsorSubmitSeconds": 14.4
+      },
+      "timings": {
+        "execute": 0,
+        "prove": 1.4,
+        "balance": 14.8,
+        "submit": 0,
+        "finalize": 1,
+        "total": 17.3,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {},
       "ok": true
     }
   ],
@@ -555,21 +677,21 @@
     "gateActions": 2
   },
   "summary": {
-    "steps": 21,
-    "accepted": 10,
-    "refused": 4,
-    "transactions": 12,
+    "steps": 24,
+    "accepted": 12,
+    "refused": 5,
+    "transactions": 14,
     "proveSeconds": {
-      "min": 1.4,
-      "median": 1.5,
-      "max": 3,
-      "coldFirst": 1.5
+      "min": 0.7,
+      "median": 1.6,
+      "max": 2.9,
+      "coldFirst": 2.8
     },
     "callToFinalizedSeconds": {
       "min": 17.3,
       "median": 18.7,
-      "max": 25.1
+      "max": 25.3
     },
-    "wallClockMinutes": 13.6
+    "wallClockMinutes": 14.4
   }
 }

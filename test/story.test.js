@@ -44,7 +44,8 @@ describe('the story, on the in-memory ledger', () => {
       }
     }
     // The scans are not vacuous: every secret-bearing circuit read something.
-    const readers = accepted.filter((r) => r.circuit !== 'openRecovery');
+    // Only these two read no secret: an open needs none, and descent is a public fact.
+    const readers = accepted.filter((r) => !['openRecovery', 'proveSuccession'].includes(r.circuit));
     for (const r of readers) expect(r.scan.fields.length, r.id).toBeGreaterThan(0);
   });
 

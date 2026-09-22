@@ -123,7 +123,6 @@ export async function devnetExecutor({ Lantern, wallet, zkPath, log = () => {}, 
       await claimNow();
       const before = publicRecord(await ledger());
       const [handle, payer] = payerOf(ps);
-      rec.payer = payer;
       evidence = null;
       timing = { start: Date.now() };
       const call = handles[handle].callTx[circuit](...args);
@@ -140,6 +139,7 @@ export async function devnetExecutor({ Lantern, wallet, zkPath, log = () => {}, 
         return null;
       }
       rec.tx = txOf(r.public);
+      rec.payer = payer;
       if (evidence) rec.sponsorship = evidence;
       rec.timings = phases(timing);
       rec.timings.cold = proved.size === 0;

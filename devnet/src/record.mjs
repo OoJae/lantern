@@ -6,8 +6,9 @@ import path from 'node:path';
 import { repoRoot } from './config.mjs';
 import { FLAVOUR_DELAY_SECONDS } from '../flavour.mjs';
 
-export const recordPath = (sponsored = false) =>
-  path.join(repoRoot, 'deployments', sponsored ? 'local-devnet-sponsored.json' : 'local-devnet.json');
+/** deployments/local-devnet.json is the full story; -quick the core recovery. Self-pay runs are for debugging. */
+export const recordPath = ({ quick = false, selfPay = false } = {}) =>
+  path.join(repoRoot, 'deployments', `local-devnet${quick ? '-quick' : ''}${selfPay ? '-self-pay' : ''}.json`);
 
 const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : null; };
 
@@ -29,7 +30,7 @@ export function buildRecord({ mode, x, records, finalLedger, startedAt, flavourL
     },
     payer: sponsored
       ? 'per step: the recovering phone holds no wallet and a sponsor paid its fees; Seo-yeon paid for the open; the genesis wallet paid the rest'
-      : 'the genesis wallet paid every transaction (a sponsored run is recorded in local-devnet-sponsored.json)',
+      : 'the genesis wallet paid every transaction (a --self-pay debugging run)',
     contract: { name: 'Lantern (devnet flavour)', ...x.deploy, maintenanceAuthority: x.authority },
     timingNotes: 'seconds. execute: the circuit run locally; prove: the local proof server; balance: adding DUST; '
       + 'submit: until the node included the transaction in a block (about 6 s per block); finalize: until midnight-js '
@@ -48,8 +49,9 @@ export function buildRecord({ mode, x, records, finalLedger, startedAt, flavourL
   };
 }
 
-export function writeRecord(record, sponsored = false) {
-  const file = recordPath(sponsored);
+export function writeRecord(record, opts) {
+  const file = recordPath(opts);
   mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`);
+  return file;
 }
