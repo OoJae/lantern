@@ -5,7 +5,7 @@ test('the whole story runs in the browser, exactly as expected', async ({ page }
   await openDemo(page);
   await page.getByRole('button', { name: 'Run to the end' }).click();
   await expect(page.getByTestId('summary')).toContainText('Every step went exactly as expected.');
-  await expect(page.getByTestId('summary')).toContainText('42 steps');
+  await expect(page.getByTestId('summary')).toContainText('74 steps');
 
   // Every secret any proof read: seen privately, absent publicly.
   const boxes = page.locator('.absent li');
@@ -21,6 +21,12 @@ test('the whole story runs in the browser, exactly as expected', async ({ page }
   await expect(recoveries).toHaveCount(2);
   await expect(page.locator('.ledger li[data-vetoed="true"]')).toHaveAttribute('data-approvals', '1');
   await expect(page.locator('.ledger li[data-vetoed="false"]')).toHaveAttribute('data-approvals', '2');
+
+  // The independent DApp: four epochs sealed, one committee rotation, four gated actions.
+  await expect(page.locator('.host [data-count="sealedEpochs"] dd')).toHaveText('4');
+  await expect(page.locator('.host [data-count="committeeGen"] dd')).toHaveText('1');
+  await expect(page.locator('.host [data-count="hostActions"] dd')).toHaveText('4');
+  for (const li of await page.locator('.host li[data-epoch]').all()) expect(await li.getAttribute('data-full')).toMatch(/^[0-9a-f]+$/);
   await expectNoSideScroll(page);
 });
 

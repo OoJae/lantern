@@ -21,6 +21,13 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm ci --prefix web --no-audit --no-fund
       - run: npm run build --prefix web
+      # Reproducible: a second build from the same commit must hash the same.
+      - name: Assert the build is reproducible
+        run: |
+          set -euo pipefail
+          a=$(npm run build --prefix web | grep -o 'build hash [0-9a-f]*')
+          b=$(npm run build --prefix web | grep -o 'build hash [0-9a-f]*')
+          echo "$a"; test "$a" = "$b"
       - run: npx --prefix web playwright install --with-deps chromium
       - run: npm run e2e --prefix web
       - if: failure()

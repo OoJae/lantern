@@ -15,11 +15,11 @@
 // expected, to deployments/local-devnet.json.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { createStory, runStory, BEATS, publicRecord, duration } from '../../src/demo/story.mjs';
+import { createStory, runStory, BEATS, publicRecord, hostRecord, duration } from '../../src/demo/story.mjs';
 import { storyRng } from '../../src/demo/rng.mjs';
 import { repoRoot } from './config.mjs';
 import { startWallet, readyToPay, GENESIS_SEED } from './wallet.mjs';
-import { loadBindings, LANTERN_ZK } from './bindings.mjs';
+import { loadBindings, LANTERN_ZK, HOST_ZK } from './bindings.mjs';
 import { devnetExecutor } from './executor.mjs';
 import { buildRecord, writeRecord } from './record.mjs';
 import { flavour } from '../flavour.mjs';
@@ -36,16 +36,16 @@ const bold = (s) => c('1', s), dim = (s) => c('2', s), red = (s) => c('31;1', s)
 const stamp = () => dim(`[${duration(Math.round((Date.now() - startedAt) / 1000)).padStart(9)}]`);
 const log = (m) => console.log(`${stamp()} ${m}`);
 
-// The core recovery. 7.1 is off the ledger (Jihoon rebuilds the secret), and beat 9 needs it:
-// it is the old secret the DApp must refuse.
-const QUICK = (s) => [0, 1, 2, 3, 4, 8, 9].includes(s.beat) && !['0.6', '0.7'].includes(s.id) || s.id === '7.1';
+// The core recovery, without the independent host's thread. 7.1 is off the ledger (Jihoon
+// rebuilds the secret), and beat 9 needs it: it is the old secret the DApp must refuse.
+const QUICK = (s) => !s.host && ([0, 1, 2, 3, 4, 8, 9].includes(s.beat) && !['0.6', '0.7'].includes(s.id) || s.id === '7.1');
 
 console.log();
 console.log(bold(`  LANTERN · THE STORY ON A LOCAL CHAIN${quick ? ' (quick: the core recovery)' : ''}${sponsored ? ' · SPONSORED' : ''}`));
 console.log(dim('  real proofs, real transactions, the devnet flavour: a 60 s timelock, one line changed'));
 console.log();
 
-const { Lantern } = await loadBindings();
+const bindings = await loadBindings();
 const { changedLine } = flavour(readFileSync(path.join(repoRoot, 'contracts', 'src', 'lantern.compact'), 'utf8'));
 
 log('syncing the genesis wallet…');
@@ -59,7 +59,7 @@ if (sponsored) {
   await Promise.all([readyToPay(sponsorWallet), readyToPay(guardianWallet)]);
   sponsorship = { sponsorWallet, guardianWallet };
 }
-const x = await devnetExecutor({ Lantern, wallet, zkPath: LANTERN_ZK, log, sponsorship });
+const x = await devnetExecutor({ bindings, zk: { lantern: LANTERN_ZK, host: HOST_ZK }, wallet, log, sponsorship });
 const story = createStory({ pure: x.pure, rng: storyRng() });
 const steps = quick ? story.steps.filter(QUICK) : story.steps;
 
@@ -76,7 +76,7 @@ const records = await runStory({ ...story, steps }, x, {
       const verdict = r.outcome === 'accepted' ? green('accepted') : cyan(`refused: "${r.message}"`);
       // A refusal happens locally, before anything is proved: nobody pays for it.
       const paid = r.outcome === 'accepted' && r.payer && sponsored ? dim(`  · paid by ${r.payer}`) : '';
-      log(`${mark} ${r.actor} → ${r.circuit}  ${verdict}${paid}`);
+      log(`${mark} ${r.actor} → ${r.contract === 'host' ? 'host.' : ''}${r.circuit}  ${verdict}${paid}`);
       if (r.tx?.txId) {
         const t = r.timings, sp = r.sponsorship;
         // A sponsored call hands its bound transaction to the sponsor inside `balance`, and the
@@ -94,6 +94,7 @@ const records = await runStory({ ...story, steps }, x, {
 
 const bad = records.filter((r) => !r.ok);
 const finalLedger = publicRecord(await x.ledger());
+const finalHostLedger = hostRecord(await x.hostLedger());
 await wallet.wallet.stop();
 if (sponsorship) await Promise.all([sponsorship.sponsorWallet.wallet.stop(), sponsorship.guardianWallet.wallet.stop()]);
 console.log();
@@ -103,7 +104,7 @@ if (bad.length) {
   process.exit(1);
 }
 const mode = `${quick ? 'quick' : 'full'}${sponsored ? '+sponsored' : ''}`;
-const record = buildRecord({ mode, x, records, finalLedger, startedAt, flavourLine: changedLine, sponsored });
+const record = buildRecord({ mode, x, records, finalLedger, finalHostLedger, startedAt, flavourLine: changedLine, sponsored });
 const file = writeRecord(record, { quick, selfPay: !sponsored });
 const s = record.summary;
 console.log(green(`  Every step went exactly as expected: ${s.accepted} accepted, ${s.refused} refused, ${s.transactions} transactions.`));

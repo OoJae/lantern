@@ -324,8 +324,11 @@ append-only root kept every retired owner forever.
 still passes the gate against the older epoch, **for up to 24 hours**, until a
 newer epoch seals over the new live set. Then it fails at both: *"not the latest
 epoch"* and *"ownership leaf is not in the attested snapshot"*.
-`test/host.test.js › accepts the retired secret against the older epoch until a newer one seals, then never again`.
-Epochs sealed before a committee rotation stay valid.
+`test/host.test.js › accepts the retired secret against the older epoch until a newer one seals, then never again`,
+and on a real local chain in `deployments/local-devnet.json`, story steps 9.6–9.13: the
+old secret passes against epoch 1 after the recovery, then fails once epoch 2 seals.
+Epochs sealed before a committee rotation stay valid; after the rotation (steps
+10.6–10.9) the leaked key's vote is refused.
 
 **Can.** At quorum, sign a root naming an attacker as the current owner of any
 identity root. Or stop signing, which bricks the gate once the window lapses.

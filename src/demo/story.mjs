@@ -19,8 +19,8 @@ export const refuse = (message) => Object.freeze({ refuse: message });
 const BOOK_NAME = Object.freeze({ seoyeon: 'seo-yeon.eth', mum: 'mum@example.com', jihoon: 'jihoon.eth' });
 
 export const BEATS = Object.freeze([
-  { n: 0, title: 'Thirty days earlier', caption: 'Hana enrols her identity and deals a 2-of-3 guardian quorum.' },
-  { n: 1, title: 'An ordinary day', caption: 'Her laptop acts at a DApp that gates on her identity root.' },
+  { n: 0, title: 'Thirty days earlier', caption: 'Hana enrols her identity and deals a 2-of-3 guardian quorum. Elsewhere, an independent DApp\'s committee attests who owns what.' },
+  { n: 1, title: 'An ordinary day', caption: 'Her laptop acts at two DApps that gate on her identity root: one built on Lantern, one deployed independently.' },
   { n: 2, title: 'The laptop is gone', caption: 'A wallet seed restores keys, not state. Her identity secret is gone with it.' },
   { n: 3, title: 'A new phone', caption: 'Anyone may open a recovery. Seo-yeon opens one for the phone, which holds no secret yet.' },
   { n: 4, title: 'Two guardians approve', caption: 'They check the phone\'s fingerprint first. The public record gains two opaque nullifiers.' },
@@ -28,8 +28,8 @@ export const BEATS = Object.freeze([
   { n: 6, title: 'What the chain refuses', caption: 'A real guardian of someone else. A guardian approving twice.' },
   { n: 7, title: 'Jihoon turns', caption: 'With Mum\'s phished share he rebuilds Hana\'s secret. Watch what it buys him.' },
   { n: 8, title: 'Seventy-two hours', caption: 'The phone finalizes, once the timelock allows it and only with the real shares.' },
-  { n: 9, title: 'The DApp never noticed', caption: 'The old secret is dead everywhere. The DApp still stores one value.' },
-  { n: 10, title: 'Epilogue', caption: 'Fresh shares, and a guardian set without Jihoon.' },
+  { n: 9, title: 'The DApp never noticed', caption: 'The old secret is dead at once where Lantern is read directly, and a day later where a committee relays it.' },
+  { n: 10, title: 'Epilogue', caption: 'Fresh shares, a guardian set without Jihoon, and a committee that replaces a leaked key.' },
 ]);
 
 /**
@@ -67,6 +67,7 @@ export function createStory({ pure, rng }) {
     phonePk: pure.ephemeralPkOf(p.phone.ephemeralSk),
     successor: newIdentity(rng.field),
     rid: null, hostileRid: null, jihoonPk: null, newId: null, attack: null,
+    snaps: {}, candidate: null, leaked: null,
   };
   w.successorCommits = {
     id: pure.idCommitOf(w.successor.identitySecret, w.successor.idSalt),
@@ -88,6 +89,36 @@ export function createStory({ pure, rng }) {
 
   const call = (id, beat, actor, as, circuit, args, expect, say, save) =>
     ({ id, beat, kind: 'call', actor, as, circuit, args, expect, say, save });
+  // Steps against the independently deployed host. `host` marks everything that
+  // belongs to it, so a run can leave the whole thread out (the devnet's --quick).
+  const hostCall = (...a) => ({ ...call(...a), contract: 'host', host: true });
+  const hostOffchain = (...a) => ({ ...offchain(...a), host: true });
+  const member = (i) => () => ({ name: `committee member ${i + 1}` });
+  const u32 = (n) => BigInt(n);
+  const gate = (id, beat, actor, as, e, current, expect, say) =>
+    hostCall(id, beat, actor, as, 'requireCurrentOwnerAttested', () => [u32(e), w.id, current(), nonce()], expect, say);
+  const onPath = (ps, e, member) => ({ ...ps, snapshotPath: w.snaps[e].pathFor(w.id, member) });
+
+  // A committee epoch: rebuild the canonical live set from Lantern's public ledger,
+  // propose its root, two Jubjub Schnorr signatures (verified in-circuit), seal.
+  const epoch = (ids, beat, e, say, voters = [0, 1]) => [
+    hostOffchain(ids[0], beat, 'the committee', say, async (x) => {
+      const snap = await x.snapshot();
+      w.snaps[e] = snap;
+      const n = snap.entries.length;
+      return { detail: `${n} current owner${n === 1 ? '' : 's'} · canonical root ${snap.root.toString(16).slice(0, 12)}…` };
+    }),
+    hostCall(ids[1], beat, 'committee member 1', member(0), 'openEpoch', () => [u32(e), w.snaps[e].root], ACCEPT,
+      `Member 1 proposes that root as epoch ${e}.`),
+    ...voters.map((slot, k) => hostCall(ids[2 + k], beat, `committee member ${slot + 1}`, member(slot), 'attestVote',
+      async (x) => {
+        const root = w.snaps[e].root;
+        const gen = (await x.hostLedger()).committeeGen;
+        return [u32(e), root, BigInt(slot), x.committee.pk(slot), x.committee.sign(slot, x.hostPure.attestDigest(x.hostTag, gen, u32(e), root))];
+      }, ACCEPT, `Member ${slot + 1} signs it. The circuit verifies the Jubjub Schnorr signature itself.`)),
+    hostCall(ids[2 + voters.length], beat, 'committee member 1', member(0), 'sealEpoch', () => [u32(e), w.snaps[e].root], ACCEPT,
+      `Two of three: epoch ${e} is sealed.`),
+  ];
   const offchain = (id, beat, actor, say, run) => ({ id, beat, kind: 'offchain', actor, say, run });
   // `until` names what the wait is FOR, so an executor on a real chain can wait exactly that long:
   // the timelock ends DELAY after the later of the two open-time bounds.
@@ -113,10 +144,14 @@ export function createStory({ pure, rng }) {
     call('0.7', 0, 'Minji', () => p.minji, 'addGuardian', () => [w.minjiId], ACCEPT,
       'She makes herself one of her own guardians, so she holds a real leaf with a real Merkle path.',
       (res) => { p.minji.leaf = res; }),
+    ...epoch(['0.8', '0.9', '0.10', '0.11', '0.12'], 0, 0,
+      'An independent DApp, deployed separately, cannot read Lantern. It trusts a three-member committee, which rebuilds the list of current owners from Lantern\'s public ledger.'),
 
     // ---- 1 · an ordinary day -------------------------------------------------
     call('1.1', 1, 'Hana\'s laptop', () => p.laptop, 'hostGatedAction', () => [w.id, w.id, nonce()], ACCEPT,
       'The DApp stores one value, Hana\'s identity root, and asks: is the caller its current owner? Yes.'),
+    gate('1.2', 1, 'Hana\'s laptop', () => onPath(p.laptop, 0, w.id), 0, () => w.id, ACCEPT,
+      'The independent DApp asks the same question of the committee\'s latest epoch, with a Merkle path the laptop fetched off the chain. Yes.'),
 
     // ---- 2 · the laptop is gone ----------------------------------------------
     offchain('2.1', 2, 'Hana', 'The laptop is destroyed, and its private state with it. No seed phrase brings it back.',
@@ -193,6 +228,8 @@ export function createStory({ pure, rng }) {
     call('7.10', 7, 'Jihoon', () => p.rogue, 'finalizeRecovery', () => [w.hostileRid, w.successorCommits.id, w.successorCommits.veto],
       refuse('recovery vetoed'),
       'His own recovery is dead.'),
+    gate('7.11', 7, 'Jihoon', () => onPath(p.rogue, 0, w.id), 0, () => w.id, ACCEPT,
+      'But until Hana\'s recovery finalizes, the secret he holds is the owner\'s at the independent DApp too.'),
 
     // ---- 8 · seventy-two hours ---------------------------------------------------
     offchain('8.1', 8, 'Hana\'s new phone', 'The phone rebuilds Hana\'s identity secret from the two shares, and makes a new identity to succeed it.',
@@ -205,14 +242,16 @@ export function createStory({ pure, rng }) {
       'Finalize now?'),
     clock('8.3', 8, DELAY + SLACK + 10, `Wait out the timelock: ${duration(DELAY + SLACK + 10)}.`,
       (L) => Number(L.recoveries.lookup(w.rid).openedAtHi) + DELAY + 5),
-    call('8.4', 8, 'Hana\'s new phone', () => ({ ...p.phone, ...recoverFromShares([p.seoyeon.share, forged(p.mum.share, rng)]) }),
+    ...epoch(['8.4', '8.5', '8.6', '8.7', '8.8'], 8, 1,
+      'Meanwhile the committee seals its daily epoch. Hana\'s old commitment is still current: her recovery has not finalized.'),
+    call('8.9', 8, 'Hana\'s new phone', () => ({ ...p.phone, ...recoverFromShares([p.seoyeon.share, forged(p.mum.share, rng)]) }),
       'finalizeRecovery', () => [w.rid, w.successorCommits.id, w.successorCommits.veto],
       refuse('reconstructed secret does not open idCommit'),
       'Suppose one share had been tampered with in transit. The rebuilt secret is wrong, and the chain can tell.'),
-    call('8.5', 8, 'the fee sponsor', () => p.sponsor, 'finalizeRecovery', () => [w.rid, w.successorCommits.id, w.successorCommits.veto],
+    call('8.10', 8, 'the fee sponsor', () => p.sponsor, 'finalizeRecovery', () => [w.rid, w.successorCommits.id, w.successorCommits.veto],
       refuse('not the device the guardians approved'),
       'The sponsor who pays for Hana\'s transactions tries to finalize for itself.'),
-    call('8.6', 8, 'Hana\'s new phone', () => p.phone, 'finalizeRecovery', () => [w.rid, w.successorCommits.id, w.successorCommits.veto],
+    call('8.11', 8, 'Hana\'s new phone', () => p.phone, 'finalizeRecovery', () => [w.rid, w.successorCommits.id, w.successorCommits.veto],
       ACCEPT,
       'The phone finalizes: the approved device, the right secret, after the timelock. The old commitment is retired and a successor takes its place.',
       () => {
@@ -238,6 +277,16 @@ export function createStory({ pure, rng }) {
       'The same proof for the old commitment: it still descends from the root, but it is no longer the head.'),
     call('9.5', 9, 'Hana\'s new phone', () => p.phone, 'proveHeadOwnership', () => [w.id, w.newId], ACCEPT,
       'And the phone proves it holds the head\'s secret, without revealing it.'),
+    gate('9.6', 9, 'Jihoon', () => onPath(p.rogue, 1, w.id), 1, () => w.id, ACCEPT,
+      'At the independent DApp, the old secret still works: epoch 1 was sealed before the recovery, and a snapshot can only say who owned what when it was sealed. This is the gap SECURITY.md bounds at 24 hours.'),
+    ...epoch(['9.7', '9.8', '9.9', '9.10', '9.11'], 9, 2,
+      'The committee\'s next epoch rebuilds the list from the ledger: Hana\'s old commitment is retired, her successor is current.'),
+    gate('9.12', 9, 'Jihoon', () => onPath(p.rogue, 1, w.id), 2, () => w.id, refuse('ownership leaf is not in the attested snapshot'),
+      'Jihoon tries epoch 2 with his path from epoch 1.'),
+    gate('9.13', 9, 'Jihoon', () => onPath(p.rogue, 1, w.id), 1, () => w.id, refuse('not the latest epoch'),
+      'And epoch 1 again: it is no longer the latest.'),
+    gate('9.14', 9, 'Hana\'s new phone', () => onPath(p.phone, 2, w.newId), 2, () => w.newId, ACCEPT,
+      'Hana\'s phone passes at the independent DApp too. It never changed the value it stores either.'),
 
     // ---- epilogue ------------------------------------------------------------------
     offchain('10.1', 10, 'Hana', 'Hana deals fresh shares of her new secret. The old shares rebuild a retired secret, so they are worthless.',
@@ -253,7 +302,35 @@ export function createStory({ pure, rng }) {
       call(`10.${i + 3}`, 10, 'Hana', () => ({ ...phoneWithCard(), guardianSecret: p[g].guardianSecret, leafSalt: p[g].leafSalt }),
         'addGuardian', () => [w.newId], ACCEPT, `She adds ${p[g].name} back, with a fresh token.`,
         (res) => { p[g].leaf = res; })),
+    hostOffchain('10.5', 10, 'the committee', 'Committee member 3\'s signing key leaks. The committee is deliberately not sealed, so the other two can replace it.',
+      (x) => {
+        w.leaked = x.committee.signer(2);
+        w.candidate = x.committee.candidate(rng.bytes32());
+        return { detail: 'a new key for slot 3' };
+      }),
+    hostCall('10.6', 10, 'committee member 1', member(0), 'openRotation', () => [2n, ...w.candidate.xy], ACCEPT,
+      'Member 1 proposes the replacement.'),
+    ...[0, 1].map((slot, k) => hostCall(`10.${7 + k}`, 10, `committee member ${slot + 1}`, member(slot), 'rotateVote',
+      async (x) => {
+        const gen = (await x.hostLedger()).committeeGen;
+        const sig = x.committee.sign(slot, x.hostPure.rotateDigest(x.hostTag, gen, 2n, ...w.candidate.xy));
+        return [2n, ...w.candidate.xy, BigInt(slot), x.committee.pk(slot), sig];
+      }, ACCEPT, `Member ${slot + 1} signs the rotation.`)),
+    hostCall('10.9', 10, 'committee member 1', member(0), 'sealRotation', () => [2n, ...w.candidate.xy], ACCEPT,
+      'Sealed: slot 3 has a new key, and the generation moves on, voiding every signature the leaked key ever made.',
+      () => { w.candidate.install(2); }),
+    ...epoch(['10.10', '10.11', '10.12', '10.13', '10.15'], 10, 3,
+      'The committee seals epoch 3 under the new generation, with member 3\'s new key.', [1, 2]),
   ];
+  // The leaked key tries to vote for epoch 3, before it seals.
+  steps.splice(steps.findIndex((s) => s.id === '10.15'), 0,
+    hostCall('10.14', 10, 'whoever holds the leaked key', member(2), 'attestVote',
+      async (x) => {
+        const root = w.snaps[3].root;
+        const gen = (await x.hostLedger()).committeeGen;
+        return [3n, root, 2n, w.leaked.pk, w.leaked.sign(x.hostPure.attestDigest(x.hostTag, gen, 3n, root))];
+      }, refuse('public key does not match this committee slot'),
+      'Whoever holds the leaked key tries to vote for epoch 3 in slot 3.'));
 
   return { steps, world: w, personas: p, beats: BEATS };
 }
@@ -272,6 +349,13 @@ export function createStory({ pure, rng }) {
 //   scanLast()                    optional: a leak scan of the last accepted call
 // ---------------------------------------------------------------------------
 
+/** The independent host's public state, summarised the same way. */
+export function hostRecord(L) {
+  let votes = 0; for (const _ of L.voteNullifiers) votes++;
+  return { sealedEpochs: Number(L.latestEpoch), committeeGen: Number(L.committeeGen),
+    committeeVotes: votes, hostActions: Number(L.gateActions) };
+}
+
 /** Counts of every public collection: what an accepted call visibly changed. */
 export function publicRecord(L) {
   const n = (it) => { let c = 0; for (const _ of it) c++; return c; };
@@ -289,17 +373,20 @@ const diff = (a, b) => Object.fromEntries(Object.keys(b).filter((k) => a[k] !== 
 export async function runStep(step, x) {
   const rec = { id: step.id, beat: step.beat, kind: step.kind, actor: step.actor, say: step.say };
   if (step.kind === 'call') {
+    const onHost = step.contract === 'host';
+    const read = async () => (onHost ? hostRecord(await x.hostLedger()) : publicRecord(await x.ledger()));
     const ps = step.as();
-    const args = step.args();
+    const args = await step.args(x);
     rec.circuit = step.circuit;
+    if (onHost) rec.contract = 'host';
     rec.args = args.map(show);
     rec.expect = step.expect.accept ? 'accepted' : `refused: ${step.expect.refuse}`;
-    const before = publicRecord(await x.ledger());
+    const before = await read();
     try {
-      const result = await x.call(ps, step.circuit, args, rec);
+      const result = await x.call(ps, step.circuit, args, rec, onHost ? 'host' : 'lantern');
       rec.outcome = 'accepted';
       rec.result = show(result);
-      rec.publicChange = diff(before, publicRecord(await x.ledger()));
+      rec.publicChange = diff(before, await read());
       if (x.scanLast) rec.scan = x.scanLast();
       step.save?.(result);
     } catch (e) {
@@ -354,6 +441,7 @@ function show(v) {
   if (typeof v === 'bigint') return v.toString();
   if (v === undefined || v === null) return null;
   if (Array.isArray(v)) return v.map(show);
+  if (typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, u]) => [k, show(u)]));
   return String(v);
 }
 function messageOf(e) {

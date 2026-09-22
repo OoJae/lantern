@@ -146,6 +146,7 @@ export default function Demo() {
           <Clock now={session.x.now} start={session.startedAt} duration={engine.duration} />
           <Absent records={records} />
           <Ledger x={session.x} publicRecord={engine.publicRecord} />
+          <HostPanel x={session.x} />
           <People personas={session.story.personas} records={records} />
         </aside>
       </div>
@@ -296,6 +297,34 @@ function Ledger({ x, publicRecord }) {
           ))}
         </ul>
       </>}
+    </section>
+  );
+}
+
+function HostPanel({ x }) {
+  const H = x.hostLedger();
+  const epochs = [...H.attestedRoots].map(([e, root]) => ({ e: Number(e), root: root.toString(16) }));
+  return (
+    <section className="panel host" aria-label="The independent DApp">
+      <h2>The independent DApp</h2>
+      <p className="meta">Deployed separately: it cannot read Lantern. It trusts a two-of-three committee that
+        rebuilds the list of current owners from Lantern’s public ledger and signs its root, each signature
+        checked inside the circuit.</p>
+      <dl className="counts">
+        <div data-count="sealedEpochs"><dt>sealed epochs</dt><dd>{Number(H.latestEpoch)}</dd></div>
+        <div data-count="committeeGen"><dt>committee generation</dt><dd>{Number(H.committeeGen)}</dd></div>
+        <div data-count="hostActions"><dt>DApp actions</dt><dd>{Number(H.gateActions)}</dd></div>
+      </dl>
+      {epochs.length > 0 && (
+        <ul className="values">
+          {epochs.map((ep) => (
+            <li key={ep.e} data-epoch={ep.e} data-full={ep.root}>
+              <span className="tag">epoch {ep.e}</span><code>{short(ep.root)}</code>
+              {ep.e === epochs.length - 1 && <span className="tag">latest</span>}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

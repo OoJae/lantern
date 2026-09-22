@@ -8,6 +8,7 @@
 // opens would give anyone free use of the liveness oracle.
 export const SPONSORED_CIRCUITS = Object.freeze([
   'finalizeRecovery', 'vetoRecovery', 'hostGatedAction', 'proveHeadOwnership', 'rotateGuardianSet', 'addGuardian',
+  'requireCurrentOwnerAttested',
 ]);
 
 const text = (v) => (typeof v === 'string' ? v : new TextDecoder().decode(v));

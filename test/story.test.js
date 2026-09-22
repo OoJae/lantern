@@ -44,8 +44,11 @@ describe('the story, on the in-memory ledger', () => {
       }
     }
     // The scans are not vacuous: every secret-bearing circuit read something.
-    // Only these two read no secret: an open needs none, and descent is a public fact.
-    const readers = accepted.filter((r) => !['openRecovery', 'proveSuccession'].includes(r.circuit));
+    // These read no secret: an open needs none, descent is a public fact, and the committee
+    // signs off the circuit -- its circuits verify public signatures.
+    const NO_SECRET = ['openRecovery', 'proveSuccession', 'openEpoch', 'attestVote', 'sealEpoch',
+      'openRotation', 'rotateVote', 'sealRotation'];
+    const readers = accepted.filter((r) => !NO_SECRET.includes(r.circuit));
     for (const r of readers) expect(r.scan.fields.length, r.id).toBeGreaterThan(0);
   });
 
@@ -57,14 +60,26 @@ describe('the story, on the in-memory ledger', () => {
   it('the stolen secret buys impersonation until recovery, and nothing else', () => {
     const jihoon = calls.filter((r) => r.actor === 'Jihoon');
     const acceptedCircuits = jihoon.filter((r) => r.outcome === 'accepted').map((r) => r.circuit);
-    expect(acceptedCircuits.sort()).toEqual(['approveRecovery', 'hostGatedAction', 'openRecovery']);
+    expect(acceptedCircuits.sort()).toEqual(['approveRecovery', 'hostGatedAction', 'openRecovery',
+      'requireCurrentOwnerAttested', 'requireCurrentOwnerAttested']);
     const after = records.find((r) => r.id === '9.1');
     expect(after.message).toBe('not the current owner of this identity root');
   });
 
+  it('shows the attested DApp\'s window, and its close, on the same ledgers', () => {
+    const byId = Object.fromEntries(records.map((r) => [r.id, r]));
+    expect(byId['9.1'].message).toBe('not the current owner of this identity root');   // in-contract: at once
+    expect(byId['9.6'].outcome).toBe('accepted');                                     // attested: the gap
+    expect(byId['9.12'].message).toBe('ownership leaf is not in the attested snapshot'); // closed by epoch 2
+    expect(byId['10.14'].message).toBe('public key does not match this committee slot'); // a rotated key is dead
+  });
+
   it('is reproducible from its seed, and different without one', async () => {
     const again = await run('story-test');
-    const strip = (rs) => rs.map(({ scan, ...r }) => r);
+    // Everything reproduces except the committee's Schnorr signatures, whose nonce the
+    // Foundation library draws fresh for every signature. Compare those steps without it.
+    const SIGNED = ['attestVote', 'rotateVote'];
+    const strip = (rs) => rs.map(({ scan, ...r }) => (SIGNED.includes(r.circuit) ? { ...r, args: r.args.slice(0, -1) } : r));
     expect(strip(again.records)).toEqual(strip(records));
     const fresh = await run(undefined);
     expect(fresh.records.find((r) => r.id === '0.1').args[0])

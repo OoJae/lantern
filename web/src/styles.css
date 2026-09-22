@@ -265,3 +265,6 @@ table.targets:not(.compact) { min-width: 680px; }
 table.leaks { min-width: 620px; }
 table.real { min-width: 620px; }
 table code { white-space: nowrap; overflow-wrap: normal; }
+
+.recorded { margin-top: 1.8em; border-left: 3px solid var(--ok); }
+.recorded h2 { font-family: var(--serif); font-size: 1.25rem; }

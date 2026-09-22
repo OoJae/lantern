@@ -12,7 +12,7 @@ export const recordPath = ({ quick = false, selfPay = false } = {}) =>
 
 const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : null; };
 
-export function buildRecord({ mode, x, records, finalLedger, startedAt, flavourLine, sponsored = false }) {
+export function buildRecord({ mode, x, records, finalLedger, finalHostLedger, startedAt, flavourLine, sponsored = false }) {
   const txs = records.filter((r) => r.tx?.txId);
   const proves = txs.map((r) => r.timings?.prove).filter((v) => v != null);
   const totals = txs.map((r) => r.timings?.total).filter((v) => v != null);
@@ -31,17 +31,21 @@ export function buildRecord({ mode, x, records, finalLedger, startedAt, flavourL
     payer: sponsored
       ? 'per step: the recovering phone holds no wallet and a sponsor paid its fees; Seo-yeon paid for the open; the genesis wallet paid the rest'
       : 'the genesis wallet paid every transaction (a --self-pay debugging run)',
-    contract: { name: 'Lantern (devnet flavour)', ...x.deploy, maintenanceAuthority: x.authority },
+    contracts: {
+      lantern: { ...x.contracts.lantern, name: 'Lantern (devnet flavour)' },
+      host: { ...x.contracts.host, name: 'LanternHost (unchanged)', committee: 'three Jubjub keys generated for this run; quorum 2' },
+    },
     timingNotes: 'seconds. execute: the circuit run locally; prove: the local proof server; balance: adding DUST; '
       + 'submit: until the node included the transaction in a block (about 6 s per block); finalize: until midnight-js '
       + 'saw it finalized. The first proof of a run is marked cold.',
     steps: records.map(({ scan, ...r }) => r),
     finalPublicRecord: finalLedger,
+    finalHostRecord: finalHostLedger,
     summary: {
       steps: records.length,
       accepted: records.filter((r) => r.outcome === 'accepted').length,
       refused: records.filter((r) => r.outcome === 'refused').length,
-      transactions: txs.length + 2, // + deploy + freeze
+      transactions: txs.length + 4, // + two deploys + two freezes
       proveSeconds: { min: Math.min(...proves), median: median(proves), max: Math.max(...proves), coldFirst: proves[0] ?? null },
       callToFinalizedSeconds: { min: Math.min(...totals), median: median(totals), max: Math.max(...totals) },
       wallClockMinutes: Math.round((Date.now() - startedAt) / 6000) / 10,

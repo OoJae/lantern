@@ -30,11 +30,11 @@
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0",
     "@midnight-ntwrk/ledger-v8": "8.1.0",
+    "@midnight-ntwrk/midnight-did-jubjub-schnorr": "0.7.0",
     "@midnight-ntwrk/onchain-runtime-v3": "3.0.0",
     "@noble/hashes": "2.4.0"
   },
   "devDependencies": {
-    "@midnight-ntwrk/midnight-did-jubjub-schnorr": "0.7.0",
     "vitest": "4.1.11"
   },
   "overrides": {
