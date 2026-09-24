@@ -57,6 +57,17 @@ test('the clock step says it is simulated', async ({ page }) => {
   await expect(page.locator('.step.clock')).toContainText('72 h 10 min');
 });
 
+test('each step also taken on the local chain says where, labelled as a separate recorded run', async ({ page }) => {
+  await openDemo(page);
+  await page.getByRole('button', { name: 'Run to the end' }).click();
+  await page.getByRole('button', { name: /Seventy-two hours/ }).click();
+  const finalize = page.locator('.step[data-step="8.11"] .recorded-chip');
+  await expect(finalize).toHaveAttribute('data-recorded', 'accepted');
+  await expect(finalize).toContainText(/recorded \d{4}-\d{2}-\d{2} on a local chain: block \d+ · proved in [\d.]+ s · fee paid by a sponsor/);
+  const sponsorRefused = page.locator('.step[data-step="8.10"] .recorded-chip');
+  await expect(sponsorRefused).toHaveText(/refused the same way, before any transaction/);
+});
+
 test('a deep link opens the story at a beat', async ({ page }) => {
   await page.goto('/demo?beat=7');
   await expect(page.locator('[data-ready="true"]')).toBeVisible();

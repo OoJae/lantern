@@ -3,6 +3,12 @@ import { Link } from '../lib/router.jsx';
 import { FIELD_LABEL, hex, short, toHex, clockText } from '../lib/format.js';
 import { Honesty } from '../components/Honesty.jsx';
 import { TargetTable } from '../components/TargetTable.jsx';
+// The committed record of the same story on a local chain, read at build time. Each step
+// the chain run also took gets a chip saying so -- this page itself makes no proofs.
+import record from '../../../deployments/local-devnet.json' with { type: 'json' };
+
+const RECORDED = Object.fromEntries(record.steps.filter((s) => s.kind === 'call').map((s) => [s.id, s]));
+const RECORDED_ON = record.recordedAt.slice(0, 10);
 
 export default function Demo() {
   const [engine, setEngine] = useState(null);
@@ -213,6 +219,7 @@ function Step({ r, enumeration }) {
         </p>
       )}
       {!r.ok && <p className="meta warn">Unexpected: the story expected {r.expect}.</p>}
+      <Recorded r={r} />
       {enumeration && (
         <div className="inline-attack">
           <p className="meta">The same attacker, against the four guardian designs of <Link to="/attacks">Attack it</Link>:</p>
@@ -221,6 +228,18 @@ function Step({ r, enumeration }) {
       )}
     </li>
   );
+}
+
+// Where the committed chain run took this same step. A different run with different secrets,
+// so it shows the block and timing there, never values from this page.
+function Recorded({ r }) {
+  const rec = RECORDED[r.id];
+  if (!rec || r.kind !== 'call') return null;
+  const where = `recorded ${RECORDED_ON} on a local chain`;
+  const text = rec.outcome === 'accepted'
+    ? `${where}: block ${rec.tx.blockHeight} · proved in ${rec.timings.prove} s${rec.sponsorship ? ' · fee paid by a sponsor' : ''}`
+    : `${where}: refused the same way, before any transaction`;
+  return <p className="recorded-chip" data-recorded={rec.outcome}>{text}</p>;
 }
 
 function Summary({ records }) {
