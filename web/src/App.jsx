@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { Link, usePath } from './lib/router.jsx';
 import Landing from './pages/Landing.jsx';
 import About from './pages/About.jsx';
@@ -12,10 +12,23 @@ const NAV = [['/demo', 'The recovery'], ['/attacks', 'Attack it'], ['/about', 'W
 export default function App() {
   const path = usePath().replace(/\/+$/, '') || '/';
   const Page = { '/': Landing, '/demo': Demo, '/attacks': Attacks, '/about': About }[path] ?? NotFound;
+  const header = useRef(null);
+
+  // The sticky header's height, kept in --header-h: its nav wraps onto more lines as the window
+  // narrows, and an in-page jump such as /demo#break must stop clear of it at every width.
+  useEffect(() => {
+    const el = header.current;
+    const set = () => document.documentElement.style.setProperty('--header-h', `${Math.ceil(el.getBoundingClientRect().height)}px`);
+    set();
+    const watch = new ResizeObserver(set);
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, []);
+
   return (
     <>
       <a className="skip" href="#main">Skip to content</a>
-      <header className="site">
+      <header className="site" ref={header}>
         <Link to="/" className="brand" aria-label="Lantern home">
           <LanternMark />
           <span>Lantern</span>

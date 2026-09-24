@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from '../lib/router.jsx';
-import { FIELD_LABEL, hex, short, toHex, clockText } from '../lib/format.js';
+import { FIELD_LABEL, LEDGER_LABEL, hex, short, toHex, clockText } from '../lib/format.js';
 import { Honesty } from '../components/Honesty.jsx';
+import { BreakIt } from '../components/BreakIt.jsx';
 import { TargetTable } from '../components/TargetTable.jsx';
 // The committed record of the same story on a local chain, read at build time. Each step
 // the chain run also took gets a chip saying so -- this page itself makes no proofs.
@@ -19,6 +20,8 @@ export default function Demo() {
   const [review, setReview] = useState(null);
   const [playing, setPlaying] = useState(false);
   const railRef = useRef(null);
+  const controlsRef = useRef(null);
+  const inPanel = useRef(false);  // whether the visitor last clicked, tapped or moved focus inside "Try to break it"
   const deepLinked = useRef(false);
 
   useEffect(() => {
@@ -67,6 +70,8 @@ export default function Demo() {
     const beat = Number(new URLSearchParams(window.location.search).get('beat'));
     if (beat > 0 && beat <= 10) run((step, batch) => batch.at(-1).beat >= beat);
     if (new URLSearchParams(window.location.search).get('autoplay') === '1') setPlaying(true);
+    // The panel renders only once the contract has loaded, too late for the browser's own jump.
+    if (window.location.hash === '#break') document.getElementById('break')?.scrollIntoView();
   }, [session, run]);
 
   // Autoplay: one step at a time, at reading pace, until the end or until paused.
@@ -83,11 +88,29 @@ export default function Demo() {
   }, [records.length, review]);
 
   useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'ArrowRight' && !e.metaKey && !e.ctrlKey && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) next();
+    const inView = (el) => {
+      const r = el?.getBoundingClientRect();
+      return Boolean(r) && r.bottom > 0 && r.top < window.innerHeight;
     };
+    const onTouch = (e) => { inPanel.current = Boolean(e.target.closest?.('.breakit')); };
+    const onKey = (e) => {
+      if (e.key !== 'ArrowRight' || e.metaKey || e.ctrlKey || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+      // Not from inside "Try to break it", nor after a click on its text, which leaves focus on the
+      // page itself: a key meant for the panel must never move the story on unseen.
+      if (e.target.closest?.('.breakit') || inPanel.current) return;
+      // Nor while the panel is on screen and the story's controls are not, which would put the step
+      // out of sight. Controls that are only further down, below the steps being read, do not stop it.
+      if (inView(document.getElementById('break')) && !inView(controlsRef.current)) return;
+      next();
+    };
+    window.addEventListener('pointerdown', onTouch, true);
+    window.addEventListener('focusin', onTouch, true);
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('pointerdown', onTouch, true);
+      window.removeEventListener('focusin', onTouch, true);
+      window.removeEventListener('keydown', onKey);
+    };
   });
 
   if (!session) {
@@ -157,7 +180,7 @@ export default function Demo() {
 
           {done && <Summary records={records} />}
 
-          <div className="controls">
+          <div className="controls" ref={controlsRef}>
             <button type="button" className="primary" onClick={() => { setPlaying(false); next(); }} disabled={busy || done}>
               {nextStep?.kind === 'clock' ? `Skip ${engine.duration(nextStep.seconds)} (simulated clock)` : 'Next step'}
             </button>
@@ -168,7 +191,10 @@ export default function Demo() {
             <button type="button" onClick={playAll} disabled={busy || done}>Run to the end</button>
             <button type="button" onClick={restart} disabled={busy}>Start again, new secrets</button>
           </div>
-          <p className="hint">Tip: the → key takes the next step. Link straight to a beat with <code>/demo?beat=7</code>.</p>
+          <p className="hint">
+            Tip: the → key takes the next step. Link straight to a beat with <code>/demo?beat=7</code>.
+            Or skip the script: <a href="#break">try to break it</a>.
+          </p>
         </div>
 
         <aside className="side-col" aria-label="State" tabIndex={0}>
@@ -179,6 +205,8 @@ export default function Demo() {
           <People personas={session.story.personas} records={records} />
         </aside>
       </div>
+
+      <BreakIt engine={engine} />
     </section>
   );
 }
@@ -250,6 +278,7 @@ function Summary({ records }) {
       <p><strong>{records.length} steps</strong> · {calls.filter((r) => r.outcome === 'accepted').length} accepted · {calls.filter((r) => r.outcome === 'refused').length} refused, each by the circuit's own assert.</p>
       <p>{bad.length ? `${bad.length} step(s) did not go as the story expects.` : 'Every step went exactly as expected.'}</p>
       <p className="meta">The same script, with real proofs and real transactions on a local chain: <code>npm run devnet</code>.</p>
+      <p>Now choose the attack yourself: <a href="#break">Try to break it</a>.</p>
     </div>
   );
 }
@@ -295,12 +324,6 @@ function Absent({ records }) {
     </section>
   );
 }
-
-const LEDGER_LABEL = {
-  enrolled: 'identity commitments', guardianLeaves: 'guardian leaves', recoveries: 'recoveries opened',
-  approvals: 'approval nullifiers', vetoes: 'veto nullifiers', killed: 'vetoed recoveries',
-  retired: 'retired commitments', lineage: 'lineage leaves', guardianSets: 'guardian sets', gateActions: 'DApp actions',
-};
 
 function Ledger({ x, publicRecord }) {
   const L = x.ledger();
@@ -382,7 +405,7 @@ function holdings(ps) {
   for (const [f, label] of Object.entries(FIELD_LABEL)) {
     if (ps[f] !== undefined && ps[f] !== null) out.push({ label, fp: toHex(ps[f]).slice(0, 8) });
   }
-  if (ps.share) out.push({ label: `share #${ps.share.x}`, fp: ps.share.y.toString(16).slice(0, 8) });
+  if (ps.share) out.push({ label: `share #${ps.share.x}`, fp: ps.share.y.toString(16).padStart(64, '0').slice(0, 8) });
   if (ps.shares?.length) out.push({ label: `${ps.shares.length} shares`, fp: null });
   return out;
 }

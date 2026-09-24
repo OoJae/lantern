@@ -9,6 +9,8 @@ import { storyRng } from '../../../src/demo/rng.mjs';
 import { runEnumeration } from '../../../src/attack/run.mjs';
 
 export { BEATS, publicRecord, fingerprint, duration, runEnumeration };
+// "Try to break it" ships in this same chunk: the panel fetches nothing when a visitor uses it.
+export { newWorld, runAttack, worldOf, flipByte, shareFingerprint } from './breakit.js';
 
 /** A fresh story with real Web Crypto entropy: new secrets on every restart. */
 export function newSession() {
