@@ -10,6 +10,9 @@ export async function openDemo(page) {
 }
 
 export async function expectNoSeriousA11yIssues(page) {
+  // Measure the settled page: a card still fading in has, for a moment, partial opacity
+  // and so lower contrast. Firefox runs axe fast enough to catch that; the page itself is fine.
+  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)));
   const { violations } = await new AxeBuilder({ page }).analyze();
   const serious = violations.filter((v) => ['serious', 'critical'].includes(v.impact));
   expect(serious.map((v) => `${v.id}: ${v.nodes.length} node(s)`)).toEqual([]);

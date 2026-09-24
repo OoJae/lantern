@@ -12,7 +12,8 @@
     "dev": "vite",
     "build": "vite build && node scripts/check-bundle.mjs",
     "preview": "vite preview --port 4319 --strictPort",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:cross": "playwright test -c playwright.cross.config.js"
   },
   "dependencies": {
     "buffer": "6.0.3",
