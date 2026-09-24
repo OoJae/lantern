@@ -103,3 +103,56 @@ describe('deployments/bench-shipped-finalize.json', () => {
     expect(BENCH.machine.cpuModel).toBeTruthy();
   });
 });
+
+// The shipped contract on Midnight's public test network. `LANTERN_NETWORK=preprod node
+// devnet/src/shipped.mjs verify` re-checks the record against Preprod itself, at any time; this
+// checks the record is internally sound, before the finalize and after it.
+describe('deployments/preprod-shipped.json', () => {
+  const P = load('preprod-shipped.json');
+  const H = 3600 * 1000;
+  const OPENED = ['enrollIdentity', 'addGuardian', 'addGuardian', 'addGuardian', 'openRecovery', 'approveRecovery', 'approveRecovery'];
+
+  it('is the SHIPPED contract, unchanged, on Preprod, with its rules frozen', () => {
+    expect(P.network).toMatch(/^preprod /);
+    expect(P.timelockSeconds).toBe(259200);
+    expect(P.contract.verifierKeys).toBe('10 of 10 identical to a fresh compile of contracts/src/lantern.compact');
+    expect(P.contract.maintenanceAuthority).toMatchObject({ committee: 0, threshold: 1 });
+    expect(P.contract.maintenanceAuthority.frozenBy.status).toBe('SucceedEntirely');
+    expect(P.contract.status).toBe('SucceedEntirely');
+  });
+
+  it('enrolled, added three guardians, opened, and collected two approvals, each a finalized transaction', () => {
+    const accepted = P.steps.filter((s) => s.outcome === 'accepted');
+    // Once finalized, the finalize itself is the eighth.
+    expect(accepted.map((s) => s.circuit)).toEqual(P.finalize ? [...OPENED, 'finalizeRecovery'] : OPENED);
+    for (const s of accepted) expect(s.tx.status, s.id).toBe('SucceedEntirely');
+    const heights = accepted.map((s) => s.tx.blockHeight);
+    expect(heights).toEqual([...heights].sort((a, b) => a - b));
+    expect(heights[0]).toBeGreaterThan(P.contract.maintenanceAuthority.frozenBy.blockHeight);
+  });
+
+  it('refused a finalize while the lock held, before any transaction', () => {
+    const early = P.steps.find((s) => s.id === '8');
+    expect(early).toMatchObject({ circuit: 'finalizeRecovery', outcome: 'refused', message: 'timelock has not elapsed' });
+    expect(early.tx).toBeUndefined();
+  });
+
+  it('cannot finalize before 72 hours after the later bound recorded at the open', () => {
+    const { openedAtLo, openedAtHi, finalizeNoEarlierThan } = P.recovery;
+    expect(Date.parse(openedAtHi) - Date.parse(openedAtLo)).toBe(600 * 1000);
+    expect(Date.parse(finalizeNoEarlierThan) - Date.parse(openedAtHi)).toBe(72 * H);
+    if (P.finalize) {
+      // A tampered share refused first, then the finalize: step 10 is the record's finalize.
+      const tampered = P.steps.find((s) => s.id === '9');
+      expect(tampered).toMatchObject({ circuit: 'finalizeRecovery', outcome: 'refused', message: 'reconstructed secret does not open idCommit' });
+      expect(tampered.tx).toBeUndefined();
+      expect(P.steps.find((s) => s.id === '10')?.tx).toEqual(P.finalize.tx);
+      expect(P.finalize.tx.status).toBe('SucceedEntirely');
+      expect(Date.parse(P.finalize.at)).toBeGreaterThanOrEqual(Date.parse(finalizeNoEarlierThan));
+    }
+  });
+
+  it('says it finalized only once it has', () => {
+    expect(/finalized/.test(P.what)).toBe(Boolean(P.finalize));
+  });
+});

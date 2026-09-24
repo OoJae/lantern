@@ -1,0 +1,156 @@
+{
+  "what": "The SHIPPED Lantern contract, with its real 72-hour timelock, on Midnight's public test network: a recovery opened, approved, and refused while locked. finalize stays null until the lock ends and the recovery finalizes.",
+  "network": "preprod (Midnight's public test network)",
+  "explorer": "https://preprod.midnightexplorer.com",
+  "endpoints": {
+    "node": "https://rpc.preprod.midnight.network",
+    "indexer": "https://indexer.preprod.midnight.network/api/v4/graphql"
+  },
+  "toolchain": {
+    "compact": "0.31.1",
+    "compact-runtime": "0.16.0",
+    "midnight-js": "4.1.1",
+    "wallet-sdk": "1.2.0",
+    "proof-server": "8.1.0 (local)"
+  },
+  "openedAt": "2026-09-24T14:51:48.153Z",
+  "contract": {
+    "name": "Lantern (shipped: contracts/src/lantern.compact, unchanged)",
+    "address": "bfd4fa7780902551422b932e7acf8b61fc077dba21afb1be3df1090a25b352c9",
+    "txId": "004071901ec9d8ba47e66f9effd5f6b7828e16aa7e575edc4ba8ba3176df73a673",
+    "txHash": "a1ee923a92f9ac1b37623a56c4bef08969abd47edb4942d3dd3588a28bb81f7b",
+    "blockHeight": 2690632,
+    "status": "SucceedEntirely",
+    "maintenanceAuthority": {
+      "committee": 0,
+      "threshold": 1,
+      "counter": 1,
+      "frozenBy": {
+        "txId": "00ffbdf1ce2b919b58cb759b890b54cf254e30960cb536dd94da523dea95d5b2f2",
+        "txHash": "435dedadad348dcbd3d1b2703770f5812907be1feaf46d3d64e3e5c31016f298",
+        "blockHeight": 2690636,
+        "status": "SucceedEntirely"
+      }
+    },
+    "verifierKeys": "10 of 10 identical to a fresh compile of contracts/src/lantern.compact",
+    "finalizeRecoveryVerifierKeySha256": "f9baaa7dc6f4d73602e4d6a840132cc19b455b6025fffd46ccc343e853a2578d"
+  },
+  "timelockSeconds": 259200,
+  "steps": [
+    {
+      "id": "1",
+      "actor": "Hana",
+      "circuit": "enrollIdentity",
+      "outcome": "accepted",
+      "tx": {
+        "txId": "0018972166accb5e3d1d6b159b25f63cbd4a65c2a605808f3335df1e8f35a7df56",
+        "txHash": "b4fef32adf682c83b313ffecb6ee445ef551a32fd7e9eff60f94332868bccb8b",
+        "blockHeight": 2690640,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the operator wallet",
+      "seconds": 24.8
+    },
+    {
+      "id": "2",
+      "actor": "Hana",
+      "circuit": "addGuardian",
+      "outcome": "accepted",
+      "tx": {
+        "txId": "0070c9ab2979aae349bcda5cbdec4b6062fd6a107489945cc36dcaff3cdd5ef32c",
+        "txHash": "b13dedeacd77a7251e6585a2028a4a6273d251b8a1350930d644b76f30453d6a",
+        "blockHeight": 2690646,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the operator wallet",
+      "seconds": 31
+    },
+    {
+      "id": "3",
+      "actor": "Hana",
+      "circuit": "addGuardian",
+      "outcome": "accepted",
+      "tx": {
+        "txId": "000f21bf6cef81089f273c76e77306522e2fd4494baaefa2a13bb02952bdf842c3",
+        "txHash": "5c5963f46b5f718219a01bdfc89b688e4f567d89ab29d417689e9d73764b4cf7",
+        "blockHeight": 2690650,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the operator wallet",
+      "seconds": 21.5
+    },
+    {
+      "id": "4",
+      "actor": "Hana",
+      "circuit": "addGuardian",
+      "outcome": "accepted",
+      "tx": {
+        "txId": "0055da73f61ed5eb3c84339a5005000e97a540322329c8f83ce68bf518217a260f",
+        "txHash": "7554b5ded29ee5089b34951088dc850e8654ea0ebd12afb6d34d911c37d3f7bc",
+        "blockHeight": 2690654,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the operator wallet",
+      "seconds": 25.1
+    },
+    {
+      "id": "5",
+      "actor": "Seo-yeon",
+      "circuit": "openRecovery",
+      "outcome": "accepted",
+      "tx": {
+        "txId": "00cfe8539fe7112edd9eae29c4d94740672439f272f0c35ced4ed6736f7aa85e98",
+        "txHash": "b56763a0442d2b46c1a879a86587972c513704ed31b0a021e896543910c779dc",
+        "blockHeight": 2690659,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the operator wallet",
+      "seconds": 30.1
+    },
+    {
+      "id": "6",
+      "actor": "Seo-yeon",
+      "circuit": "approveRecovery",
+      "outcome": "accepted",
+      "tx": {
+        "txId": "00d2c1846ea064c610dea24d20b916e5b43ac838d91fd2f450a9f214ce644ea5b7",
+        "txHash": "f6b823e885f2501a9dd7f5617e5a80caa99cace7d0238f93d164f04cf967ac49",
+        "blockHeight": 2690666,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the operator wallet",
+      "seconds": 41.3
+    },
+    {
+      "id": "7",
+      "actor": "Mum",
+      "circuit": "approveRecovery",
+      "outcome": "accepted",
+      "tx": {
+        "txId": "00b5bea4a479bfa4a9f1b01d1a22e2cc70a6a80f09bfcb214f945aa1f66b894709",
+        "txHash": "1a568e171af0cc84469791abb90caca1a3cf29869f354870728b461f48ecfe06",
+        "blockHeight": 2690671,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the operator wallet",
+      "seconds": 29.7
+    },
+    {
+      "id": "8",
+      "actor": "Hana's new phone",
+      "circuit": "finalizeRecovery",
+      "outcome": "refused",
+      "message": "timelock has not elapsed",
+      "note": "refused by the circuit's own assert, locally, before any proof or transaction"
+    }
+  ],
+  "recovery": {
+    "rid": "c34da3fd4d7f5f544a33635f87952d91ada96f1c74727185638c75e13cbface7",
+    "idCommit": "c23097dd48ab5264494efdf20b0fad21b12a2a397b3efb3b54232e0448cf1a60",
+    "openedAtLo": "2026-09-24T14:53:00.000Z",
+    "openedAtHi": "2026-09-24T15:03:00.000Z",
+    "finalizeNoEarlierThan": "2026-09-27T15:03:00.000Z",
+    "approvals": "2 of 2"
+  },
+  "finalize": null
+}

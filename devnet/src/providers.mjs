@@ -1,8 +1,9 @@
-// midnight-js providers for the local chain. Adapted from the author's earlier OnePledge CLI (after
-// midnightntwrk/example-zkloan, Apache-2.0), with one deliberate change: private state
-// lives in memory. Every devnet run is one-shot, so nothing needs to survive the process,
-// and an in-memory store cannot hit midnight-js#1234 (the level store silently drops
-// function-valued fields through superjson).
+// midnight-js providers for the chain runner: the local chain by default, or Preprod with
+// LANTERN_NETWORK=preprod. Adapted from the author's earlier OnePledge CLI (after
+// midnightntwrk/example-zkloan, Apache-2.0), with one deliberate change: private state lives in
+// memory. Nothing in it needs to survive the process (the shipped Preprod run keeps what its
+// second sitting needs in devnet/.state itself), and an in-memory store cannot hit
+// midnight-js#1234 (the level store silently drops function-valued fields through superjson).
 import * as Rx from 'rxjs';
 import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';

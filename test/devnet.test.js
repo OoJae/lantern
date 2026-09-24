@@ -58,9 +58,31 @@ describe('the devnet runner', () => {
     expect(read('devnet/compile.sh')).toMatch(/devnet\/build\/lantern/);
   });
 
-  it('targets the local network only', () => {
-    expect(read('devnet/src/config.mjs')).toMatch(/networkId: 'undeployed'/);
-    const code = (t) => t.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
-    for (const f of devnetSrc) expect(code(readFileSync(f, 'utf8')), f).not.toMatch(/preprod|preview|mainnet|testnet/i);
+  // Code without its line comments. A `//` right after a colon is a URL, not a comment.
+  const code = (t) => t.split('\n').map((l) => l.replace(/(^|[^:])\/\/.*$/, '$1')).join('\n');
+  const hostsIn = (t) => [...t.matchAll(/\b(?:https?|wss?):\/\/([^/:'"`\s]+)/g)].map((m) => m[1]);
+  const config = read('devnet/src/config.mjs');
+
+  it('targets the local network unless Preprod is chosen explicitly, and never mainnet', () => {
+    expect(config).toMatch(/process\.env\.LANTERN_NETWORK \|\| 'undeployed'/);
+    // Exactly two networks: the local chain, all on 127.0.0.1, and Preprod.
+    const networks = config.match(/^const NETWORKS = \{\n([\s\S]*?)\n\};$/m)[1];
+    expect([...networks.matchAll(/^ {2}(\w+): \{$/gm)].map((m) => m[1])).toEqual(['undeployed', 'preprod']);
+    const local = networks.match(/^ {2}undeployed: \{\n([\s\S]*?)\n {2}\},$/m)[1];
+    expect(local).toMatch(/^ {4}networkId: 'undeployed',$/m);
+    expect(hostsIn(local)).toEqual(['127.0.0.1', '127.0.0.1', '127.0.0.1']);
+    expect(hostsIn(config.match(/^const proofServer = .*$/m)[0])).toEqual(['127.0.0.1']);
+    for (const f of devnetSrc) expect(code(readFileSync(f, 'utf8')), f).not.toMatch(/mainnet|preview|testnet/i);
+  });
+
+  it('connects only to the local chain and Preprod\'s published hosts, named in config.mjs alone', () => {
+    const ALLOWED = ['127.0.0.1', 'localhost', 'indexer.preprod.midnight.network', 'rpc.preprod.midnight.network', 'preprod.midnightexplorer.com'];
+    const PREPROD_HOST = /indexer\.preprod|rpc\.preprod|preprod\.midnightexplorer/i;
+    expect(hostsIn(code(config))).toEqual(expect.arrayContaining(ALLOWED.filter((h) => h !== 'localhost')));
+    for (const f of devnetSrc) {
+      const text = readFileSync(f, 'utf8');
+      expect(hostsIn(code(text)).filter((h) => !ALLOWED.includes(h)), f).toEqual([]);
+      if (!f.endsWith('/config.mjs')) expect(text, f).not.toMatch(PREPROD_HOST);
+    }
   });
 });

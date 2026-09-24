@@ -1,25 +1,33 @@
 #!/usr/bin/env node
 // npm run devnet [-- --quick]
 //
-// The Lantern story on a real local chain: every accepted step is a real transaction with a
-// real zero-knowledge proof. The same script, the same expectations, as `npm run story`.
+// The Lantern story on a real chain: the local chain by default, or Preprod with
+// LANTERN_NETWORK=preprod. Every accepted step is a real transaction with a real
+// zero-knowledge proof. The same script, the same expectations, as `npm run story`.
 //
 //   --quick       the core recovery only: enrol, guardians, the DApp, open, approve, the
 //                 timelock, finalize, and the DApp again. The full run adds the attacker,
 //                 the refusals of beats 6 and 7 and the epilogue.
-//   --self-pay    the genesis wallet pays for everything. By default the recovering phone
-//                 holds no wallet at all -- it has lost everything -- so a sponsor pays its
-//                 fees, and Seo-yeon pays for the open from her own wallet.
+//   --self-pay    the genesis wallet (on Preprod, the operator wallet) pays for everything.
+//                 By default the recovering phone holds no wallet at all -- it has lost
+//                 everything -- so a sponsor pays its fees, and Seo-yeon pays for the open
+//                 from her own wallet.
 //
 // One-shot: fresh contracts every run. The record is written only if every step goes as
-// expected, to deployments/local-devnet.json (local-devnet-quick.json with --quick).
+// expected, to deployments/local-devnet.json (local-devnet-quick.json with --quick), or on
+// Preprod to deployments/preprod.json (preprod-quick.json). On a public network each wallet
+// resumes from a snapshot of its last sync (devnet/src/wallet.mjs). The SHIPPED contract's
+// run on Preprod, with its real 72-hour lock, is devnet/src/shipped.mjs, recorded in
+// deployments/preprod-shipped.json.
+import './ws.mjs'; // before anything that loads the wallet SDK: see ws.mjs
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createStory, runStory, BEATS, publicRecord, hostRecord, duration } from '../../src/demo/story.mjs';
 import { storyRng } from '../../src/demo/rng.mjs';
 import { isQuickStep } from '../../src/demo/quick.mjs';
-import { repoRoot } from './config.mjs';
-import { startWallet, readyToPay, GENESIS_SEED } from './wallet.mjs';
+import { repoRoot, network, isPublic } from './config.mjs';
+import { startWallet, readyToPay, saveSnapshot, GENESIS_SEED } from './wallet.mjs';
+import { loadSeeds, snapshotOf } from './wallets.mjs';
 import { loadBindings, LANTERN_ZK, HOST_ZK } from './bindings.mjs';
 import { devnetExecutor } from './executor.mjs';
 import { buildRecord, writeRecord } from './record.mjs';
@@ -27,9 +35,15 @@ import { flavour } from '../flavour.mjs';
 
 const quick = process.argv.includes('--quick');
 const sponsored = !process.argv.includes('--self-pay');
-// Dev-preset seeds, funded at genesis on the local chain only (docs/spikes.md, S2).
+// Dev-preset seeds, funded at genesis on the local chain only (docs/spikes.md, S2). On a public
+// network each role has its own funded wallet (devnet/src/wallets.mjs), resumed from a snapshot.
 const SPONSOR_SEED = GENESIS_SEED.replace(/1$/, '3');
 const GUARDIAN_SEED = GENESIS_SEED.replace(/1$/, '2');
+const seeds = isPublic ? loadSeeds() : null;
+const walletOf = (role, localSeed) => (isPublic
+  ? startWallet(seeds[role], { snapshotFile: snapshotOf(role) }) : startWallet(localSeed));
+const WALLET = isPublic ? 'the operator wallet' : 'the genesis wallet';
+const WHERE = isPublic ? `${network.name.toUpperCase()}, MIDNIGHT'S PUBLIC TEST NETWORK` : 'A LOCAL CHAIN';
 const startedAt = Date.now();
 const color = process.stdout.isTTY && !process.argv.includes('--no-color');
 const c = (code, s) => (color ? `\x1b[${code}m${s}\x1b[0m` : s);
@@ -40,25 +54,26 @@ const log = (m) => console.log(`${stamp()} ${m}`);
 
 
 console.log();
-console.log(bold(`  LANTERN · THE STORY ON A LOCAL CHAIN${quick ? ' (quick: the core recovery)' : ''}${sponsored ? ' · SPONSORED' : ''}`));
+console.log(bold(`  LANTERN · THE STORY ON ${WHERE}${quick ? ' (quick: the core recovery)' : ''}${sponsored ? ' · SPONSORED' : ''}`));
 console.log(dim('  real proofs, real transactions, the devnet flavour: a 60 s timelock, one line changed'));
 console.log();
 
 const bindings = await loadBindings();
 const { changedLine } = flavour(readFileSync(path.join(repoRoot, 'contracts', 'src', 'lantern.compact'), 'utf8'));
 
-log('syncing the genesis wallet…');
-const wallet = await startWallet();
+log(`syncing ${WALLET}…`);
+const wallet = await walletOf('operator', GENESIS_SEED);
 await readyToPay(wallet, (m) => log(m));
 
 let sponsorship = null;
 if (sponsored) {
   log('syncing the sponsor\'s wallet and Seo-yeon\'s wallet…');
-  const [sponsorWallet, guardianWallet] = await Promise.all([startWallet(SPONSOR_SEED), startWallet(GUARDIAN_SEED)]);
+  const [sponsorWallet, guardianWallet] = await Promise.all([walletOf('sponsor', SPONSOR_SEED), walletOf('seoyeon', GUARDIAN_SEED)]);
   await Promise.all([readyToPay(sponsorWallet), readyToPay(guardianWallet)]);
   sponsorship = { sponsorWallet, guardianWallet };
 }
-const x = await devnetExecutor({ bindings, zk: { lantern: LANTERN_ZK, host: HOST_ZK }, wallet, log, sponsorship });
+const x = await devnetExecutor({ bindings, zk: { lantern: LANTERN_ZK, host: HOST_ZK }, wallet, log, sponsorship,
+  walletName: WALLET, name: isPublic ? network.name : 'local chain' });
 const story = createStory({ pure: x.pure, rng: storyRng() });
 const steps = quick ? story.steps.filter(isQuickStep) : story.steps;
 
@@ -94,6 +109,11 @@ const records = await runStory({ ...story, steps }, x, {
 const bad = records.filter((r) => !r.ok);
 const finalLedger = publicRecord(await x.ledger());
 const finalHostLedger = hostRecord(await x.hostLedger());
+if (isPublic) {
+  // Keep each wallet's sync for the next run on this network.
+  await saveSnapshot(wallet, snapshotOf('operator'));
+  if (sponsorship) await Promise.all([saveSnapshot(sponsorship.sponsorWallet, snapshotOf('sponsor')), saveSnapshot(sponsorship.guardianWallet, snapshotOf('seoyeon'))]);
+}
 await wallet.wallet.stop();
 if (sponsorship) await Promise.all([sponsorship.sponsorWallet.wallet.stop(), sponsorship.guardianWallet.wallet.stop()]);
 console.log();
@@ -112,5 +132,5 @@ if (sponsored) {
   const ev = records.filter((r) => r.sponsorship);
   console.log(`  sponsored: ${ev.length} transactions from a device with no wallet; the device's intents spent ${ev.reduce((n, r) => n + r.sponsorship.userIntentDustSpends, 0)} DUST outputs, the sponsor's ${ev.reduce((n, r) => n + r.sponsorship.sponsorDustSpends, 0)}`);
 }
-console.log(dim(`  record: ${path.relative(repoRoot, file)} · check it against the chain: npm run devnet:verify${quick ? ' -- --quick' : ''}`));
+console.log(dim(`  record: ${path.relative(repoRoot, file)} · check it against the chain: ${isPublic ? `LANTERN_NETWORK=${network.networkId} ` : ''}npm run devnet:verify${quick ? ' -- --quick' : ''}`));
 process.exit(0);

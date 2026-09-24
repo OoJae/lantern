@@ -4,7 +4,7 @@
 field and Shamir layer, identity derivation (`src/identity.js`), the leak scanner
 (`src/leakscan.js`), the canonical host snapshot (`src/host/snapshot.js`) and the
 attack engine. Also the browser demo (`web/`, an instance of adversary B1), the
-local-chain runner (`devnet/`) and the fee-sponsor role (B2). Every claim below names the file, circuit or test that establishes
+chain runner (`devnet/`, local and on Preprod) and the fee-sponsor role (B2). Every claim below names the file, circuit or test that establishes
 it. Verified against compact 0.31.1 / compact-runtime 0.16.0.
 
 **Out of scope, and not built here:** share transport between owner and
@@ -43,7 +43,7 @@ secret. Here is exactly what that is worth.
 | Guardians survive a recovery, so an identity can be recovered again | **Held** | stable `idRoot`; leaves bind a guardian context, not the rotating commitment |
 | A downstream contract keeps working across a key loss | **Held, in-contract** | `hostGatedAction` reads `retiredIdentities` directly |
 | An *independently deployed* contract keeps working | **Held, but strictly less sound** | `requireCurrentOwnerAttested` proves the caller holds the current identity secret, against a committee-signed canonical snapshot — but it accepts a retired owner's secret until a snapshot built after the recovery seals, for at most 24 h after the latest seal. §4.4 |
-| The rules of a deployed instance cannot change | **Held on the recorded local deployment** — not a property of the source | the run that deployed it replaced its maintenance authority with an empty committee. While that chain runs, `npm run devnet:verify` re-checks this and that every on-chain verifier key matches a fresh compile; offline, `test/record.test.js` checks the committed records (`deployments/`). Any other deployer can keep the key: check before you trust an instance |
+| The rules of a deployed instance cannot change | **Held on the recorded deployments**, local and on Preprod — not a property of the source | each run that deployed replaced its maintenance authority with an empty committee. `npm run devnet:verify` (while the local chain runs) and `LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify` (on Preprod, at any time) re-check this and that every on-chain verifier key matches a fresh compile; offline, `test/record.test.js` checks the committed records (`deployments/`). Any other deployer can keep the key: check before you trust an instance |
 | Nothing trusts the fee payer | **Held** | no circuit uses the caller's coin key or any token operation; every check is a commitment opening or a signature. `test/authentication.test.js` |
 | Guardian *count* and *threshold* stay private | **Not held** | `thresholds` is public; `n` is recoverable from transaction history |
 | t colluding guardians cannot take the identity | **Not held.** Nothing here claims otherwise. Until your recovery finalizes they can also act as you | §4.3 |
@@ -498,7 +498,9 @@ consequence.
     shipped 72-hour `finalizeRecovery` is proved by `npm run devnet:bench`, prove-only,
     with the shipped keys: 0.8–0.9 s warm (the first, cold proof took 2 s), and the same finalize 71 hours after an open is
     refused locally (`deployments/bench-shipped-finalize.json`). It is not submitted to
-    a chain: a recovery cannot be 72 hours old in a laptop session.
+    a chain: a recovery cannot be 72 hours old in a laptop session. The shipped build
+    itself is deployed on Preprod, where a recovery opened on 2026-09-24 cannot finalize
+    before 2026-09-27 15:03 UTC (`deployments/preprod-shipped.json`).
 
 11. **Three derivations rely on `transientHash`**: `lineageLeafOf`, `ephemeralPkOf`
    and `gateNullifierOf`. Its output is not guaranteed stable across toolchain
@@ -587,8 +589,9 @@ build-to-seal time, and only after reading §4.4.
   burned by an adversary through one `rotateGuardianSet` on an identity they
   control, because contexts are globally unique.
 - The committee size is fixed at three by the constructor's signature.
-- The chain records come from a single-node local chain. Behaviour under real network
-  latency, multiple nodes or reorganisations is not tested.
+- The full story's chain records come from a single-node local chain. On Preprod, a public
+  network with real latency, the shipped contract has run the core recovery up to its lock
+  (`deployments/preprod-shipped.json`). Reorganisations are not tested.
 - The browser build is reproducible on one machine and in CI (two builds hash the
   same); across machines and operating systems it is not proven.
 - Every role in the local-chain runs shares one proof server, which sees each

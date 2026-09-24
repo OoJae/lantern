@@ -1,12 +1,11 @@
-// The story's chain executor: every circuit runs as a real transaction on the local chain --
-// executed locally, proved by the proof server, balanced with DUST, submitted, finalized.
+// The story's chain executor: every circuit runs as a real transaction on the chain, the local
+// chain by default or Preprod with LANTERN_NETWORK=preprod -- executed locally, proved by the
+// local proof server, balanced with DUST, submitted, finalized.
 // It implements the same interface as src/demo/sim-executor.mjs, so it runs the same story
 // with the same expectations, against both contracts: Lantern, and the independently
 // deployed host with its committee. A refusal is the circuit's own assert, caught locally
 // before anything is proved: exactly what a real client would see.
-import { deployContract, findDeployedContract, submitTx } from '@midnight-ntwrk/midnight-js-contracts';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import * as L from '@midnight-ntwrk/ledger-v8';
+import { deployContract, findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { lanternWitnesses } from '../../src/witnesses.js';
 import { hostWitnesses } from '../../src/host-witnesses.js';
 import { createCommittee } from '../../src/host/committee.js';
@@ -16,6 +15,7 @@ import { providersFor, compiledContract } from './providers.mjs';
 import { createSponsor } from './sponsor.mjs';
 import { walletlessDevice } from './device.mjs';
 import { tipTime, waitForChainTime } from './chain.mjs';
+import { freezeMaintenanceAuthority, txOf } from './freeze.mjs';
 
 const CALL_TIMEOUT_MS = 180_000;
 const ACTOR = 'actor';
@@ -46,18 +46,16 @@ function phases(t) {
   };
 }
 
-/** A transaction's public identifiers, from a midnight-js FinalizedTxData. */
-const txOf = (pub) => ({ txId: pub.txId, txHash: pub.txHash, blockHeight: pub.blockHeight, status: pub.status });
-
 /**
  * @param bindings     devnet/src/bindings.mjs: { rt, schnorr, Lantern, Host }
- * @param wallet       the genesis wallet: deploys both contracts, and pays for every call
- *                     not listed below
+ * @param wallet       the paying wallet: the genesis wallet on the local chain, the operator
+ *                     wallet on a public network (walletName says which). It deploys both
+ *                     contracts, and pays for every call not listed below
  * @param sponsorship  optional { sponsorWallet, guardianWallet }. With it, a persona holding
  *                     no wallet (`wallet: 'none'`, the recovering phone) is paid for by the
  *                     sponsor, and Seo-yeon's open is paid for by her own wallet.
  */
-export async function devnetExecutor({ bindings, zk, wallet, log = () => {}, sponsorship = null, hostTag = 4242n }) {
+export async function devnetExecutor({ bindings, zk, wallet, log = () => {}, sponsorship = null, hostTag = 4242n, walletName = 'the genesis wallet', name = 'local chain' }) {
   const { rt, schnorr, Lantern, Host } = bindings;
   let timing = null;
   let claimed = 0n;
@@ -100,21 +98,8 @@ export async function devnetExecutor({ bindings, zk, wallet, log = () => {}, spo
     c.deploy = { address: c.address, ...txOf(deployed.deployTxData.public), timings: phases(timing) };
     log(`deployed ${c.name} at ${c.address} (block ${c.deploy.blockHeight})`);
 
-    // deployContract installs the deployer's key as a 1-of-1 maintenance authority, which
-    // could replace any verifier key. Replace it with an empty committee: no signature can
-    // ever satisfy it, so this deployment's rules can never change (spike S5).
-    const state = await providers.publicDataProvider.queryContractState(c.address);
-    const signingKey = await providers.privateStateProvider.getSigningKey(c.address);
-    const frozen = new L.ContractMaintenanceAuthority([], 1, state.maintenanceAuthority.counter + 1n);
-    const update = new L.MaintenanceUpdate(c.address, [new L.ReplaceAuthority(frozen)], state.maintenanceAuthority.counter);
-    const signed = update.addSignature(0n, L.signData(signingKey, update.dataToSign));
-    const freezeTx = L.Transaction.fromParts(getNetworkId(), undefined, undefined,
-      L.Intent.new(new Date(Date.now() + 3600_000)).addMaintenanceUpdate(signed));
-    const fr = await submitTx(providers, { unprovenTx: freezeTx });
-    if (fr.status !== 'SucceedEntirely') throw new Error(`freezing ${c.name}'s maintenance authority failed: ${fr.status}`);
-    const after = (await providers.publicDataProvider.queryContractState(c.address)).maintenanceAuthority;
-    c.authority = { committee: after.committee.length, threshold: after.threshold, counter: Number(after.counter), frozenBy: txOf(fr) };
-    log(`${c.name}'s maintenance authority frozen: committee ${c.authority.committee}, threshold ${c.authority.threshold} (block ${fr.blockHeight})`);
+    c.authority = await freezeMaintenanceAuthority(providers, c.address, c.name);
+    log(`${c.name}'s maintenance authority frozen: committee ${c.authority.committee}, threshold ${c.authority.threshold} (block ${c.authority.frozenBy.blockHeight})`);
   }
 
   const pdp = base.publicDataProvider;
@@ -136,11 +121,11 @@ export async function devnetExecutor({ bindings, zk, wallet, log = () => {}, spo
   const payerOf = (ps, c) => {
     if (ps.wallet === 'none' && c.handles.device) return ['device', 'the sponsor (the device holds no wallet)'];
     if (ps.wallet === 'seo-yeon' && c.handles.guardian) return ['guardian', 'Seo-yeon\'s own wallet'];
-    return ['genesis', 'the genesis wallet'];
+    return ['genesis', walletName];
   };
 
   return {
-    name: 'local chain',
+    name,
     pure: Lantern.pureCircuits,
     hostPure: Host.pureCircuits,
     hostTag,

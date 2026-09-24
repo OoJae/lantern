@@ -7,7 +7,7 @@
 //
 // The circuit-size table (<!-- facts:circuits -->) needs the Compact toolchain, so
 // scripts/check-cost.mjs maintains and checks that one.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
 const root = new URL('..', import.meta.url);
@@ -15,6 +15,8 @@ const load = (f) => JSON.parse(readFileSync(new URL(`deployments/${f}`, root), '
 const full = load('local-devnet.json');
 const quick = load('local-devnet-quick.json');
 const bench = load('bench-shipped-finalize.json');
+// The shipped contract on Midnight's public test network, once it has run.
+const shipped = existsSync(new URL('deployments/preprod-shipped.json', root)) ? load('preprod-shipped.json') : null;
 
 const HOST = new Set(['attestVote', 'openEpoch', 'openRotation', 'requireCurrentOwnerAttested', 'rotateVote', 'sealEpoch', 'sealRotation']);
 const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
@@ -70,7 +72,36 @@ function attack() {
   return execFileSync(process.execPath, ['scripts/enumerate.mjs', '--markdown'], { cwd: new URL('.', root) }).toString().trim();
 }
 
-const BLOCKS = { chain, 'chain-circuits': chainCircuits, attack };
+function preprod() {
+  const r = shipped;
+  const tx = (t) => `[block ${t.blockHeight}](${r.explorer}/transactions/${t.txHash})`;
+  const minute = (t) => t.replace('T', ' ').slice(0, 16); // 2026-09-24 15:03
+  const c = r.contract;
+  const { openedAtLo, openedAtHi, approvals, finalizeNoEarlierThan } = r.recovery;
+  const rows = r.steps.map((x) => `| ${x.id} | ${x.actor} | \`${x.circuit}\` | ${x.outcome === 'accepted' ? `accepted · ${tx(x.tx)}` : `refused: "${x.message}", before any transaction`} |`);
+  // The contract records two bounds on the open's block time, not the time itself.
+  const [loDay, loTime] = minute(openedAtLo).split(' ');
+  const [hiDay, hiTime] = minute(openedAtHi).split(' ');
+  const when = loDay === hiDay
+    ? `on ${loDay}, at a block time between ${loTime} and ${hiTime} UTC`
+    : `at a block time between ${minute(openedAtLo)} and ${minute(openedAtHi)} UTC`;
+  const opened = `The recovery opened in ${tx(r.steps.find((x) => x.circuit === 'openRecovery').tx)} ${when}`;
+  const f = r.finalize;
+  const fin = f
+    ? `It finalized in ${tx(f.tx)}${f.afterOpenHours == null ? '' : `, ${f.afterOpenHours} hours after the later bound recorded at the open${/tip/.test(f.afterOpenHoursMeasuredAt ?? '') ? ' (measured at the chain tip just after it)' : ''}`}${f.sponsorship ? ', paid for by a sponsor: the phone held no wallet' : ''}.`
+    : `It cannot finalize before **${minute(finalizeNoEarlierThan)} UTC**: 72 hours after the later bound recorded at the open.`;
+  return [
+    `The shipped \`contracts/src/lantern.compact\`, unchanged, on Preprod since ${r.openedAt.slice(0, 10)}: [\`${c.address.slice(0, 16)}…\`](${r.explorer}/contracts/${c.address}) (deploy ${tx(c)}; maintenance authority frozen in ${tx(c.maintenanceAuthority.frozenBy)}, committee ${c.maintenanceAuthority.committee}, threshold ${c.maintenanceAuthority.threshold}). Its verifier keys: ${c.verifierKeys}.`,
+    '',
+    '| Step | Who | Circuit | Outcome |',
+    '|---|---|---|---|',
+    ...rows,
+    '',
+    `${opened}, and ${f ? 'reached' : 'has'} ${approvals} approvals. ${fin}`,
+  ].join('\n');
+}
+
+const BLOCKS = { chain, 'chain-circuits': chainCircuits, attack, ...(shipped ? { preprod } : {}) };
 
 const file = new URL('README.md', root);
 let readme = readFileSync(file, 'utf8');

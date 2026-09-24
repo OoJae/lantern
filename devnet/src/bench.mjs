@@ -11,6 +11,7 @@
 // and the proof server proves it with the shipped prover key. A wrong witness or an unexpired
 // lock would fail the local run before any proof. The chain runs record the devnet flavour's
 // finalizeRecovery, whose verifier key is the only one that differs from the shipped build.
+import './ws.mjs'; // before anything that loads the wallet SDK: see ws.mjs
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

@@ -10,6 +10,7 @@
 //
 // The chain is local and one-shot: this checks the chain that produced the record, so run it
 // before `npm run devnet:down`.
+import './ws.mjs'; // before anything that loads the wallet SDK: see ws.mjs
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
