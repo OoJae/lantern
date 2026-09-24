@@ -597,4 +597,6 @@ build-to-seal time, and only after reading §4.4.
 `openRecovery` (§6.4); reconstruct in a disposable worker (§6.5); make the committee
 size a constructor parameter.
 
-**Reporting.** Open an issue, or contact the maintainer listed in the README.
+**Reporting.** Report a vulnerability privately through GitHub's
+[private vulnerability reporting](https://github.com/OoJae/lantern/security/advisories/new).
+For anything that is not a vulnerability, open an issue.
