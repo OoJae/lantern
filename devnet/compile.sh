@@ -11,8 +11,9 @@ cd "$(dirname "$0")/.."
 
 COMPACT_VERSION="0.31.1"
 command -v compact >/dev/null 2>&1 || { echo "devnet: 'compact' not found. Install the Compact tools, then: compact update ${COMPACT_VERSION}" >&2; exit 1; }
+# Pass a logged-in GitHub CLI's token to compact (rate limits); never export an empty one.
 if [ -z "${GITHUB_TOKEN:-}" ] && command -v gh >/dev/null 2>&1; then
-  GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"; export GITHUB_TOKEN
+  t="$(gh auth token 2>/dev/null || true)"; if [ -n "$t" ]; then export GITHUB_TOKEN="$t"; fi
 fi
 
 stamp="$(cat contracts/src/*.compact devnet/flavour.mjs devnet/compile.sh | shasum -a 256 | cut -d' ' -f1)"

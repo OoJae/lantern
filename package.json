@@ -34,7 +34,10 @@
     "devnet": "bash devnet/run.sh",
     "devnet:verify": "node devnet/src/verify.mjs",
     "devnet:down": "docker compose -f devnet/compose.yml down -v",
-    "devnet:bench": "bash devnet/run.sh bench"
+    "devnet:bench": "bash devnet/run.sh bench",
+    "build": "bash scripts/compile.sh",
+    "compile:check": "bash scripts/compile.sh --check",
+    "cost:check": "node scripts/check-cost.mjs"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0",

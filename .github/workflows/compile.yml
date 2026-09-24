@@ -5,23 +5,41 @@ name: compile
 on:
   push:
     branches: [main]
+    paths-ignore: ['**.md', 'docs/**']
   pull_request:
+    paths-ignore: ['**.md', 'docs/**']
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   compile:
     name: compact 0.31.1
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: midnightntwrk/setup-compact-action@v1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+
+      - uses: midnightntwrk/setup-compact-action@836895c8fffbbea6bd986af2b17e8941ff29d1f8 # v1
         with:
           compact-version: '0.31.1'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Seconds, and no keys: every committed module equals a fresh compile.
+      - name: Fast check (no keys)
+        run: bash scripts/compile.sh --check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Compile contract
         run: bash scripts/compile.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Assert proving keys were generated
         run: |
@@ -56,14 +74,20 @@ jobs:
           done
           echo "all derivations are pure and key-free"
 
-      - name: Assert the committed contract module matches source
+      - name: Assert the committed contract modules match source
         run: |
           set -euo pipefail
           dirs="contracts/managed/contract contracts/managed-host/contract \
                 contracts/managed-public-guardians/contract contracts/managed-lantern-v0/contract"
-          if ! git diff --quiet -- $dirs; then
+          # Modified AND untracked: a new file in a fresh compile is drift too.
+          if ! git diff --quiet -- $dirs || [ -n "$(git status --porcelain -- $dirs)" ]; then
             echo "::error::a committed contract module is stale. Run 'npm run compile' and commit."
+            git status --porcelain -- $dirs
             git diff --stat -- $dirs
             exit 1
           fi
           echo "all four committed contract modules are byte-identical to a fresh compile"
+
+      # Fails unless exactly 17 circuits parse, each at k <= 14.
+      - name: Assert every circuit fits k <= 14
+        run: node scripts/check-cost.mjs
