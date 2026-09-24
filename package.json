@@ -14,7 +14,7 @@
     "url": "https://github.com/OoJae/lantern/issues"
   },
   "engines": {
-    "node": ">=20.19"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
     "compile": "bash scripts/compile.sh",

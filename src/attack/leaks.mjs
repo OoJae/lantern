@@ -67,7 +67,7 @@ export const COVERAGE = {
     measure: (L) => `${count(L.guardianCtx)} context(s)`,
   },
   usedGuardianCtx: {
-    sev: 'LOW', what: 'a global count of guardian-set rotations',
+    sev: 'LOW', what: 'every guardian set ever: enrolments plus rotations',
     why: 'every context ever claimed is enumerable, so rotations can be counted system-wide.',
     measure: (L) => `${count(L.usedGuardianCtx)} used`,
   },

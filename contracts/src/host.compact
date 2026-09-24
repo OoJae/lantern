@@ -23,8 +23,8 @@ pragma language_version >= 0.22;
 // signs the CANONICAL live-set root -- exactly the enrolled, non-retired owners,
 // rebuilt by anyone from Lantern's ledger with src/host/snapshot.js -- so a
 // signature over anything else is publicly falsifiable. The honest gap that
-// remains: a retired owner's secret passes until a newer epoch seals, for up to
-// 24 hours. See SECURITY.md §4.4.
+// remains: a retired owner's secret passes until a newer epoch seals: up to 24 h
+// after the older epoch SEALED, not after the recovery. See SECURITY.md §4.4.
 //
 // GOVERNANCE. There is no admin. The committee is fixed atomically at
 // deployment, so there is no window in which a slot can be front-run, and

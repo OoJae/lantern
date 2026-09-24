@@ -23,12 +23,12 @@ export const BEATS = Object.freeze([
   { n: 1, title: 'An ordinary day', caption: 'Her laptop acts at two DApps that gate on her identity root: one built on Lantern, one deployed independently.' },
   { n: 2, title: 'The laptop is gone', caption: 'A wallet seed restores keys, not state. Her identity secret is gone with it.' },
   { n: 3, title: 'A new phone', caption: 'Anyone may open a recovery. Seo-yeon opens one for the phone, which holds no secret yet.' },
-  { n: 4, title: 'Two guardians approve', caption: 'They check the phone\'s fingerprint first. The public record gains two opaque nullifiers.' },
+  { n: 4, title: 'Two guardians approve', caption: 'They check the phone\'s fingerprint first. The public record gains two opaque nullifiers and a count of two approvals, but not who gave them.' },
   { n: 5, title: 'The attacker reads the ledger', caption: 'Everything on chain, and an address book of Hana\'s contacts.' },
   { n: 6, title: 'What the chain refuses', caption: 'A real guardian of someone else. A guardian approving twice.' },
   { n: 7, title: 'Jihoon turns', caption: 'With Mum\'s phished share he rebuilds Hana\'s secret. Watch what it buys him.' },
   { n: 8, title: 'Seventy-two hours', caption: 'The phone finalizes, once the timelock allows it and only with the real shares.' },
-  { n: 9, title: 'The DApp never noticed', caption: 'The old secret is dead at once where Lantern is read directly, and a day later where a committee relays it.' },
+  { n: 9, title: 'The DApp never noticed', caption: 'The old secret dies at once where Lantern is read directly, and where a committee relays it as soon as the committee seals a snapshot taken after the recovery.' },
   { n: 10, title: 'Epilogue', caption: 'Fresh shares, a guardian set without Jihoon, and a committee that replaces a leaked key.' },
 ]);
 
@@ -278,7 +278,7 @@ export function createStory({ pure, rng }) {
     call('9.5', 9, 'Hana\'s new phone', () => p.phone, 'proveHeadOwnership', () => [w.id, w.newId], ACCEPT,
       'And the phone proves it holds the head\'s secret, without revealing it.'),
     gate('9.6', 9, 'Jihoon', () => onPath(p.rogue, 1, w.id), 1, () => w.id, ACCEPT,
-      'At the independent DApp, the old secret still works: epoch 1 was sealed before the recovery, and a snapshot can only say who owned what when it was sealed. This is the gap SECURITY.md bounds at 24 hours.'),
+      'At the independent DApp, the old secret still works: epoch 1 was built and sealed before the recovery, and a snapshot can only say who owned what when it was built. SECURITY.md §4.4 bounds the gap: at most 24 hours after epoch 1 sealed.'),
     ...epoch(['9.7', '9.8', '9.9', '9.10', '9.11'], 9, 2,
       'The committee\'s next epoch rebuilds the list from the ledger: Hana\'s old commitment is retired, her successor is current.'),
     gate('9.12', 9, 'Jihoon', () => onPath(p.rogue, 1, w.id), 2, () => w.id, refuse('ownership leaf is not in the attested snapshot'),

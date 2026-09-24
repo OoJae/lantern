@@ -6,8 +6,8 @@
 // rather than by copying three asserts and hoping they stay in step. The
 // module is deliberately STATELESS: a Compact module cannot reach a contract's
 // ledger, so the host supplies the three ledger facts and the module owns the
-// rule. That is what makes two independently written contracts provably agree
-// on what "current owner" means.
+// rule. A contract compiled against Lantern's ledger that imports it applies the
+// same "current owner" rule as hostGatedAction. host.compact does not import it.
 //
 // The third fact is the one that cannot be obtained from an attested Merkle
 // root. Descent is a membership claim; "not retired" is a NON-membership claim,

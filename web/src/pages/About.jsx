@@ -57,10 +57,11 @@ function Recorded() {
       <p className="eyebrow">Recorded on a local chain</p>
       <h2>The same story, with real proofs</h2>
       <p>
-        On {record.recordedAt.slice(0, 10)}, <code>npm run devnet</code> ran all {s.steps} steps of this story on a
-        local Midnight node: {s.accepted} accepted and {s.refused} refused, exactly as expected, in {s.transactions} real
-        transactions across {circuits} circuits of two contracts. {sponsored} of them came from a phone holding no wallet,
-        paid for by a sponsor.
+        On {record.recordedAt.slice(0, 10)}, <code>npm run devnet</code> ran all {s.steps} steps of this story. Its
+        contract calls went to a local Midnight node: {s.accepted} accepted and {s.refused} refused, exactly as
+        expected, in {s.transactions} real transactions across {circuits} circuits of two contracts. {sponsored} of
+        them came from a phone holding no wallet, paid for by a sponsor. The other {s.steps - s.accepted - s.refused}{' '}
+        steps happen off chain.
       </p>
       <dl className="counts">
         <div><dt>proofs, median</dt><dd>{s.proveSeconds.median} s</dd></div>

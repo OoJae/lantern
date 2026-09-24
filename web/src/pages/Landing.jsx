@@ -30,8 +30,9 @@ export default function Landing() {
         </article>
         <article>
           <h2>The guardians stay hidden</h2>
-          <p>Each guardian is a salted commitment in a Merkle tree. Approvals are opaque nullifiers. An attacker
-            holding the ledger and the real names still cannot confirm who they are.</p>
+          <p>Each guardian is a salted commitment in a Merkle tree. An approval leaves an opaque nullifier and adds
+            one to a public count: how many approved, never who. An attacker holding the ledger and the real names
+            still cannot confirm who they are.</p>
         </article>
         <article>
           <h2>Downstream apps keep working</h2>

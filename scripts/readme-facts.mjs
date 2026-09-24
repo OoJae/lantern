@@ -25,7 +25,7 @@ function chain() {
   const col = (r) => r.summary;
   const rows = [
     ['Recorded', full.recordedAt.slice(0, 10), quick.recordedAt.slice(0, 10)],
-    ['Steps · accepted · refused', `${col(full).steps} · ${col(full).accepted} · ${col(full).refused}`, `${col(quick).steps} · ${col(quick).accepted} · ${col(quick).refused}`],
+    ['Steps: accepted · refused · off chain', ...[full, quick].map((r) => { const x = col(r); return `${x.steps}: ${x.accepted} · ${x.refused} · ${x.steps - x.accepted - x.refused}`; })],
     ['Transactions (including 2 deploys and 2 freezes)', col(full).transactions, col(quick).transactions],
     ['Paid by a sponsor; the device holds no wallet', sponsored(full), sponsored(quick)],
     ['Proof time: min / median / max', `${col(full).proveSeconds.min} / ${col(full).proveSeconds.median} / ${col(full).proveSeconds.max} s`, `${col(quick).proveSeconds.min} / ${col(quick).proveSeconds.median} / ${col(quick).proveSeconds.max} s`],

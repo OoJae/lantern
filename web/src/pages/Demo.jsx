@@ -392,7 +392,7 @@ function People({ personas, records }) {
   return (
     <section className="panel people" aria-label="What each device holds">
       <h2>What each device holds</h2>
-      <p className="meta">Private state: it never leaves its device. Fingerprints are the first four bytes.</p>
+      <p className="meta">Private state: none of it reaches the chain. Shares move between devices off chain, and no circuit reads them. Fingerprints are the first four bytes.</p>
       <ul className="persons">
         {PEOPLE.map(([k, name]) => {
           const ps = k === 'jihoon' && personas.rogue ? personas.rogue : personas[k];
