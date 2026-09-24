@@ -40,6 +40,8 @@ jobs:
           test "$n" -eq 1 || { npm ls @midnight-ntwrk/onchain-runtime-v3 --all; exit 1; }
 
       - run: npm test
+      # Every generated number in the README must still match the file it came from.
+      - run: npm run readme:check
       # The adversarial demo is also an assertion: it exits non-zero if a
       # vulnerable target is NOT fully broken, or if the shipped one IS.
       - run: npm run attack -- --no-color

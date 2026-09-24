@@ -3,6 +3,7 @@
 // just as loudly if it cannot tell: exactly 17 rows must parse, each with a numeric k.
 // A check that passes when it measured nothing would be worse than no check.
 import { spawnSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 const EXPECTED = [
   'addGuardian', 'approveRecovery', 'enrollIdentity', 'finalizeRecovery', 'hostGatedAction', 'openRecovery',
@@ -34,5 +35,27 @@ if (problems.length) {
   for (const p of problems) console.error(`check-cost: ${p}`);
   process.exit(1);
 }
+// The README's circuit table (<!-- facts:circuits -->) is generated from this measurement:
+// --write-readme rewrites it; otherwise it must match exactly.
+const HOST = new Set(EXPECTED.slice(10));
+const block = [
+  '| Contract | Circuit | k | Rows | Share of 2^k |',
+  '|---|---|---:|---:|---:|',
+  ...[...rows].sort((a, b) => (HOST.has(a.name) - HOST.has(b.name)) || a.name.localeCompare(b.name))
+    .map((r) => `| ${HOST.has(r.name) ? 'host' : 'lantern'} | \`${r.name}\` | ${r.k} | ${r.rows.toLocaleString('en')} | ${Math.round((100 * r.rows) / 2 ** r.k)}% |`),
+].join('\n');
+const readmeUrl = new URL('../README.md', import.meta.url);
+let readme = '';
+try { readme = readFileSync(readmeUrl, 'utf8'); } catch { /* no README yet */ }
+const re = /(<!-- facts:circuits:start -->\n)([\s\S]*?)(\n<!-- facts:circuits:end -->)/;
+const found = readme.match(re);
+if (found && process.argv.includes('--write-readme')) {
+  writeFileSync(readmeUrl, readme.replace(re, `$1${block}$3`));
+  console.log('check-cost: README circuit table rewritten');
+} else if (found && found[2] !== block) {
+  console.error('check-cost: the README circuit table differs from this measurement. Run: node scripts/check-cost.mjs --write-readme');
+  process.exit(1);
+}
+
 const tight = rows.reduce((a, b) => (b.rows > a.rows ? b : a));
 console.log(`check-cost: all ${rows.length} circuits at k <= ${MAX_K}; tightest ${tight.name}, ${tight.rows} of ${2 ** tight.k} rows`);

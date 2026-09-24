@@ -260,7 +260,7 @@ function Clock({ now, start, duration }) {
     <section className="panel clock" aria-label="Simulated clock">
       <h2>Simulated clock</h2>
       <p className="time" data-now={now}>{clockText(now)}</p>
-      <p className="meta">{elapsed > 0 ? `${duration(elapsed)} after the story began` : 'The story has just begun'}. The in-memory ledger's block time: the timelock checks it exactly as a node would.</p>
+      <p className="meta">{elapsed > 0 ? `${duration(elapsed)} after the story began` : 'Not advanced yet: it moves only when the story waits out the timelock'}. The in-memory ledger's block time: the timelock checks it exactly as a node would.</p>
     </section>
   );
 }

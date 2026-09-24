@@ -37,7 +37,8 @@
     "devnet:bench": "bash devnet/run.sh bench",
     "build": "bash scripts/compile.sh",
     "compile:check": "bash scripts/compile.sh --check",
-    "cost:check": "node scripts/check-cost.mjs"
+    "cost:check": "node scripts/check-cost.mjs",
+    "readme:check": "node scripts/readme-facts.mjs"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0",
