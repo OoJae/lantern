@@ -37,7 +37,9 @@ export default function Landing() {
         <article>
           <h2>Downstream apps keep working</h2>
           <p>A DApp stores one value, the identity root, and asks whether the caller is its current owner. The
-            recovery retires the old secret there too, with nothing for the DApp to update.</p>
+            recovery retires the old secret there too, with nothing for the DApp to update: at once where the DApp
+            reads Lantern's ledger, and for an independently deployed DApp once its committee seals a snapshot
+            taken after the recovery.</p>
         </article>
       </div>
     </section>

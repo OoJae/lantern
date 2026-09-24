@@ -14,7 +14,7 @@ This project is built on the Midnight Network.
 | **Try it, no install** | [lantern-midnight.vercel.app/demo](https://lantern-midnight.vercel.app/demo): the recovery, run by the compiled contract in your browser · [/attacks](https://lantern-midnight.vercel.app/attacks): try to find the guardians |
 | **Check it in five minutes** | [Quickstart](#quickstart) |
 | **Threat model** | [SECURITY.md](SECURITY.md) |
-| **Chain evidence** | [`deployments/`](deployments/) · [`docs/spikes.md`](docs/spikes.md) |
+| **Local-chain records** (no public deployment yet) | [`deployments/`](deployments/) · [`docs/spikes.md`](docs/spikes.md) |
 
 ## In one minute
 
@@ -22,7 +22,7 @@ Lantern lets hidden guardians restore a lost Midnight identity secret, and prove
 
 **The problem.** On Midnight, the secret a contract checks lives in one device's private state, and Midnight's own security guide says: "You cannot recover a witness secret from the chain." A wallet seed restores keys, not private state. Lose the device and you lose the identity, and everything that gates on it.
 
-**How Lantern solves it.** You split your identity secret among guardians off chain. On chain, each guardian is only a salted commitment in a Merkle tree, so the public record does not say who they are. After a loss, the guardians approve one specific new device with zero-knowledge proofs. Each approval leaves an opaque nullifier, adds one to a public count and discloses which past root of the guardian tree it proved against; none of these says which guardian approved. Everyone then has 72 hours of public notice, and a separate veto card that no guardian holds can cancel the recovery. Finally the new device proves, inside the circuit, that the secret it rebuilt opens the original commitment, so a tampered share is refused. A DApp that gates on your identity root accepts the new secret and refuses the old one without changing anything it stores; an independently deployed DApp does the same once its committee seals a snapshot taken after the recovery.
+**How Lantern solves it.** You split your identity secret among guardians off chain. On chain, each guardian is only a salted commitment in a Merkle tree, so the public record does not say who they are. After a loss, the guardians approve one specific new device with zero-knowledge proofs. Each approval leaves an opaque nullifier, adds one to a public count and discloses which past root of the guardian tree it proved against; none of these says which guardian approved. Everyone then has 72 hours of public notice, and a separate veto card that no guardian holds can cancel the recovery. Finally the new device proves, inside the circuit, that the secret it rebuilt opens the original commitment, so a tampered share is refused. A DApp that gates on your identity root (the stable identifier it stores, which survives a recovery) accepts the new secret and refuses the old one without changing anything it stores; an independently deployed DApp does the same once its committee seals a snapshot taken after the recovery.
 
 **Core features.**
 - A recovery is provably correct: the circuit checks the rebuilt secret against the enrolment commitment, not only that enough people agreed.
@@ -52,7 +52,7 @@ The official criteria and their weights, and where each is evidenced:
 
 ```sh
 git clone https://github.com/OoJae/lantern && cd lantern
-npm install && npm test   # 190 tests in a few seconds; no Compact toolchain, no Docker
+npm ci && npm test        # 190 tests in about ten seconds; no Compact toolchain, no Docker
 npm run attack            # four guardian designs, one attacker: three broken, Lantern holds
 npm run story             # the whole recovery, 74 steps, each outcome asserted
 ```
@@ -65,7 +65,7 @@ npm run story             # the whole recovery, 74 steps, each outcome asserted
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
 compact update 0.31.1
 npm run compile:check     # about 1 s: recompiles every contract, then diffs the committed modules byte for byte
-npm run compile           # about 30 s: every contract with its keys, Lantern's 17 proving circuits and the adversarial contracts' 9
+npm run compile           # under a minute: every contract with its keys (17 shipped circuits, 10 + 7, and 9 adversarial)
 npm run cost:check        # after compile (needs python3): every shipped circuit at k ≤ 14, and the table below
 ```
 
@@ -79,6 +79,7 @@ npm run web                                 # the dev server, http://localhost:5
 npm run web:build && npm run web:preview    # or the production build with the hosted site's headers, http://localhost:4319
 npx --prefix web playwright install chromium   # once, before the first browser-test run; on Linux or WSL add --with-deps
 npm run web:e2e                             # the 15 browser tests in Chromium, at desktop size and as an emulated Pixel 7
+npx --prefix web playwright install webkit firefox && npm run e2e:cross --prefix web   # the same 15 in WebKit, as an emulated iPhone 15, and in Firefox
 ```
 
 **Real proofs on a local chain** (Docker, Node 24 or later, compact 0.31.1):
@@ -94,7 +95,7 @@ npm run devnet:down
 ### Requirements and troubleshooting
 
 - **Node** 20.19 or later on Node 20, or 22.12 or later, for the tests, the attack and the story (the test runner's Vite declares the same); 22 or 24 recommended. The web demo needs 22.12 or later, and the local chain 24 or later.
-- **`npm install` warns `EBADENGINE`** on Node 20 and 22 for `@midnight-ntwrk/midnight-did-jubjub-schnorr`, which declares Node 24. It is harmless here: Lantern uses it only to generate committee keys and sign committee votes off chain, and CI runs the whole suite on Node 20, 22 and 24.
+- **`npm install` warns `EBADENGINE`** on Node 20 and 22 for `@midnight-ntwrk/midnight-did-jubjub-schnorr`, which declares Node 24 and pnpm 10. It is harmless here, and plain npm works: Lantern uses it only to generate committee keys and sign committee votes off chain, and CI runs the whole suite on Node 20, 22 and 24.
 - **Windows:** use WSL for the Compact tools.
 - **The first `npm run devnet`** pulls three images (node, indexer, proof server), and the proof server downloads its proving parameters. Allow extra time.
 - **A devnet or bench run rewrites `deployments/*.json`.** `git diff deployments/` compares your run with ours; `git checkout deployments/` restores ours.
@@ -337,6 +338,8 @@ All 21 are in [SECURITY.md §7](SECURITY.md#7-found-and-fixed-in-review).
 
 **Builders.** A DApp that gates on "the current owner of identity root R" gets recovery without writing any, and stores one value: the root. If its circuits sit in the same contract as Lantern's ledger, it passes three facts from that ledger to one shared predicate ([`ownergate.compact`](contracts/src/ownergate.compact)) and checks that the caller holds the current identity secret, as `hostGatedAction` does. An independently deployed one cannot read that ledger: it uses the committee-signed snapshot (`requireCurrentOwnerAttested`) and accepts each snapshot for up to 24 hours after it seals.
 
+**The pattern Midnight teaches.** Midnight's own [bulletin-board tutorial](https://docs.midnight.network/tutorials/bboard/smart-contract) makes a post's owner a commitment to a secret key that lives only in the poster's private state, and taking the post down requires that key: lose the key and nobody can ever take the post down. Any DApp built on that pattern could gate on a Lantern identity root instead, and get recovery without writing any.
+
 **Adoption path.** A wallet or identity app adds enrolment and share dealing. DApps gate on the identity root. Each deployment freezes its maintenance authority, which anyone can check before trusting it, as `npm run devnet:verify` does.
 
 **Korea.** South Korea's amended Personal Information Protection Act was promulgated on 10 March 2026 and took effect on 11 September 2026. The [IAPP](https://iapp.org/news/a/south-korea-overhauls-pipa-and-ties-fines-to-ceo-accountability) reports that it "introduces a penalty ceiling of 10% of total turnover" and "places personal supervisory liability on the CEO"; [Hunton](https://www.hunton.com/privacy-and-cybersecurity-law-blog/south-korea-amends-privacy-law-to-authorize-fines-of-up-to-10-of-total-revenue) describes fines "of up to 10% of a company's total revenue in certain high-severity data breach cases", subject to transition rules. *Our reading, not legal advice:* a public list of who can recover whose identity is personal information about named people and their relationships. A guardian design that stores it in the clear publishes it to everyone, permanently. Lantern keeps it off the public record by construction, and `npm run attack` checks that it does.
@@ -365,7 +368,7 @@ All 21 are in [SECURITY.md §7](SECURITY.md#7-found-and-fixed-in-review).
 - **Evidence comes from a single-node local chain.** Nothing is deployed to Preprod or mainnet, and nothing is audited.
 - **The browser demo makes no proofs.** It runs the compiled circuits against an in-memory ledger; the proofs are in `npm run devnet`.
 - **Out of scope:** share transport between owner and guardians, wallet UX and login.
-- **Upstream:** `midnight-js` issues #1234 and #1169 document silent private-state corruption, and the veto secret lives in that state.
+- **Upstream:** the veto secret is kept in midnight-js private state. midnight-js issue #1169 (open) reports that, with the level private-state provider, a password rotation racing a write can leave that state undecryptable, so keep the veto card outside it too.
 
 The causes and bounds are in SECURITY.md: the adversaries in [§4](SECURITY.md#4-the-adversaries-scored-separately), leakage in [§5](SECURITY.md#5-leakage), what we have not tested in [§9](SECURITY.md#9-where-our-rigour-stops), and the code's known limitations in [§6](SECURITY.md#6-known-limitations), which lists more than this page does.
 
@@ -399,4 +402,4 @@ SECURITY.md             the threat model
 
 ## Licence
 
-[Apache-2.0](LICENSE). Maintained by [@OoJae](https://github.com/OoJae). To report a vulnerability, see [SECURITY.md](SECURITY.md#9-where-our-rigour-stops).
+[Apache-2.0](LICENSE). Maintained by [@OoJae](https://github.com/OoJae). To report a vulnerability, see [SECURITY.md §10](SECURITY.md#10-reporting-a-vulnerability).

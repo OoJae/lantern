@@ -42,7 +42,7 @@ npm run devnet:verify        # re-check that chain against the record`}</code></
         <li>Until a recovery finalizes, whoever holds the lost device’s secret can act as you. The recovery ends that.</li>
         <li>An open recovery is public: it tells the world an identity’s owner may have lost a key.</li>
       </ul>
-      <p>The full threat model, with every limitation and its bound, is <code>SECURITY.md</code> in the repository. The assumptions behind this site and the local-chain runner are tested in <code>docs/spikes.md</code>.</p>
+      <p>The full threat model, with every limitation and its bound, is <a href="https://github.com/OoJae/lantern/blob/main/SECURITY.md"><code>SECURITY.md</code></a> in the repository. The assumptions behind this site and the local-chain runner are tested in <a href="https://github.com/OoJae/lantern/blob/main/docs/spikes.md"><code>docs/spikes.md</code></a>.</p>
       <p><Link to="/demo">Watch a recovery</Link> · <Link to="/attacks">Try to find the guardians</Link></p>
     </section>
   );

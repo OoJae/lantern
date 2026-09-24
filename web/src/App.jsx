@@ -34,6 +34,7 @@ export default function App() {
       <footer className="site">
         <p>Lantern · social recovery for Midnight private state · Midnight Korea Hackathon 2026</p>
         <p>Apache-2.0. Built on Compact 0.31.1 and compact-runtime 0.16.0.</p>
+        <p>Source code: <a href="https://github.com/OoJae/lantern">github.com/OoJae/lantern</a></p>
       </footer>
     </>
   );

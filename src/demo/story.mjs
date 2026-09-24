@@ -16,7 +16,7 @@ export const ACCEPT = Object.freeze({ accept: true });
 export const refuse = (message) => Object.freeze({ refuse: message });
 
 // How the guardians appear in the attacker's address book (src/attack/candidates.mjs).
-const BOOK_NAME = Object.freeze({ seoyeon: 'seo-yeon.example', mum: 'mum@example.com', jihoon: 'jihoon.example' });
+const BOOK_NAME = Object.freeze({ seoyeon: 'seo-yeon.example', mum: 'mum.example', jihoon: 'jihoon.example' });
 
 export const BEATS = Object.freeze([
   { n: 0, title: 'Thirty days earlier', caption: 'Hana enrols her identity and deals a 2-of-3 guardian quorum. Elsewhere, an independent DApp\'s committee attests who owns what.' },

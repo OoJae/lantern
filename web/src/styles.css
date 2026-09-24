@@ -82,6 +82,8 @@ header.site nav { display: flex; gap: 4px; flex-wrap: wrap; }
 .nav[aria-current="page"] { background: var(--amber-wash); color: var(--amber-2); }
 footer.site { border-top: 1px solid var(--line-soft); padding: 20px clamp(16px, 4vw, 40px); color: var(--muted); font-size: 0.85rem; }
 footer.site p { margin: 0.2em 0; }
+/* Shown by index.html until the app mounts, so a slow connection never sees a blank page. */
+.boot { margin: 0; padding: 48px clamp(16px, 4vw, 40px); color: var(--muted); font-family: var(--serif); font-size: 1.2rem; }
 
 .page { max-width: 1320px; margin: 0 auto; padding: 24px clamp(16px, 4vw, 40px) 56px; }
 .page.narrow { max-width: 860px; }

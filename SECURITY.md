@@ -26,7 +26,7 @@ a conclusion, the conclusion says so.
 
 ## 1. The 60-second version
 
-Lantern makes a lost Midnight private-state secret recoverable by a hidden k-of-n
+Lantern makes a lost Midnight private-state secret recoverable by a hidden t-of-n
 guardian quorum, and proves in-circuit that the recovered secret is the *right*
 secret. Here is exactly what that is worth.
 
@@ -200,9 +200,10 @@ happens in the client, so a malicious front-end exfiltrates them *before any
 commitment exists* — before any circuit here has anything to say. It can serve a
 client that computes a different `vetoCommit`, silently handing itself the veto.
 
-It also sits on an open upstream hazard: `midnight-js` issues **#1234** and
-**#1169** document silent private-state corruption, and the veto secret lives in
-that state, unshared and unrecoverable.
+It also sits on an open upstream hazard: `midnight-js` issue **#1169** reports
+that, with the level private-state provider, a password rotation racing a write
+can leave private state undecryptable, and the veto secret lives in that state,
+unshared and unrecoverable. Keep the veto card outside it too.
 
 **Cannot.** Reopen a successor commitment already on chain, forge approvals
 without guardian secrets, shorten the timelock, or make the chain lie about the
@@ -597,6 +598,10 @@ build-to-seal time, and only after reading §4.4.
 `openRecovery` (§6.4); reconstruct in a disposable worker (§6.5); make the committee
 size a constructor parameter.
 
-**Reporting.** Report a vulnerability privately through GitHub's
+---
+
+## 10. Reporting a vulnerability
+
+Report a vulnerability privately through GitHub's
 [private vulnerability reporting](https://github.com/OoJae/lantern/security/advisories/new).
 For anything that is not a vulnerability, open an issue.
