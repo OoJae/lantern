@@ -12,7 +12,7 @@
 //                 fees, and Seo-yeon pays for the open from her own wallet.
 //
 // One-shot: fresh contracts every run. The record is written only if every step goes as
-// expected, to deployments/local-devnet.json.
+// expected, to deployments/local-devnet.json (local-devnet-quick.json with --quick).
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createStory, runStory, BEATS, publicRecord, hostRecord, duration } from '../../src/demo/story.mjs';

@@ -7,7 +7,7 @@ test('the whole story runs in the browser, exactly as expected', async ({ page }
   await expect(page.getByTestId('summary')).toContainText('Every step went exactly as expected.');
   await expect(page.getByTestId('summary')).toContainText('74 steps');
 
-  // Every secret any proof read: seen privately, absent publicly.
+  // Every secret any circuit call read: seen privately, absent publicly.
   const boxes = page.locator('.absent li');
   await expect(boxes).toHaveCount(7);
   for (const li of await boxes.all()) await expect(li).toHaveAttribute('data-ticked', 'true');

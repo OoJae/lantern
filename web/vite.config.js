@@ -1,4 +1,4 @@
-// WASM setup follows onepledge's working build (itself after midnightntwrk/example-zkloan, Apache-2.0).
+// WASM setup follows the author's earlier OnePledge build (itself after midnightntwrk/example-zkloan, Apache-2.0).
 // web/ declares no Midnight package: the runtime and the compiled contracts resolve from the repo
 // root, so the browser runs exactly the modules `npm test` does.
 import { defineConfig } from 'vite';
@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => ({
         '../contracts/managed-public-guardians/contract', '../contracts/managed-lantern-v0/contract',
         '../node_modules', '../deployments',
       ],
-      deny: ['.env', '.env.*', '**/.git/**', '**/buildplan.md', '**/.secrets/**'],
+      deny: ['.env', '.env.*', '**/.git/**', '**/.secrets/**'],
     },
   },
 }));

@@ -1,4 +1,4 @@
-// A headless wallet for the local chain. Adapted from onepledge's CLI wallet (itself after
+// A headless wallet for the local chain. Adapted from the author's earlier OnePledge CLI wallet (itself after
 // midnightntwrk/example-zkloan, Apache-2.0), minus the state snapshots: every devnet run
 // is one-shot, so there is nothing to resume and no snapshot to corrupt.
 import * as Rx from 'rxjs';
@@ -11,7 +11,7 @@ import {
 } from '@midnight-ntwrk/wallet-sdk';
 import { network } from './config.mjs';
 
-// The indexer client uses the global WebSocket. Node >= 22 ships a native one; onepledge
+// The indexer client uses the global WebSocket. Node >= 22 ships a native one; OnePledge
 // found it drops RPC submissions on Preprod, so the ws package is installed explicitly.
 globalThis.WebSocket = WebSocket;
 

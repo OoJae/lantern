@@ -1,4 +1,4 @@
-// midnight-js providers for the local chain. Adapted from onepledge's CLI (after
+// midnight-js providers for the local chain. Adapted from the author's earlier OnePledge CLI (after
 // midnightntwrk/example-zkloan, Apache-2.0), with one deliberate change: private state
 // lives in memory. Every devnet run is one-shot, so nothing needs to survive the process,
 // and an in-memory store cannot hit midnight-js#1234 (the level store silently drops

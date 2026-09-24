@@ -27,7 +27,7 @@ const R = {};
 // POSITIVE CONTROLS. A passing "the attack fails" test means nothing unless the
 // same attack demonstrably SUCCEEDS where it should. These come first.
 // ---------------------------------------------------------------------------
-describe('positive control 1 · PublicGuardians (the EVM state of the art)', () => {
+describe('positive control 1 · PublicGuardians (the common EVM pattern)', () => {
   it('names all three guardians, exactly, and no one else', () => {
     expect(sameSet(R['1'].named, [...TRUE_GUARDIANS])).toBe(true);
   });

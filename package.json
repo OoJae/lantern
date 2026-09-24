@@ -3,8 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Private-state succession for Midnight: a hidden k-of-n guardian quorum authorises an identity rotation, and the chain proves the recovered secret is the right secret without anyone ever holding it.",
+  "description": "Lantern lets hidden guardians restore a lost Midnight identity secret, and proves it is the right one.",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OoJae/lantern.git"
+  },
+  "homepage": "https://github.com/OoJae/lantern#readme",
+  "bugs": {
+    "url": "https://github.com/OoJae/lantern/issues"
+  },
   "engines": {
     "node": ">=20.19"
   },

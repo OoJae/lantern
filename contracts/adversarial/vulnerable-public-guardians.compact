@@ -4,9 +4,9 @@ pragma language_version >= 0.22;
 // #  DELIBERATELY INSECURE.  DO NOT DEPLOY.  DO NOT COPY.                   #
 // #                                                                        #
 // #  Target 1 of the Lantern adversarial demo: the transparent baseline.    #
-// #  Guardian identifiers are written to public state verbatim -- which is  #
-// #  what every deployed EVM social-recovery wallet does, because the EVM   #
-// #  has no other option. `npm run attack` names every guardian, and every  #
+// #  Guardian identifiers are written to public state verbatim -- the       #
+// #  common EVM social-recovery pattern of guardian addresses kept in       #
+// #  contract storage. `npm run attack` names every guardian, and every     #
 // #  individual vote, without evaluating a single hash.                    #
 // #                                                                        #
 // #  It is compiled so it can be attacked. It is NOT deployed anywhere.     #

@@ -12,6 +12,7 @@
 // lock would fail the local run before any proof. The chain runs record the devnet flavour's
 // finalizeRecovery, whose verifier key is the only one that differs from the shipped build.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as L from '@midnight-ntwrk/ledger-v8';
@@ -98,6 +99,8 @@ for (let i = 0; i < 3; i++) {
 const out = {
   what: 'The SHIPPED finalizeRecovery (72 h timelock), proved on the local proof server. Prove-only: not submitted.',
   recordedAt: new Date().toISOString(),
+  machine: { platform: `${os.platform()} ${os.arch()}`, cpus: os.cpus().length, cpuModel: os.cpus()[0]?.model, node: process.version },
+  proofServer: 'midnightntwrk/proof-server:8.1.0',
   circuit: 'finalizeRecovery', timelockSeconds: DELAY,
   recoveryOpenedHoursAgo: 73,
   negativeControl: 'the same finalize 71 h after the open was refused locally: timelock has not elapsed',

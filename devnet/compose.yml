@@ -1,5 +1,5 @@
 # A single-node local Midnight chain: node, indexer, proof server.
-# Adapted from onepledge's local-devnet (itself after midnightntwrk/example-zkloan, Apache-2.0).
+# Adapted from the author's earlier OnePledge project (2026/09), itself after midnightntwrk/example-zkloan (Apache-2.0).
 #
 # Network id 'undeployed'. The dev preset mints all NIGHT to the well-known genesis seed
 # 0x…01, which exists only on this local chain. No container_name, so these never collide

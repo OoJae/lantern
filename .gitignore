@@ -34,7 +34,8 @@ devnet/.state/
 devnet/logs/
 *.level/
 
-# Internal strategy notes — must never ship in a public submission repo
-buildplan.md
+# Video and deck build output (sources are committed; renders are not).
+web/video/out/
+docs/deck/out/
 # --self-pay devnet runs are for debugging; the committed records are sponsored runs.
 deployments/*-self-pay.json

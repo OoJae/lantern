@@ -325,8 +325,8 @@ export circuit approveRecovery(idCommit: Bytes<32>, rid: Bytes<32>): [] {
   const secret = guardianSecret();
   const path = guardianPath();
 
-  // Leaf-binding assert BEFORE checkRoot. Midnight's own PrivateVoting and
-  // midnight-rwa examples omit this; without it any valid path is accepted.
+  // Leaf-binding assert BEFORE checkRoot. It is an easy assert to leave out,
+  // and without it any valid path is accepted.
   // The guardian set belongs to the identity ROOT, not the rotating commitment
   // -- which is what lets the ORIGINAL guardians recover a SUCCESSOR identity.
   const ctx = guardianCtx.lookup(disclose(rec.idRoot));

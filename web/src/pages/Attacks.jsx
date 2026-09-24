@@ -56,7 +56,7 @@ export default function Attacks() {
         </p>
 
         <h2 className="section">What the shipped contract still reveals</h2>
-        <p className="meta">Every field of the ledger, measured from the same view the attacker had. The reasoning for each is in SECURITY.md.</p>
+        <p className="meta">Every field of the ledger, measured from the same view the attacker had. The reasoning for each field is in src/attack/leaks.mjs; the three that matter most are in SECURITY.md §5.</p>
         <div className="table-wrap" tabIndex={0} role="region" aria-label="What the shipped contract still reveals">
           <table className="leaks">
             <thead><tr><th scope="col">Severity</th><th scope="col">Field</th><th scope="col">What it reveals</th><th scope="col">Measured</th></tr></thead>
@@ -79,7 +79,7 @@ export default function Attacks() {
 }
 
 const EXPLAIN = {
-  1: 'What an EVM social-recovery wallet stores: guardian identifiers in the clear. No hashing at all.',
+  1: 'The common EVM social-recovery pattern: guardian identifiers kept in contract storage, in the clear. No hashing at all.',
   '2a': 'A first pass at hiding them: hash the guardian’s identifier with the owner. One hash per name in the address book finds them.',
   '2b': 'A careful first pass: a real commitment with a 32-byte salt — derived from the owner and a slot number, so a stateless client can recompute it. So can the attacker.',
   3: 'Lantern: the leaf commits to a 32-byte guardian secret and a salt, delivered out of band. Nothing in the preimage is a function of who the guardian is.',

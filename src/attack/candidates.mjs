@@ -7,27 +7,27 @@ import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, concatBytes, utf8ToBytes } from '@noble/hashes/utils.js';
 
 export const ADDRESS_BOOK = Object.freeze([
-  'seo-yeon.eth', 'jihoon.eth', 'mum@example.com', 'dad@example.com',
-  'minji.eth', 'hyunwoo.eth', 'soo-ah@example.kr', 'dong-hyun.eth',
-  'eun-ji@example.kr', 'jae-won.eth', 'ha-eun.eth', 'min-seo@example.kr',
-  'ji-ho.eth', 'yu-na.eth', 'seung-min@example.kr', 'da-eun.eth',
-  'tae-yang.eth', 'bo-ra@example.kr', 'woo-jin.eth', 'na-rae.eth',
+  'seo-yeon.example', 'jihoon.example', 'mum@example.com', 'dad@example.com',
+  'minji.example', 'hyunwoo.example', 'soo-ah@example.org', 'dong-hyun.example',
+  'eun-ji@example.org', 'jae-won.example', 'ha-eun.example', 'min-seo@example.org',
+  'ji-ho.example', 'yu-na.example', 'seung-min@example.org', 'da-eun.example',
+  'tae-yang.example', 'bo-ra@example.org', 'woo-jin.example', 'na-rae.example',
   'sister@example.com', 'brother@example.com', 'grandma@example.com', 'uncle@example.com',
-  'aunt@example.com', 'cousin@example.com', 'best-friend.eth', 'roommate.eth',
-  'coworker-1@corp.kr', 'coworker-2@corp.kr', 'manager@corp.kr', 'mentor.eth',
-  'neighbour@example.kr', 'landlord@example.kr', 'lawyer@firm.kr', 'accountant@firm.kr',
-  'college-friend.eth', 'school-friend.eth', 'gym-buddy.eth', 'church-friend.eth',
-  'partner.eth', 'ex-partner.eth', 'godparent@example.com', 'tutor@example.kr',
-  'doctor@clinic.kr', 'pastor@church.kr', 'teammate-1.eth', 'teammate-2.eth',
-  'alice.eth', 'bob.eth', 'carol.eth', 'dave.eth',
-  'erin.eth', 'frank.eth', 'grace.eth', 'heidi.eth',
-  'ivan.eth', 'judy.eth', 'mallory.eth', 'niaj.eth',
-  'olivia.eth', 'peggy.eth', 'rupert.eth', 'sybil.eth',
+  'aunt@example.com', 'cousin@example.com', 'best-friend.example', 'roommate.example',
+  'coworker-1@corp.example', 'coworker-2@corp.example', 'manager@corp.example', 'mentor.example',
+  'neighbour@example.org', 'landlord@example.org', 'lawyer@firm.example', 'accountant@firm.example',
+  'college-friend.example', 'school-friend.example', 'gym-buddy.example', 'church-friend.example',
+  'partner.example', 'ex-partner.example', 'godparent@example.com', 'tutor@example.org',
+  'doctor@clinic.example', 'pastor@church.example', 'teammate-1.example', 'teammate-2.example',
+  'alice.example', 'bob.example', 'carol.example', 'dave.example',
+  'erin.example', 'frank.example', 'grace.example', 'heidi.example',
+  'ivan.example', 'judy.example', 'mallory.example', 'niaj.example',
+  'olivia.example', 'peggy.example', 'rupert.example', 'sybil.example',
 ]);
 
 // The victim's real guardians. Held by the harness to SCORE results; never
 // given to the attacker.
-export const TRUE_GUARDIANS = Object.freeze(['seo-yeon.eth', 'mum@example.com', 'jihoon.eth']);
+export const TRUE_GUARDIANS = Object.freeze(['seo-yeon.example', 'mum@example.com', 'jihoon.example']);
 
 // A guardian's PUBLIC identifier: derived from who they are. This is what the
 // vulnerable designs put in the leaf, and what the shipped design does not.

@@ -83,8 +83,8 @@ const detail = {
     'Read straight out of the ledger. No hashing. The address book is used only',
     'to put names to identifiers that are already public -- and every vote too.',
     '',
-    'This is what every deployed EVM social-recovery wallet does, because the EVM',
-    'has no other option. It is not a strawman; it is the state of the art.',
+    'This is the common EVM social-recovery pattern: guardian addresses kept in',
+    'contract storage. It is not a strawman.',
   ],
   '2a': [
     'The guardian identifier is a WITNESS. It appears in no public part of the',
@@ -155,7 +155,7 @@ for (const l of leaks) {
   console.log(`    ${sev} ${pad(l.field, 19)} ${pad(l.what, 50)} ${dim(l.measured)}`);
 }
 console.log();
-console.log(dim('    Reasoning for each is in SECURITY.md. This script is the part of it that runs.'));
+console.log(dim('    Reasoning for each field is in src/attack/leaks.mjs; the three that matter most are in SECURITY.md §5.'));
 console.log();
 console.log(rule());
 const total = results.reduce((a, x) => a + x.r.probes, 0);

@@ -43,7 +43,7 @@ secret. Here is exactly what that is worth.
 | Guardians survive a recovery, so an identity can be recovered again | **Held** | stable `idRoot`; leaves bind a guardian context, not the rotating commitment |
 | A downstream contract keeps working across a key loss | **Held, in-contract** | `hostGatedAction` reads `retiredIdentities` directly |
 | An *independently deployed* contract keeps working | **Held, but strictly less sound** | `requireCurrentOwnerAttested` proves the caller holds the current identity secret, against a committee-signed canonical snapshot — but it accepts a retired owner's secret for up to 24 h, until a newer epoch seals. §4.4 |
-| The rules of a deployed instance cannot change | **Held on the recorded local deployment** — not a property of the source | the run that deployed it replaced its maintenance authority with an empty committee; `npm run devnet:verify` re-checks that, and that every on-chain verifier key matches a fresh compile (`deployments/`). Any other deployer can keep the key: check before you trust an instance |
+| The rules of a deployed instance cannot change | **Held on the recorded local deployment** — not a property of the source | the run that deployed it replaced its maintenance authority with an empty committee. While that chain runs, `npm run devnet:verify` re-checks this and that every on-chain verifier key matches a fresh compile; offline, `test/record.test.js` checks the committed records (`deployments/`). Any other deployer can keep the key: check before you trust an instance |
 | Nothing trusts the fee payer | **Held** | no circuit uses the caller's coin key or any token operation; every check is a commitment opening or a signature. `test/authentication.test.js` |
 | Guardian *count* and *threshold* stay private | **Not held** | `thresholds` is public; `n` is recoverable from transaction history |
 | t colluding guardians cannot take the identity | **Not held.** Nothing here claims otherwise. Until your recovery finalizes they can also act as you | §4.3 |
@@ -144,7 +144,7 @@ Each primitive, where it is used, what it buys, and what it costs.
 | **Length-typed domain separation** | every `*Preimage` struct | each domain uses a distinct `Bytes<N>`, and N is part of the type alignment, so two preimages of different shape cannot collide. Struct *field names* contribute nothing — only shape does | a wrong N is a compile error, which is the good failure mode |
 | **`export pure circuit`** | 9 derivations incl. `idCommitOf`, `guardianLeafOf`, `recoveryIdOf`, `ephemeralPkOf` | the client calls *the same compiled code* as the circuit. Client/circuit drift is not mitigated, it is impossible | CI must prove they never acquire a proving key — `.github/workflows/compile.yml` does |
 | **`HistoricMerkleTree` past-root acceptance** | `guardians.checkRoot` in `approveRecovery` | concurrent approvals stay valid against different historic roots | the chosen root is disclosed — a freshness fingerprint, §5 |
-| **Leaf-binding assert *before* `checkRoot`** | `approveRecovery`, `proveSuccession`, `hostGatedAction` | without it, *any* valid path passes for *any* leaf. Midnight's own `PrivateVoting` and `midnight-rwa` examples omit it | one commitment per circuit |
+| **Leaf-binding assert *before* `checkRoot`** | `approveRecovery`, `proveSuccession`, `hostGatedAction` | without it, *any* valid path passes for *any* leaf: an easy assert to leave out | one commitment per circuit |
 | **Nullifiers** | approvals, vetoes, gate actions, committee votes | one-shot semantics; approval nullifiers bind the *secret*, so extra leaves cannot inflate a quorum | each is a permanent public write |
 | **`Set` non-membership in-circuit** | `!retiredIdentities.member(…)` | **headship.** "C is the current owner of R" is a *negative* claim, and no append-only structure can express it. This single primitive is why the in-contract gate is sound | only available to a contract that owns the ledger — §4.4 |
 | **Increment-only `Counter` + `lessThan`** | quorum checks in `finalizeRecovery`, `sealEpoch`, `sealRotation` | quorum by *comparison*, never `read()`: the boolean is monotone, so a concurrent approval cannot invalidate a finalize proof | progress is still publicly readable |
@@ -232,7 +232,7 @@ finishing, which sharpens the liveness oracle (§5).
   the same bound transaction.
 - **Gain anything by paying.** No circuit authenticates by the fee payer
   (`test/authentication.test.js`). The sponsor trying to finalize for itself is
-  refused — story step 8.5, *"not the device the guardians approved"*.
+  refused — story step 8.10, *"not the device the guardians approved"*.
 
 **Rules we follow, and that a production sponsor must:**
 1. **A sponsor never proves for anyone.** A proof server sees the witnesses — the
@@ -327,8 +327,8 @@ epoch"* and *"ownership leaf is not in the attested snapshot"*.
 `test/host.test.js › accepts the retired secret against the older epoch until a newer one seals, then never again`,
 and on a real local chain in `deployments/local-devnet.json`, story steps 9.6–9.13: the
 old secret passes against epoch 1 after the recovery, then fails once epoch 2 seals.
-Epochs sealed before a committee rotation stay valid; after the rotation (steps
-10.6–10.9) the leaked key's vote is refused.
+Epochs sealed before a committee rotation stay valid; after the committee rotation
+(steps 10.6–10.9) the leaked key's vote is refused (step 10.14).
 
 **Can.** At quorum, sign a root naming an attacker as the current owner of any
 identity root. Or stop signing, which bricks the gate once the window lapses.
@@ -485,7 +485,7 @@ consequence.
     differs from the shipped build. The lock still runs from the later of the two
     open-time bounds, so on the devnet a finalize waits about ten minutes, not one. The
     shipped 72-hour `finalizeRecovery` is proved by `npm run devnet:bench`, prove-only,
-    with the shipped keys: 0.8–0.9 s, and the same finalize 71 hours after an open is
+    with the shipped keys: 0.8–0.9 s warm (the first, cold proof took 2 s), and the same finalize 71 hours after an open is
     refused locally (`deployments/bench-shipped-finalize.json`). It is not submitted to
     a chain: a recovery cannot be 72 hours old in a laptop session.
 
@@ -506,7 +506,8 @@ consequence.
 ## 7. Found and fixed in review
 
 We threat-modelled our own code and found real defects. Each was reproduced
-before it was fixed, and each has a regression test named after it.
+before it was fixed. Twenty of the 21 have a regression test named after them; the
+twenty-first was fixed by removing the feature.
 
 | Defect | Consequence | Regression |
 |---|---|---|

@@ -259,7 +259,7 @@ function Absent({ records }) {
   return (
     <section className="panel absent" aria-label="Absent from the public record">
       <h2>Absent from the public record</h2>
-      <p className="meta">Each proof is scanned for every secret it read. A tick needs both halves: the scan found the value in the proof's private transcript — so it could see it — and not in the public one.</p>
+      <p className="meta">Each circuit call is scanned for every secret it read. A tick needs both halves: the scan found the value in the call's private transcript — so it could see it — and not in the public one.</p>
       <ul>
         {Object.entries(FIELD_LABEL).map(([f, label]) => {
           const a = agg[f];
@@ -268,7 +268,7 @@ function Absent({ records }) {
             <li key={f} className={ticked ? 'ticked' : a ? 'bad' : 'pending'} data-field={f} data-ticked={String(Boolean(ticked))}>
               <span className="box" aria-hidden="true">{ticked ? '✓' : a ? '!' : ''}</span>
               <span className="label">{label}</span>
-              <span className="count">{a ? `${a.reads} proof${a.reads === 1 ? '' : 's'}` : 'not read yet'}</span>
+              <span className="count">{a ? `${a.reads} call${a.reads === 1 ? '' : 's'}` : 'not read yet'}</span>
             </li>
           );
         })}

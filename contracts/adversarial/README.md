@@ -11,7 +11,7 @@ enrol real people in it.
 
 | file | target | what goes wrong |
 |---|---|---|
-| `vulnerable-public-guardians.compact` | 1 | Guardian identifiers are written to public state verbatim — what every deployed EVM social-recovery wallet does. The attacker reads them straight out of the ledger with zero hash evaluations. |
+| `vulnerable-public-guardians.compact` | 1 | Guardian identifiers are written to public state verbatim — the common EVM social-recovery pattern of guardian addresses kept in contract storage. The attacker reads them straight out of the ledger with zero hash evaluations. |
 | `vulnerable-lantern-v0.compact` | 2a | The leaf is `H(domain, guardianId, owner)`. The identifier is a witness and never appears on chain — but the attacker hashes every name in an address book and asks `findPathForLeaf` which ones are in the tree. |
 | `vulnerable-lantern-v0.compact` | 2b | The leaf is a proper `persistentCommit` with a 32-byte salt — derived from public data, so a stateless client can recompute it. That salt costs the attacker a factor of eight and nothing more. |
 

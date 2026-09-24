@@ -32,8 +32,8 @@ export default function About() {
       <pre className="code" tabIndex={0} aria-label="Commands"><code>{`npm install && npm test      # no toolchain, no Docker
 npm run story                # the recovery, in a terminal
 npm run attack               # the four-design attack
-npm run web:install && npm run web
-npm run devnet               # real proofs on a local chain (Docker, compact 0.31.1)
+npm run web:install && npm run web   # Node 22.12 or later
+npm run devnet               # real proofs on a local chain (Docker, Node 24 or later, compact 0.31.1)
 npm run devnet:verify        # re-check that chain against the record`}</code></pre>
 
       <h2 className="section">What it does not claim</h2>
@@ -70,7 +70,8 @@ function Recorded() {
       </dl>
       <p className="meta">
         The record is <code>deployments/local-devnet.json</code>. It was written only because every step went as
-        expected, and <code>npm run devnet:verify</code> re-checks it against the chain that produced it. The chain
+        expected. While the chain that produced it runs, <code>npm run devnet:verify</code> re-checks it against that chain;
+        offline, <code>npm test</code> checks the record against the story (<code>test/record.test.js</code>). The chain
         ran Lantern with one line changed — a 60-second timelock in place of 72 hours — and every other verifier key
         identical to the shipped build’s.
       </p>

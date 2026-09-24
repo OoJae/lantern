@@ -9,8 +9,7 @@ export default function Landing() {
         <p className="eyebrow">Social recovery for Midnight private state</p>
         <h1>Lose the device.<br />Keep the identity.</h1>
         <p className="lede">
-          Lantern lets a hidden quorum of guardians restore a lost Midnight identity secret — and the circuit
-          proves the restored secret is the right one.
+          Lantern lets hidden guardians restore a lost Midnight identity secret, and proves it is the right one.
         </p>
         <div className="cta">
           <Link to="/demo" className="button primary">Watch a recovery</Link>
