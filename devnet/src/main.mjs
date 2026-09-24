@@ -17,6 +17,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createStory, runStory, BEATS, publicRecord, hostRecord, duration } from '../../src/demo/story.mjs';
 import { storyRng } from '../../src/demo/rng.mjs';
+import { isQuickStep } from '../../src/demo/quick.mjs';
 import { repoRoot } from './config.mjs';
 import { startWallet, readyToPay, GENESIS_SEED } from './wallet.mjs';
 import { loadBindings, LANTERN_ZK, HOST_ZK } from './bindings.mjs';
@@ -36,9 +37,7 @@ const bold = (s) => c('1', s), dim = (s) => c('2', s), red = (s) => c('31;1', s)
 const stamp = () => dim(`[${duration(Math.round((Date.now() - startedAt) / 1000)).padStart(9)}]`);
 const log = (m) => console.log(`${stamp()} ${m}`);
 
-// The core recovery, without the independent host's thread. 7.1 is off the ledger (Jihoon
-// rebuilds the secret), and beat 9 needs it: it is the old secret the DApp must refuse.
-const QUICK = (s) => !s.host && ([0, 1, 2, 3, 4, 8, 9].includes(s.beat) && !['0.6', '0.7'].includes(s.id) || s.id === '7.1');
+
 
 console.log();
 console.log(bold(`  LANTERN · THE STORY ON A LOCAL CHAIN${quick ? ' (quick: the core recovery)' : ''}${sponsored ? ' · SPONSORED' : ''}`));
@@ -61,7 +60,7 @@ if (sponsored) {
 }
 const x = await devnetExecutor({ bindings, zk: { lantern: LANTERN_ZK, host: HOST_ZK }, wallet, log, sponsorship });
 const story = createStory({ pure: x.pure, rng: storyRng() });
-const steps = quick ? story.steps.filter(QUICK) : story.steps;
+const steps = quick ? story.steps.filter(isQuickStep) : story.steps;
 
 let lastBeat = -1;
 const records = await runStory({ ...story, steps }, x, {
