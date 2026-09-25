@@ -484,7 +484,7 @@ SECURITY.md             the threat model
 ## Credits
 
 - [`contracts/src/schnorr.compact`](contracts/src/schnorr.compact) is vendored byte-identical from [midnightntwrk/midnight-did](https://github.com/midnightntwrk/midnight-did) (Apache-2.0, © 2025 Midnight Foundation). Its npm package generates the committee's keys and signs its votes.
-- The Vite and WebAssembly setup and the local-chain compose file follow the author's earlier OnePledge project (2026/09), itself after [midnightntwrk/example-zkloan](https://github.com/midnightntwrk/example-zkloan) (Apache-2.0).
+- The Vite and WebAssembly setup and the local-chain compose file follow the author's earlier [OnePledge](https://github.com/OoJae/onepledge) project (2026/09), itself after [midnightntwrk/example-zkloan](https://github.com/midnightntwrk/example-zkloan) (Apache-2.0).
 - CI installs the compiler with [midnightntwrk/setup-compact-action](https://github.com/midnightntwrk/setup-compact-action).
 - [Midnight's documentation](https://docs.midnight.network/), quoted above.
 
