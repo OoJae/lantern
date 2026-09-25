@@ -14,8 +14,8 @@ This project is built on the Midnight Network.
 | **Try it, no install** | [lantern-midnight.vercel.app/demo](https://lantern-midnight.vercel.app/demo): the recovery, run by the compiled contract in your browser, then [try to break it yourself](https://lantern-midnight.vercel.app/demo#break) · [/attacks](https://lantern-midnight.vercel.app/attacks): try to find the guardians |
 | **Check it in five minutes** | [Quickstart](#quickstart) |
 | **Threat model** | [SECURITY.md](SECURITY.md) |
-| **On Midnight's public test network** | [the shipped contract on Preprod](https://preprod.midnightexplorer.com/contracts/bfd4fa7780902551422b932e7acf8b61fc077dba21afb1be3df1090a25b352c9) · [check it yourself](#on-midnights-public-test-network) |
-| **Local-chain records** | [`deployments/`](deployments/) · [`docs/spikes.md`](docs/spikes.md) |
+| **On Midnight's public test network** | [the whole story](#the-whole-story), 74 steps with the recovery finalized, on [Lantern, with a 60-second timelock](https://preprod.midnightexplorer.com/contracts/bac79cd962f547ac070802a221f9f7260bffa4724e6180ef3c874eadabb85101) and [LanternHost](https://preprod.midnightexplorer.com/contracts/a53b489179903e1b40a8078b59649af9b113a4d9d7da0d8f293e97314b59b68d) · [the shipped contract](https://preprod.midnightexplorer.com/contracts/bfd4fa7780902551422b932e7acf8b61fc077dba21afb1be3df1090a25b352c9), its 72-hour recovery open · [check both yourself](#on-midnights-public-test-network) |
+| **Chain records, local and on Preprod** | [`deployments/`](deployments/) · [`docs/spikes.md`](docs/spikes.md) |
 | **Prior art, posted upstream** | [a note on Passport's total-loss recovery, issue #20](https://github.com/midnightntwrk/passport/issues/20#issuecomment-5821240645) · [the note](docs/upstream/passport-c14-prior-art.md) |
 | **Brand** | [lantern-midnight.vercel.app/brand](https://lantern-midnight.vercel.app/brand) · [`brand/README.md`](brand/README.md) |
 
@@ -45,7 +45,7 @@ The official criteria and their weights, and where each is evidenced:
 | Criterion | Weight | Where to look |
 |---|---:|---|
 | Engineering & Implementation | 40% | [`contracts/src/lantern.compact`](contracts/src/lantern.compact) and [`host.compact`](contracts/src/host.compact); [How Lantern uses Midnight](#how-lantern-uses-midnight): the dual ledger, private state and each primitive by file; `npm run compile:check` |
-| Quality Assurance & Reliability | 15% | 196 tests in [`test/`](test/), including a leak scanner with a positive control and tests of the committed chain records; 74 browser tests, run in Chromium in CI and in WebKit and Firefox before release; CI on Node 20, 22 and 24; [21 defects found and fixed](#found-and-fixed-in-review) |
+| Quality Assurance & Reliability | 15% | 210 tests in [`test/`](test/), including a leak scanner with a positive control and tests of the committed chain records; 74 browser tests, run in Chromium in CI and in WebKit and Firefox before release; CI on Node 20, 22 and 24; [21 defects found and fixed](#found-and-fixed-in-review) |
 | Product & Vision | 15% | [Who it is for](#who-it-is-for-and-why-now), [Roadmap](#roadmap), [Limitations](#limitations) |
 | User Experience & Design | 15% | [The hosted demo](https://lantern-midnight.vercel.app/demo): every accept and refusal comes from the compiled contract, and each contract call shows how the same step went in the local-chain run. Below the story, [try to break it](https://lantern-midnight.vercel.app/demo#break): pick an attack, such as flipping a byte of a share, and the contract refuses it in its own words. Deep links (`/demo?beat=7`), a phone layout and automated accessibility checks |
 | Communication | 10% | This README and [SECURITY.md](SECURITY.md) |
@@ -55,7 +55,7 @@ The official criteria and their weights, and where each is evidenced:
 
 ```sh
 git clone https://github.com/OoJae/lantern && cd lantern
-npm ci && npm test        # 196 tests in about ten seconds; no Compact toolchain, no Docker
+npm ci && npm test        # 210 tests in about ten seconds; no Compact toolchain, no Docker
 npm run attack            # four guardian designs, one attacker: three broken, Lantern holds
 npm run story             # the whole recovery, 74 steps, each outcome asserted
 ```
@@ -110,6 +110,7 @@ npm run devnet:down
 | The hosted demo, `npm run web` | the compiled contract's generated JavaScript ([`web/src/lib/engine.js`](web/src/lib/engine.js)) | in memory, in your browser | none | none |
 | `npm test`, `npm run story`, `npm run attack` | the same modules | in memory | none | none |
 | `npm run devnet` | the same source with one line changed: a 60-second timelock instead of 72 hours ([`devnet/flavour.mjs`](devnet/flavour.mjs)) | a local Midnight node and indexer | real, from a local proof server | real DUST |
+| `LANTERN_NETWORK=preprod npm run devnet` | the same flavour as `npm run devnet` | Midnight Preprod, a public test network | real, from a local proof server | real DUST, generated from faucet tNIGHT |
 | `LANTERN_NETWORK=preprod node devnet/src/shipped.mjs open` | the shipped build, unchanged | Midnight Preprod, a public test network | real, from a local proof server | real DUST, generated from faucet tNIGHT |
 | `npm run devnet:bench` | the shipped build | in memory: a recovery opened 73 hours ago, built with the simulator | real: the shipped 72-hour `finalizeRecovery` | none; not submitted |
 | CI | compiled from source on every push | in memory | none; keys are generated, not used | none |
@@ -185,11 +186,11 @@ Every private-to-public crossing is a `disclose()`. What the public fields still
 | Compact modules as shared code | [`identity.compact`](contracts/src/identity.compact), [`ownergate.compact`](contracts/src/ownergate.compact) | both contracts import `identity.compact`, so they compute an identity commitment with the same code. `ownergate.compact` holds the "current owner" rule that `hostGatedAction` applies, for any contract compiled against Lantern's ledger |
 | The contract maintenance authority, frozen | every recorded deployment, local and on Preprod ([`devnet/src/freeze.mjs`](devnet/src/freeze.mjs)) | replaced by an empty committee with threshold 1, so no one can change a deployed contract's rules |
 
-**Sponsorship.** The recovering phone has lost everything, so it holds no wallet. It proves and binds its call with throwaway keys and hands the transaction to a sponsor, which adds DUST and submits it ([`devnet/src/sponsor.mjs`](devnet/src/sponsor.mjs), spike S4 in [`docs/spikes.md`](docs/spikes.md)). No circuit uses the caller's coin key or any token operation, so nothing trusts the fee payer ([`test/authentication.test.js`](test/authentication.test.js)). In the recorded run the sponsor tries to finalize the recovery for itself, and is refused (step 8.10).
+**Sponsorship.** The recovering phone has lost everything, so it holds no wallet. It proves and binds its call with throwaway keys and hands the transaction to a sponsor, which adds DUST and submits it ([`devnet/src/sponsor.mjs`](devnet/src/sponsor.mjs), spike S4 in [`docs/spikes.md`](docs/spikes.md)). No circuit uses the caller's coin key or any token operation, so nothing trusts the fee payer ([`test/authentication.test.js`](test/authentication.test.js)). In the recorded runs, local and on Preprod, the sponsor tries to finalize the recovery for itself, and is refused (step 8.10).
 
 ## Measured
 
-**Tests.** 196 Vitest tests in 14 files: lantern 33, succession 31, adversarial 27, host 22, record 21, identity 10, shamir 9, leakscan 8, story 8, concurrency 6, devnet 6, portable 6, authentication 5, host-snapshot 4. Three node:test tests of the sponsor's policy. Twenty-five Playwright tests, ten of them for the "Try to break it" panel, run in CI in Chromium at desktop size and as an emulated Pixel 7 (50 runs), and before release in WebKit, as an emulated iPhone 15, and in Firefox (75 runs).
+**Tests.** 210 Vitest tests in 14 files: lantern 33, record 32, succession 31, adversarial 27, host 22, identity 10, devnet 9, shamir 9, leakscan 8, story 8, concurrency 6, portable 6, authentication 5, host-snapshot 4. Three node:test tests of the sponsor's policy. Seventy-four Playwright tests, eleven of them for the "Try to break it" panel, run in CI in Chromium at desktop size and as an emulated Pixel 7 (148 runs), and before release in WebKit, as an emulated iPhone 15, and in Firefox (222 runs).
 
 **Circuits.** All 17 are ZKIR v2, the deployable ledger-8 path. `npm run cost:check` measures them, and fails if any exceeds k = 14 or if this table differs from the measurement.
 
@@ -215,7 +216,7 @@ Every private-to-public crossing is a `disclose()`. What the public fields still
 | host | `sealRotation` | 10 | 537 | 52% |
 <!-- facts:circuits:end -->
 
-**On a local chain.** `npm run devnet` runs the same story as `npm run story`, with every accepted step a real, proved and finalized transaction. It writes its record only if every step goes as expected.
+**On a local chain.** `npm run devnet` runs the same story as `npm run story`, with every accepted step a real, proved and finalized transaction. It writes its record only if every step goes as expected. With `LANTERN_NETWORK=preprod` it runs on Preprod instead: [the whole story on Preprod](#the-whole-story).
 
 <!-- facts:chain:start -->
 | | Full story ([`local-devnet.json`](deployments/local-devnet.json)) | Core recovery ([`local-devnet-quick.json`](deployments/local-devnet-quick.json)) |
@@ -228,7 +229,7 @@ Every private-to-public crossing is a `disclose()`. What the public fields still
 | Call to finalized, median | 18.6 s | 18.7 s |
 | Wall-clock time of the story | 23.3 min | 14.8 min |
 
-Machine: Apple M5 (10 cores), Node v26.0.0; midnight-node:1.0.0, indexer-standalone:4.3.3, proof-server:8.1.0; a single local node, network id `undeployed`. The contracts ran as the devnet flavour: line 120 of `lantern.compact` changed, a 60-second timelock in place of 72 hours.
+Machine: Apple M5 (10 cores), Node v26.0.0; midnight-node:1.0.0, indexer-standalone:4.3.3, proof-server:8.1.0; a single local node, network id `undeployed`. Lantern ran as the devnet flavour: line 120 of `lantern.compact` changed, a 60-second timelock in place of 72 hours; LanternHost ran unchanged.
 
 The **shipped** 72-hour `finalizeRecovery`, proved without being submitted ([`bench-shipped-finalize.json`](deployments/bench-shipped-finalize.json), 2026-09-24): 2 s for the first, cold proof, then 0.8–0.9 s. The same finalize 71 hours after the open is refused locally: "timelock has not elapsed".
 <!-- facts:chain:end -->
@@ -257,7 +258,7 @@ The **shipped** 72-hour `finalizeRecovery`, proved without being submitted ([`be
 | host | `sealEpoch` | 4 | 0.3 s | 0.2–0.3 s | 18.7 s |
 | host | `sealRotation` | 1 | 0.3 s | 0.3–0.3 s | 17.4 s |
 
-Both committed runs merged. For an even number of samples the median shown is the upper of the two middle values.
+Both local-chain runs merged. For an even number of samples the median shown is the upper of the two middle values.
 <!-- facts:chain-circuits:end -->
 
 </details>
@@ -281,16 +282,72 @@ verifying deployments/local-devnet.json (full+sponsored, recorded 2026-09-22T23:
 The record matches the chain.
 ```
 
-Offline, [`test/record.test.js`](test/record.test.js) checks both local-chain records against the story, the bench record's circuit, timelock and negative control, and the Preprod record's steps and lock, on every `npm test`.
+Offline, [`test/record.test.js`](test/record.test.js) checks both local-chain records and the Preprod story's record against the story, the bench record's circuit, timelock and negative control, and the steps and lock of the shipped contract's Preprod record, on every `npm test`.
 
 ### On Midnight's public test network
 
-The shipped contract, unchanged, runs on Preprod. A recovery opened there cannot finalize until its real 72-hour lock ends, three minutes after the hackathon's deadline, so the finalize is not part of this submission. Everything up to it is on the public chain, and anyone can check it with no wallet, against a fresh compile of `contracts/src/lantern.compact`:
+Lantern has two recorded runs on Preprod, and anyone can check both with no wallet, against a fresh compile:
+
+- **The whole story**, all 74 steps, with the same one-line flavour as the local chain: a 60-second timelock, so the recovery finalizes within the run. Every other circuit's verifier key is identical to the shipped build's.
+- **The shipped contract, unchanged**, with a recovery open under its real 72-hour lock. The lock ends three minutes after the hackathon's deadline, so that finalize is not part of this submission.
 
 ```sh
 npm ci && npm ci --prefix devnet && bash devnet/compile.sh     # Node 24 or later, compact 0.31.1
-LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify
+LANTERN_NETWORK=preprod npm run devnet:verify                  # the whole story: deployments/preprod.json
+LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify     # the shipped contract: deployments/preprod-shipped.json
 ```
+
+#### The whole story
+
+<!-- facts:preprod-story:start -->
+Recorded on Preprod on 2026-09-25 ([`preprod.json`](deployments/preprod.json)): 74 steps, 45 accepted, 15 refused as the story expects and 14 off chain, in 49 transactions (including 2 deploys and 2 freezes). Lantern ran as the devnet flavour: line 120 of `lantern.compact` changed, a 60-second timelock in place of 72 hours; LanternHost ran unchanged.
+
+| Contract | Address | Deploy | Maintenance authority frozen |
+|---|---|---|---|
+| Lantern (devnet flavour) | [`bac79cd962f547ac…`](https://preprod.midnightexplorer.com/contracts/bac79cd962f547ac070802a221f9f7260bffa4724e6180ef3c874eadabb85101) | [block 2704724](https://preprod.midnightexplorer.com/transactions/bb006e1209b958a1bb7293b3448d61335d48990c947aa9452bc718f8f5f5e23a) | [block 2704727](https://preprod.midnightexplorer.com/transactions/93d4d2742a826d8dbea15402f76fe8e8c4d7b7353df90c13323a512d0132a1a2), committee 0, threshold 1 |
+| LanternHost (unchanged) | [`a53b489179903e1b…`](https://preprod.midnightexplorer.com/contracts/a53b489179903e1b40a8078b59649af9b113a4d9d7da0d8f293e97314b59b68d) | [block 2704730](https://preprod.midnightexplorer.com/transactions/d1d1342174718dc9e04e44bd7e69000a8cd07e1b10158a965650fd0192bbbcfc) | [block 2704733](https://preprod.midnightexplorer.com/transactions/10d761dd82888825a06fec5b20de9faf8e13c75b4ebed20230fb0f64e1264f3c), committee 0, threshold 1 |
+
+| Step | Who | Circuit | Outcome | Paid by |
+|---|---|---|---|---|
+| 3.2 | Seo-yeon | `openRecovery` | accepted · [block 2704784](https://preprod.midnightexplorer.com/transactions/2a27326e52e04de4d9ae6ab01e50b9986fbf1302b035e4cf4d895617018e78ff) | Seo-yeon's own wallet |
+| 4.1 | Seo-yeon | `approveRecovery` | accepted · [block 2704788](https://preprod.midnightexplorer.com/transactions/2310ea70175c36fa4d90e924b320fd126d6a2fa33fcbc13966d4edb19ed85b3b) | the operator wallet |
+| 4.2 | Mum | `approveRecovery` | accepted · [block 2704792](https://preprod.midnightexplorer.com/transactions/f7f4a0ce23f2b1411c142824056d4bb0e3ea429006e48e0ed6d06eb6392cdd12) | the operator wallet |
+| 7.9 | Hana | `vetoRecovery` | accepted · [block 2704809](https://preprod.midnightexplorer.com/transactions/fafb5906cad2a053f1171d21a4532158c616bb248c2cd590d2f2209500e4d1bc) | the sponsor (the device holds no wallet) |
+| 8.2 | Hana's new phone | `finalizeRecovery` | refused: "timelock has not elapsed", before any transaction | no one |
+| 8.10 | the fee sponsor | `finalizeRecovery` | refused: "not the device the guardians approved", before any transaction | no one |
+| 8.11 | Hana's new phone | `finalizeRecovery` | accepted · [block 2704905](https://preprod.midnightexplorer.com/transactions/cede66416e573715bcefff104733d83d3d13d69a8d5643a6f15502201e34949d) | the sponsor (the device holds no wallet) |
+| 9.2 | Hana's new phone | `hostGatedAction` | accepted · [block 2704909](https://preprod.midnightexplorer.com/transactions/74354415a2dc3c08a30c387bd32c08333e032c0a45c32886a82e6f03f122659e) | the sponsor (the device holds no wallet) |
+| 9.14 | Hana's new phone | `requireCurrentOwnerAttested` | accepted · [block 2704942](https://preprod.midnightexplorer.com/transactions/cc6bf8e0617c94e77c47ee20c916e7cfc0841c96a357e97076a622614528e3d7) | the sponsor (the device holds no wallet) |
+
+Paid by a sponsor: 8 transactions, from a device that holds no wallet; the device's intents spent 0 DUST outputs, the sponsor's 8. Proof time: 0.2 / 0.9 / 2.5 s (min / median / max). Call to finalized: median 21.8 s, 16.4–38 s. The story took 28.6 min. Machine: Apple M5 (10 cores), Node v26.0.0; proof-server:8.1.0 (local), with Preprod's public node and indexer.
+
+`LANTERN_NETWORK=preprod npm run devnet:verify` checks this record against Preprod at any time: both contracts exist with their maintenance authorities frozen; every verifier key is byte-identical to a fresh compile, and the flavour differs from the shipped build in `finalizeRecovery` alone; both ledgers end where the record says; and all 49 transactions are on the chain at their recorded blocks. It also re-reads the record's own entries for the 8 sponsored transactions: each came from a device with no wallet, and only the sponsor spent DUST.
+<!-- facts:preprod-story:end -->
+
+<details>
+<summary><code>LANTERN_NETWORK=preprod npm run devnet:verify</code>, captured on 2026-09-25</summary>
+
+```
+verifying deployments/preprod.json (full+sponsored, recorded 2026-09-25T14:46:29.451Z)
+
+✓ every recorded step went as the story expected  74 steps
+✓ Lantern (devnet flavour): exists on this chain  bac79cd962f547ac070802a221f9f7260bffa4724e6180ef3c874eadabb85101
+✓ Lantern (devnet flavour): maintenance authority frozen, so its rules can never change  committee 0, threshold 1
+✓ Lantern (devnet flavour): every on-chain verifier key is byte-identical to a fresh compile  10 of 10 circuits
+✓ Lantern (devnet flavour): the flavour differs from the shipped build in finalizeRecovery alone  differs: finalizeRecovery
+✓ Lantern (devnet flavour): the ledger ends where the record says  enrolled 3, guardianLeaves 6, recoveries 2, approvals 3, vetoes 1, killed 1, retired 1, lineage 3, guardianSets 3, gateActions 3
+✓ LanternHost (unchanged): exists on this chain  a53b489179903e1b40a8078b59649af9b113a4d9d7da0d8f293e97314b59b68d
+✓ LanternHost (unchanged): maintenance authority frozen, so its rules can never change  committee 0, threshold 1
+✓ LanternHost (unchanged): every on-chain verifier key is byte-identical to a fresh compile  7 of 7 circuits
+✓ LanternHost (unchanged): the ledger ends where the record says  sealedEpochs 4, committeeGen 1, committeeVotes 10, hostActions 4
+✓ every sponsored transaction came from a device with no wallet, and only the sponsor spent DUST  8 sponsored
+✓ every recorded transaction is on the chain, at its recorded block  49 of 49
+The record matches the chain.
+```
+
+</details>
+
+#### The shipped contract, with its real 72-hour lock
 
 <!-- facts:preprod:start -->
 The shipped `contracts/src/lantern.compact`, unchanged, on Preprod since 2026-09-24: [`bfd4fa7780902551…`](https://preprod.midnightexplorer.com/contracts/bfd4fa7780902551422b932e7acf8b61fc077dba21afb1be3df1090a25b352c9) (deploy [block 2690632](https://preprod.midnightexplorer.com/transactions/a1ee923a92f9ac1b37623a56c4bef08969abd47edb4942d3dd3588a28bb81f7b); maintenance authority frozen in [block 2690636](https://preprod.midnightexplorer.com/transactions/435dedadad348dcbd3d1b2703770f5812907be1feaf46d3d64e3e5c31016f298), committee 0, threshold 1). Its verifier keys: 10 of 10 identical to a fresh compile of contracts/src/lantern.compact.
@@ -309,7 +366,7 @@ The shipped `contracts/src/lantern.compact`, unchanged, on Preprod since 2026-09
 The recovery opened in [block 2690659](https://preprod.midnightexplorer.com/transactions/b56763a0442d2b46c1a879a86587972c513704ed31b0a021e896543910c779dc) on 2026-09-24, at a block time between 14:53 and 15:03 UTC, and has 2 of 2 approvals. It cannot finalize before **2026-09-27 15:03 UTC**: 72 hours after the later bound recorded at the open.
 <!-- facts:preprod:end -->
 
-**What it took.** Two things the local chain never showed. A fresh wallet on wallet-sdk 1.2.0 replays Preprod's whole DUST history before it can pay a fee: about 1.56 million events, which took about six and a half hours here as the indexer's speed swung between 3 and 150 events a second; [`devnet/src/wallets.mjs`](devnet/src/wallets.mjs) saves a snapshot every ten minutes, so a sync resumes. And the SDK's default submission service (wallet-sdk-node-client 1.1.3) disconnects after loading the node's metadata and reconnects for each transaction; on Preprod every submission we tried through it failed with "disconnected … Normal Closure". Submitting over one persistent connection fixed it, so on a public network Lantern does that ([`devnet/src/submission.mjs`](devnet/src/submission.mjs)).
+**What it took.** Three things the local chain never showed. A fresh wallet on wallet-sdk 1.2.0 replays Preprod's whole DUST history before it can pay a fee: about 1.56 million events, which took about six and a half hours here as the indexer's speed swung between 3 and 150 events a second; [`devnet/src/wallets.mjs`](devnet/src/wallets.mjs) saves a snapshot every ten minutes, so a sync resumes. And the SDK's default submission service (wallet-sdk-node-client 1.1.3) disconnects after loading the node's metadata and reconnects for each transaction; on Preprod every submission we tried through it failed with "disconnected … Normal Closure". Submitting over one persistent connection fixed it, so on a public network Lantern does that ([`devnet/src/submission.mjs`](devnet/src/submission.mjs)). Last, on the whole story's first attempt the node refused the freeze after the deploy with error 171, `OutOfDustValidityWindow`: the wallet SDK dates a DUST spend with the newest indexed block's time, and the node checked it against an earlier time, so a fresh spend looked as if it came from the future. The same bytes are valid a block or two later, so on error 171 alone Lantern now sends them again, up to 10 attempts in all, 12 s apart ([`devnet/src/dust-window.mjs`](devnet/src/dust-window.mjs)); the recorded run never needed it, and the contract that first attempt deployed (`ace7e5a821d72c3a…`) is left unfrozen and unused.
 
 ## The attack
 
@@ -347,7 +404,7 @@ From [SECURITY.md §1](SECURITY.md#1-the-60-second-version). The rest of SECURIT
 | Guardians survive a recovery, so an identity can be recovered again | **Held** | stable `idRoot`; leaves bind a guardian context, not the rotating commitment |
 | A downstream contract keeps working across a key loss | **Held, in-contract** | `hostGatedAction` reads `retiredIdentities` directly |
 | An *independently deployed* contract keeps working | **Held, but strictly less sound** | `requireCurrentOwnerAttested` proves the caller holds the current identity secret, against a committee-signed canonical snapshot — but it accepts a retired owner's secret until a snapshot built after the recovery seals, for at most 24 h after the latest seal. §4.4 |
-| The rules of a deployed instance cannot change | **Held on the recorded deployments**, local and on Preprod — not a property of the source | each run that deployed replaced its maintenance authority with an empty committee. `npm run devnet:verify` (while the local chain runs) and `LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify` (on Preprod, at any time) re-check this and that every on-chain verifier key matches a fresh compile; offline, `test/record.test.js` checks the committed records (`deployments/`). Any other deployer can keep the key: check before you trust an instance |
+| The rules of a deployed instance cannot change | **Held on the recorded deployments**, local and on Preprod — not a property of the source | each recorded run replaced its maintenance authority with an empty committee. `npm run devnet:verify` (against the local chain while it runs, or with `LANTERN_NETWORK=preprod` against Preprod at any time) and `LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify` (on Preprod, at any time) re-check this and that every verifier key on the chain matches a fresh compile; offline, `test/record.test.js` checks the committed records (`deployments/`). Any other deployer can keep the key: check before you trust an instance |
 | Nothing trusts the fee payer | **Held** | no circuit uses the caller's coin key or any token operation; every check is a commitment opening or a signature. `test/authentication.test.js` |
 | Guardian *count* and *threshold* stay private | **Not held** | `thresholds` is public; `n` is recoverable from transaction history |
 | t colluding guardians cannot take the identity | **Not held.** Nothing here claims otherwise. Until your recovery finalizes they can also act as you | §4.3 |
@@ -385,7 +442,7 @@ All 21 are in [SECURITY.md §7](SECURITY.md#7-found-and-fixed-in-review).
 3. **Make the committee size a constructor parameter**; it is fixed at three.
 4. **A delegation-safe gate.** Every owner and guardian gate today takes its secret as a witness, so a remote prover learns it. A signature gate would not; today only the host committee's votes are signature checks.
 5. **Cross-contract calls**, when Midnight ships them: an independent DApp could read Lantern directly and drop the 24-hour committee window.
-6. **Finish on Preprod**: finalize the open recovery once its lock ends, run the whole story there, and put the enrolment flow in front of real users.
+6. **Finish on Preprod**: finalize the shipped contract's open recovery once its 72-hour lock ends, and put the enrolment flow in front of real users. The whole story has already run there, with the 60-second flavour.
 7. **An external audit.**
 
 ## Limitations
@@ -397,7 +454,7 @@ All 21 are in [SECURITY.md §7](SECURITY.md#7-found-and-fixed-in-review).
 - **A delegated prover learns the secrets.** Every role in the recorded runs shares one local proof server.
 - **Losing the veto card** means you cannot veto a recovery, add a guardian or evict the set until a recovery issues a new one.
 - **An unreachable threshold makes the identity unrecoverable.** At enrolment there are no guardians yet, so the contract cannot check that *t* is at most the number you will add. The client must.
-- **The whole story ran on a single-node local chain.** On Preprod, the shipped contract has run the core recovery up to its 72-hour lock, which ends after the deadline. Nothing is on mainnet, and nothing is audited.
+- **The shipped 72-hour finalize has not run on any chain.** The whole story, finalize included, has run on a single-node local chain and on Preprod, both with the 60-second flavour. The shipped contract, unchanged, has run on Preprod up to its 72-hour lock, which ends after the deadline; its 72-hour `finalizeRecovery` has been proved only locally (`npm run devnet:bench`). Nothing is on mainnet, and nothing is audited.
 - **The browser demo makes no proofs.** It runs the compiled circuits against an in-memory ledger; the proofs are in `npm run devnet`.
 - **Out of scope:** share transport between owner and guardians, wallet UX and login.
 - **Upstream:** the veto secret is kept in midnight-js private state. midnight-js issue #1169 (open) reports that, with the level private-state provider, a password rotation racing a write can leave that state undecryptable, so keep the veto card outside it too.
@@ -412,13 +469,13 @@ contracts/managed*/     the generated modules, committed; proving keys are not
 contracts/adversarial/  two deliberately insecure contracts for npm run attack; never deployed
 src/                    Shamir over the scalar field, identity derivation, witnesses, the leak scanner
 src/attack/             the attack engine and the per-field leak classification
-src/demo/               the story: 74 steps, run unchanged by the simulator, the browser and the local chain
+src/demo/               the story: 74 steps, run unchanged by the simulator, the browser, the local chain and Preprod
 src/host/               the canonical host snapshot the committee signs
-test/                   196 tests
+test/                   210 tests
 web/                    the site (React and Vite): the landing's three.js lantern, the browser demo, /brand, and the Playwright tests
 brand/                  the brand guide; the kit's files are in web/public/brand-kit/
 devnet/                 the chain runner, local and on Preprod: flavour, sponsor, verify, bench and the shipped run
-deployments/            the records of the local-chain runs, the Preprod run and the bench
+deployments/            the records of the local-chain runs, the two Preprod runs and the bench
 scripts/                compile, cost, attack, story and the README's generated facts
 docs/spikes.md          nine assumptions, each tested before anything was built on it
 SECURITY.md             the threat model

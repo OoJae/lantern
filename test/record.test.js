@@ -1,17 +1,26 @@
-// The committed local-chain records, checked offline. `npm run devnet:verify`
-// re-checks a record against the chain that produced it, but only while that
-// chain runs. This file checks what anyone can check without it: that each
-// record is internally consistent and is exactly the story this repo tells.
+// The committed chain records, checked offline. `npm run devnet:verify` re-checks
+// a record against the chain that produced it: a local chain only while it runs,
+// Preprod (with LANTERN_NETWORK=preprod) at any time. This file checks what anyone
+// can check without a chain: that each record is internally consistent and is
+// exactly the story this repo tells.
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { rootBindings } from '../src/bindings/root.mjs';
 import { createStory } from '../src/demo/story.mjs';
 import { storyRng } from '../src/demo/rng.mjs';
 import { isQuickStep } from '../src/demo/quick.mjs';
+import { flavour, FLAVOUR_DELAY_SECONDS } from '../devnet/flavour.mjs';
 
 const load = (f) => JSON.parse(readFileSync(new URL(`../deployments/${f}`, import.meta.url), 'utf8'));
-const RECORDS = { full: load('local-devnet.json'), quick: load('local-devnet-quick.json') };
+// The story runs: the whole story and the core recovery on a local chain, and the whole story on Preprod.
+const RECORDS = {
+  'local-devnet': { rec: load('local-devnet.json'), quick: false },
+  'local-devnet-quick': { rec: load('local-devnet-quick.json'), quick: true },
+  preprod: { rec: load('preprod.json'), quick: false },
+};
 const BENCH = load('bench-shipped-finalize.json');
+const FLAVOUR_LINE = flavour(readFileSync(new URL('../contracts/src/lantern.compact', import.meta.url), 'utf8')).changedLine;
+const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
 
 const CIRCUITS = [
   'addGuardian', 'approveRecovery', 'enrollIdentity', 'finalizeRecovery', 'hostGatedAction', 'openRecovery',
@@ -24,13 +33,13 @@ const storyIds = (quick) => {
   return (quick ? story.steps.filter(isQuickStep) : story.steps).map((s) => s.id);
 };
 
-for (const [mode, rec] of Object.entries(RECORDS)) {
-  describe(`deployments/${mode === 'full' ? 'local-devnet' : 'local-devnet-quick'}.json`, () => {
+for (const [name, { rec, quick }] of Object.entries(RECORDS)) {
+  describe(`deployments/${name}.json`, () => {
     const calls = rec.steps.filter((s) => s.kind === 'call');
     const withTx = rec.steps.filter((s) => s.tx?.txId);
 
     it('is exactly the story this repo tells, step for step', () => {
-      expect(rec.steps.map((s) => s.id)).toEqual(storyIds(mode === 'quick'));
+      expect(rec.steps.map((s) => s.id)).toEqual(storyIds(quick));
     });
 
     it('every step went as expected, and each outcome matches its expectation', () => {
@@ -60,6 +69,9 @@ for (const [mode, rec] of Object.entries(RECORDS)) {
       const proves = withTx.map((s) => s.timings.prove);
       expect(rec.summary.proveSeconds.min).toBe(Math.min(...proves));
       expect(rec.summary.proveSeconds.max).toBe(Math.max(...proves));
+      expect(rec.summary.proveSeconds.median).toBe(median(proves));
+      const totals = withTx.map((s) => s.timings.total);
+      expect(rec.summary.callToFinalizedSeconds).toEqual({ min: Math.min(...totals), median: median(totals), max: Math.max(...totals) });
     });
 
     it('both contracts froze their maintenance authority in the same run', () => {
@@ -70,9 +82,11 @@ for (const [mode, rec] of Object.entries(RECORDS)) {
       }
     });
 
-    it('ran the devnet flavour: one constant, 72 h to 60 s', () => {
+    it('ran the devnet flavour: one constant, 72 h to 60 s, on the line the flavour changes', () => {
       expect(rec.flavour.recoveryDelaySeconds).toBe(60);
+      expect(rec.flavour.recoveryDelaySeconds).toBe(FLAVOUR_DELAY_SECONDS);
       expect(rec.flavour.shipped).toBe(259200);
+      expect(rec.flavour.line).toBe(FLAVOUR_LINE);
     });
 
     it('every sponsored transaction came from a device with no wallet, and only the sponsor spent DUST', () => {
@@ -85,7 +99,7 @@ for (const [mode, rec] of Object.entries(RECORDS)) {
       }
     });
 
-    if (mode === 'full') {
+    if (!quick) {
       it('proved every one of the 17 circuits of both contracts on chain', () => {
         const proved = new Set(withTx.map((s) => s.circuit));
         expect(CIRCUITS.filter((c) => !proved.has(c))).toEqual([]);
@@ -93,6 +107,53 @@ for (const [mode, rec] of Object.entries(RECORDS)) {
     }
   });
 }
+
+// The whole story on Midnight's public test network. `LANTERN_NETWORK=preprod npm run
+// devnet:verify` re-checks the record against Preprod itself, at any time; offline, it must be
+// the local run's story, step for step, on Preprod, with the phone paying for nothing.
+describe('deployments/preprod.json, beside the local run of the same story', () => {
+  const P = RECORDS.preprod.rec;
+  const L = RECORDS['local-devnet'].rec;
+
+  it('ran on Preprod, both contracts deployed and frozen before the first step, every transaction in order', () => {
+    expect(P.network).toMatch(/^preprod /);
+    expect(P.mode).toBe('full+sponsored');
+    const { lantern, host } = P.contracts;
+    expect(lantern.name).toBe('Lantern (devnet flavour)');
+    expect(host.name).toBe('LanternHost (unchanged)');
+    for (const c of [lantern, host]) {
+      expect(c.status, c.name).toBe('SucceedEntirely');
+      expect(c.maintenanceAuthority, c.name).toMatchObject({ committee: 0, threshold: 1 });
+    }
+    const heights = [
+      lantern.blockHeight, lantern.maintenanceAuthority.frozenBy.blockHeight,
+      host.blockHeight, host.maintenanceAuthority.frozenBy.blockHeight,
+      ...P.steps.filter((s) => s.tx?.txId).map((s) => s.tx.blockHeight),
+    ];
+    expect(heights).toHaveLength(P.summary.transactions);
+    expect(heights).toEqual([...heights].sort((a, b) => a - b));
+  });
+
+  it('went as the local run went: each step, outcome, refusal and sponsored call, and both final ledgers', () => {
+    const shape = (r) => r.steps.map((s) => [s.id, s.kind, s.actor, s.circuit, s.outcome, s.message, Boolean(s.sponsorship)]);
+    expect(shape(P)).toEqual(shape(L));
+    const counts = ({ steps, accepted, refused, transactions }) => ({ steps, accepted, refused, transactions });
+    expect(counts(P.summary)).toEqual(counts(L.summary));
+    expect(P.finalPublicRecord).toEqual(L.finalPublicRecord);
+    expect(P.finalHostRecord).toEqual(L.finalHostRecord);
+  });
+
+  it('the phone paid for nothing: the sponsor paid its transactions, Seo-yeon the open, the operator the rest', () => {
+    const paid = P.steps.filter((s) => s.tx?.txId);
+    for (const s of paid) {
+      const payer = s.sponsorship ? 'the sponsor (the device holds no wallet)'
+        : s.id === '3.2' ? "Seo-yeon's own wallet" : 'the operator wallet';
+      expect(s.payer, s.id).toBe(payer);
+    }
+    expect(P.steps.find((s) => s.id === '3.2')).toMatchObject({ actor: 'Seo-yeon', circuit: 'openRecovery' });
+    expect(paid.filter((s) => s.sponsorship).map((s) => s.sponsorship.circuit)).toEqual(paid.filter((s) => s.sponsorship).map((s) => s.circuit));
+  });
+});
 
 describe('deployments/bench-shipped-finalize.json', () => {
   it('proved the SHIPPED 72 h finalizeRecovery, with its negative control, and says where', () => {

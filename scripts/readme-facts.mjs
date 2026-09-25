@@ -15,8 +15,9 @@ const load = (f) => JSON.parse(readFileSync(new URL(`deployments/${f}`, root), '
 const full = load('local-devnet.json');
 const quick = load('local-devnet-quick.json');
 const bench = load('bench-shipped-finalize.json');
-// The shipped contract on Midnight's public test network, once it has run.
+// Midnight's public test network, once each has run: the shipped contract, and the whole story.
 const shipped = existsSync(new URL('deployments/preprod-shipped.json', root)) ? load('preprod-shipped.json') : null;
+const story = existsSync(new URL('deployments/preprod.json', root)) ? load('preprod.json') : null;
 
 const HOST = new Set(['attestVote', 'openEpoch', 'openRotation', 'requireCurrentOwnerAttested', 'rotateVote', 'sealEpoch', 'sealRotation']);
 const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
@@ -41,7 +42,7 @@ function chain() {
     '|---|---:|---:|',
     ...rows.map((r) => `| ${r.join(' | ')} |`),
     '',
-    `Machine: ${m.cpuModel} (${m.cpus} cores), Node ${m.node}; ${full.images.map((i) => i.replace('midnightntwrk/', '')).join(', ')}; a single local node, network id \`undeployed\`. The contracts ran as the devnet flavour: line ${full.flavour.line} of \`lantern.compact\` changed, a ${full.flavour.recoveryDelaySeconds}-second timelock in place of ${full.flavour.shipped / 3600} hours.`,
+    `Machine: ${m.cpuModel} (${m.cpus} cores), Node ${m.node}; ${full.images.map((i) => i.replace('midnightntwrk/', '')).join(', ')}; a single local node, network id \`undeployed\`. Lantern ran as the devnet flavour: line ${full.flavour.line} of \`lantern.compact\` changed, a ${full.flavour.recoveryDelaySeconds}-second timelock in place of ${full.flavour.shipped / 3600} hours; LanternHost ran unchanged.`,
     '',
     `The **shipped** 72-hour \`finalizeRecovery\`, proved without being submitted ([\`bench-shipped-finalize.json\`](deployments/bench-shipped-finalize.json), ${bench.recordedAt.slice(0, 10)}): ${b[0]} s for the first, cold proof, then ${Math.min(...b.slice(1))}–${Math.max(...b.slice(1))} s. The same finalize ${bench.negativeControl.match(/(\d+) h/)[1]} hours after the open is refused locally: "timelock has not elapsed".`,
   ].join('\n');
@@ -64,7 +65,7 @@ function chainCircuits() {
     ...[...by].sort(([a], [b]) => (HOST.has(a) - HOST.has(b)) || a.localeCompare(b)).map(([c, e]) =>
       `| ${HOST.has(c) ? 'host' : 'lantern'} | \`${c}\` | ${e.prove.length}${e.sponsored ? ` (${e.sponsored} sponsored)` : ''} | ${s(median(e.prove))} | ${Math.min(...e.prove)}–${Math.max(...e.prove)} s | ${s(median(e.total))} |`),
     '',
-    'Both committed runs merged. For an even number of samples the median shown is the upper of the two middle values.',
+    'Both local-chain runs merged. For an even number of samples the median shown is the upper of the two middle values.',
   ].join('\n');
 }
 
@@ -101,7 +102,46 @@ function preprod() {
   ].join('\n');
 }
 
-const BLOCKS = { chain, 'chain-circuits': chainCircuits, attack, ...(shipped ? { preprod } : {}) };
+// The steps of the Preprod story shown with their transactions: the open and its approvals, the
+// veto of the thief's recovery, the finalize and the refusals before it, and a DApp of each kind.
+const STORY_STEPS = ['3.2', '4.1', '4.2', '7.9', '8.2', '8.10', '8.11', '9.2', '9.14'];
+
+function preprodStory() {
+  const r = story;
+  const x = r.summary;
+  const tx = (t) => `[block ${t.blockHeight}](${r.explorer}/transactions/${t.txHash})`;
+  const contracts = Object.values(r.contracts);
+  const row = (c) => `| ${c.name} | [\`${c.address.slice(0, 16)}…\`](${r.explorer}/contracts/${c.address}) | ${tx(c)} | ${tx(c.maintenanceAuthority.frozenBy)}, committee ${c.maintenanceAuthority.committee}, threshold ${c.maintenanceAuthority.threshold} |`;
+  const step = (id) => {
+    const st = r.steps.find((y) => y.id === id);
+    if (!st) throw new Error(`deployments/preprod.json has no step ${id}`);
+    return st.outcome === 'accepted'
+      ? `| ${st.id} | ${st.actor} | \`${st.circuit}\` | accepted · ${tx(st.tx)} | ${st.payer} |`
+      : `| ${st.id} | ${st.actor} | \`${st.circuit}\` | refused: "${st.message}", before any transaction | no one |`;
+  };
+  const sp = r.steps.filter((y) => y.sponsorship);
+  const spent = (k) => sp.reduce((n, y) => n + y.sponsorship[k], 0);
+  const m = r.machine;
+  const p = x.proveSeconds;
+  const f = x.callToFinalizedSeconds;
+  return [
+    `Recorded on Preprod on ${r.recordedAt.slice(0, 10)} ([\`preprod.json\`](deployments/preprod.json)): ${x.steps} steps, ${x.accepted} accepted, ${x.refused} refused as the story expects and ${x.steps - x.accepted - x.refused} off chain, in ${x.transactions} transactions (including ${contracts.length} deploys and ${contracts.length} freezes). Lantern ran as the devnet flavour: line ${r.flavour.line} of \`lantern.compact\` changed, a ${r.flavour.recoveryDelaySeconds}-second timelock in place of ${r.flavour.shipped / 3600} hours; LanternHost ran unchanged.`,
+    '',
+    '| Contract | Address | Deploy | Maintenance authority frozen |',
+    '|---|---|---|---|',
+    ...contracts.map(row),
+    '',
+    '| Step | Who | Circuit | Outcome | Paid by |',
+    '|---|---|---|---|---|',
+    ...STORY_STEPS.map(step),
+    '',
+    `Paid by a sponsor: ${sp.length} transactions, from a device that holds no wallet; the device's intents spent ${spent('userIntentDustSpends')} DUST outputs, the sponsor's ${spent('sponsorDustSpends')}. Proof time: ${p.min} / ${p.median} / ${p.max} s (min / median / max). Call to finalized: median ${s(f.median)}, ${f.min}–${f.max} s. The story took ${x.wallClockMinutes} min. Machine: ${m.cpuModel} (${m.cpus} cores), Node ${m.node}; ${r.images.map((i) => i.replace('midnightntwrk/', '')).join(', ')}, with Preprod's public node and indexer.`,
+    '',
+    `\`LANTERN_NETWORK=preprod npm run devnet:verify\` checks this record against Preprod at any time: both contracts exist with their maintenance authorities frozen; every verifier key is byte-identical to a fresh compile, and the flavour differs from the shipped build in \`finalizeRecovery\` alone; both ledgers end where the record says; and all ${x.transactions} transactions are on the chain at their recorded blocks. It also re-reads the record's own entries for the ${sp.length} sponsored transactions: each came from a device with no wallet, and only the sponsor spent DUST.`,
+  ].join('\n');
+}
+
+const BLOCKS = { chain, 'chain-circuits': chainCircuits, attack, ...(shipped ? { preprod } : {}), ...(story ? { 'preprod-story': preprodStory } : {}) };
 
 const file = new URL('README.md', root);
 let readme = readFileSync(file, 'utf8');

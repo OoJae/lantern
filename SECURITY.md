@@ -43,7 +43,7 @@ secret. Here is exactly what that is worth.
 | Guardians survive a recovery, so an identity can be recovered again | **Held** | stable `idRoot`; leaves bind a guardian context, not the rotating commitment |
 | A downstream contract keeps working across a key loss | **Held, in-contract** | `hostGatedAction` reads `retiredIdentities` directly |
 | An *independently deployed* contract keeps working | **Held, but strictly less sound** | `requireCurrentOwnerAttested` proves the caller holds the current identity secret, against a committee-signed canonical snapshot — but it accepts a retired owner's secret until a snapshot built after the recovery seals, for at most 24 h after the latest seal. §4.4 |
-| The rules of a deployed instance cannot change | **Held on the recorded deployments**, local and on Preprod — not a property of the source | each run that deployed replaced its maintenance authority with an empty committee. `npm run devnet:verify` (while the local chain runs) and `LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify` (on Preprod, at any time) re-check this and that every on-chain verifier key matches a fresh compile; offline, `test/record.test.js` checks the committed records (`deployments/`). Any other deployer can keep the key: check before you trust an instance |
+| The rules of a deployed instance cannot change | **Held on the recorded deployments**, local and on Preprod — not a property of the source | each recorded run replaced its maintenance authority with an empty committee. `npm run devnet:verify` (against the local chain while it runs, or with `LANTERN_NETWORK=preprod` against Preprod at any time) and `LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify` (on Preprod, at any time) re-check this and that every verifier key on the chain matches a fresh compile; offline, `test/record.test.js` checks the committed records (`deployments/`). Any other deployer can keep the key: check before you trust an instance |
 | Nothing trusts the fee payer | **Held** | no circuit uses the caller's coin key or any token operation; every check is a commitment opening or a signature. `test/authentication.test.js` |
 | Guardian *count* and *threshold* stay private | **Not held** | `thresholds` is public; `n` is recoverable from transaction history |
 | t colluding guardians cannot take the identity | **Not held.** Nothing here claims otherwise. Until your recovery finalizes they can also act as you | §4.3 |
@@ -238,8 +238,8 @@ finishing, which sharpens the liveness oracle (§5).
 **Rules we follow, and that a production sponsor must:**
 1. **A sponsor never proves for anyone.** A proof server sees the witnesses — the
    secrets. The device proves locally, or on a proof server it trusts. *(In our
-   local-chain runs one proof server serves every role; they are separated only by
-   which wallet pays.)*
+   recorded runs, local and on Preprod, one local proof server serves every role;
+   they are separated only by which wallet pays.)*
 2. **No veto path depends only on a guardian acting as sponsor.** The veto card
    works with any sponsor, or with the owner's own wallet.
 3. **A hosted sponsor never pays for opens** except under a per-identity rate limit.
@@ -334,7 +334,8 @@ which is 24 hours plus the time from the recovery to the seal. A committee shoul
 build, propose and seal in one sitting. Then it fails at both: *"not the latest
 epoch"* and *"ownership leaf is not in the attested snapshot"*.
 `test/host.test.js › accepts the retired secret against the older epoch until a newer one seals, then never again`,
-and on a real local chain in `deployments/local-devnet.json`, story steps 9.6–9.13: the
+and on real chains, local and on Preprod (`deployments/local-devnet.json`,
+`deployments/preprod.json`), story steps 9.6–9.13: the
 old secret passes against epoch 1 after the recovery, then fails once epoch 2 seals.
 Epochs sealed before a committee rotation stay valid; after the committee rotation
 (steps 10.6–10.9) the leaked key's vote is refused (step 10.14).
@@ -488,13 +489,14 @@ consequence.
    still count for the successor. Rotate the guardian set after any recovery that
    followed a compromise.
 
-10. **The local-chain runs use a flavour with a 60-second timelock.** A 72-hour lock
-    cannot be waited out on a laptop, so `npm run devnet` compiles
+10. **The story runs, local and on Preprod, use a flavour with a 60-second timelock.**
+    A 72-hour lock cannot be waited out in one run, so `npm run devnet`, with or without
+    `LANTERN_NETWORK=preprod`, compiles
     `contracts/src/lantern.compact` with exactly one line changed
     (`devnet/flavour.mjs`; `test/devnet.test.js` fails if any other line differs), and
     `npm run devnet:verify` shows `finalizeRecovery` is the only circuit whose verifier key
     differs from the shipped build. The lock still runs from the later of the two
-    open-time bounds, so on the devnet a finalize waits about ten minutes, not one. The
+    open-time bounds, so in a story run a finalize waits about ten minutes, not one. The
     shipped 72-hour `finalizeRecovery` is proved by `npm run devnet:bench`, prove-only,
     with the shipped keys: 0.8–0.9 s warm (the first, cold proof took 2 s), and the same finalize 71 hours after an open is
     refused locally (`deployments/bench-shipped-finalize.json`). It is not submitted to
@@ -589,13 +591,16 @@ build-to-seal time, and only after reading §4.4.
   burned by an adversary through one `rotateGuardianSet` on an identity they
   control, because contexts are globally unique.
 - The committee size is fixed at three by the constructor's signature.
-- The full story's chain records come from a single-node local chain. On Preprod, a public
-  network with real latency, the shipped contract has run the core recovery up to its lock
-  (`deployments/preprod-shipped.json`). Reorganisations are not tested.
+- The full story has run on a single-node local chain (`deployments/local-devnet.json`)
+  and on Preprod, a public network with real latency (`deployments/preprod.json`), both
+  as the 60-second flavour (§6.10). The shipped contract, unchanged, has run the core
+  recovery on Preprod up to its 72-hour lock (`deployments/preprod-shipped.json`); its
+  72-hour `finalizeRecovery` has been proved, but has not run on any chain.
+  Reorganisations are not tested.
 - The browser build is reproducible on one machine and in CI (two builds hash the
   same); across machines and operating systems it is not proven.
-- Every role in the local-chain runs shares one proof server, which sees each
-  prover's witnesses. That is a demo convenience, not the deployment model (§4.2b).
+- Every role in the recorded runs, local and on Preprod, shares one local proof server,
+  which sees each prover's witnesses. That is a demo convenience, not the deployment model (§4.2b).
 
 **If this continued past the hackathon, we would fix, in order:** rate-limit
 `openRecovery` (§6.4); reconstruct in a disposable worker (§6.5); make the committee
