@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FIELD_LABEL, LEDGER_LABEL, hex, short } from '../lib/format.js';
 
 // "Try to break it". The story above follows a script; here the visitor picks the attack. Each
@@ -225,7 +225,7 @@ function World({ facts, progress, status, slow, onReset, error }) {
         <li>Hana is enrolled with a threshold of 2 and three guardians: Seo-yeon, Mum and Jihoon.</li>
         <li>Her identity secret is split into three shares, one for each guardian.</li>
         <li>Seo-yeon opened a recovery for Hana’s new phone. Seo-yeon and Mum approved it, then sent the phone their shares.</li>
-        <li>The simulated clock stands 72 h 10 min after the recovery opened, past the timelock.</li>
+        <li>The simulated clock stands 72&nbsp;h 10&nbsp;min after the recovery opened, past the timelock.</li>
       </ul>
       {facts
         ? (
@@ -287,8 +287,17 @@ function TryResult({ r }) {
   // The accept note names every check the honest call passed, so it is shown only for that
   // expected accept: an attack the contract accepted passed checks no note here can name.
   const note = r.outcome === 'accepted' ? (r.ok ? ACCEPTED[r.circuit] : undefined) : WHY[r.message];
+  // A new verdict lands in view, so its stamp is seen: at once, and only as far as needed (its
+  // scroll-margin clears the sticky header). Only while its card's button is still on screen: a
+  // visitor who scrolled away while the world was built is left where they are.
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    const go = el?.closest('.try')?.querySelector('.try-go')?.getBoundingClientRect();
+    if (go && go.bottom > 0 && go.top < window.innerHeight) el.scrollIntoView({ block: 'nearest' });
+  }, []);
   return (
-    <div className={`try-result ${r.outcome} ${r.ok ? '' : 'unexpected'} ${r.stale ? 'stale' : ''}`} data-outcome={r.outcome}
+    <div ref={ref} className={`try-result ${r.outcome} ${r.ok ? '' : 'unexpected'} ${r.stale ? 'stale' : ''}`} data-outcome={r.outcome}
       data-circuit={r.circuit} data-message={r.message ?? ''} data-ok={String(r.ok)} data-stale={String(Boolean(r.stale))}>
       <p className="who">
         {r.actor}

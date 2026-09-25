@@ -31,6 +31,7 @@ const COMMANDS = [
   ['npm run web:install && npm run web', 'Node 22.12 or later'],
   ['npm run devnet', 'real proofs on a local chain (Docker, Node 24 or later, compact 0.31.1)'],
   ['npm run devnet:verify', 're-check that chain against the record'],
+  ['LANTERN_NETWORK=preprod npm run devnet:verify', 're-check the Preprod run against the public chain, with no wallet'],
 ];
 
 // The table's cells carry their column's name for the phone layout, where each row is a card that
@@ -61,6 +62,8 @@ export default function About() {
             <tr><th scope="row">This site</th><Cells values={['the compiled contract’s generated JavaScript', 'in memory, in your browser', 'none', 'none']} /></tr>
             <tr><th scope="row"><code>npm test</code>, <code>npm run story</code></th><Cells values={['the same modules', 'in memory', 'none', 'none']} /></tr>
             <tr className="chain"><th scope="row"><code>npm run devnet</code></th><Cells values={['the same source, compiled with one constant changed: a 60-second timelock instead of 72 hours', 'a local Midnight node and indexer', 'real, from a local proof server', 'real DUST']} /></tr>
+            <tr className="chain"><th scope="row"><code>npm run devnet</code>, on Preprod</th><Cells values={['the same source, with the same 60-second timelock', 'Midnight Preprod, a public test network', 'real, from a local proof server', 'real DUST']} /></tr>
+            <tr className="chain"><th scope="row">The shipped contract, on Preprod</th><Cells values={['the shipped build, unchanged: a 72-hour timelock', 'Midnight Preprod, a public test network', 'real, from a local proof server', 'real DUST']} /></tr>
           </tbody>
         </table>
       </div>
@@ -82,7 +85,7 @@ export default function About() {
             <li>Until a recovery finalizes, whoever holds the lost device’s secret can act as you. The recovery ends that.</li>
             <li>An open recovery is public: it tells the world an identity’s owner may have lost a key.</li>
           </ul>
-          <p>The full threat model, with every limitation and its bound, is <a href="https://github.com/OoJae/lantern/blob/main/SECURITY.md"><code>SECURITY.md</code></a> in the repository. The assumptions behind this site and the local-chain runner are tested in <a href="https://github.com/OoJae/lantern/blob/main/docs/spikes.md"><code>docs/spikes.md</code></a>.</p>
+          <p>The full threat model, with every limitation and its bound, is <a href="https://github.com/OoJae/lantern/blob/main/SECURITY.md"><code>SECURITY.md</code></a> in the repository. The runs on Preprod are recorded in <a href="https://github.com/OoJae/lantern/tree/main/deployments"><code>deployments/</code></a>, and the README shows how to check them. The assumptions behind this site and the chain runner are tested in <a href="https://github.com/OoJae/lantern/blob/main/docs/spikes.md"><code>docs/spikes.md</code></a>.</p>
           <p className="onward"><Link to="/demo">Watch a recovery</Link> · <Link to="/attacks">Try to find the guardians</Link></p>
         </div>
       </section>

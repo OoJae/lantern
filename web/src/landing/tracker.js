@@ -16,7 +16,20 @@
 // so the scene can close its vignette as the page continues. The section's data-stage is
 // round(u), clamped to the steps, written only when it changes; data-closed is present once u is
 // past steps - 0.44, where the scene's vignette has shut over the story's last frame
-// (choreography.js, s.close) and the stage is about to scroll away.
+// (choreography.js, s.close) and the stage is about to scroll away (it goes again below
+// steps - 0.54, so a reader resting on the line does not flicker it).
+//
+// data-strip-hidden is present while any line of the story's text (the current block's or a
+// neighbour's) comes within 64px of the stage's ledger strip (the section's loose
+// [data-text-safe]), so the printout never prints over the words.
+//
+// room is the top of the first block's words (the hero's), from the top of the page: the height
+// the hero's lantern may use above them on the first screen. It is also written on the section as
+// --room (px), for the poster.
+//
+// When the window changes width (a phone turning, a window resized) the page's blocks change
+// length; the tracker puts the reader back at the same u. A change of height alone (a phone's
+// toolbar showing or hiding) never moves the page.
 //
 // textRects(out) fills out (Float32Array(8)) with up to two viewport rectangles
 // [left, top, right, bottom] of the on-screen text nearest the centre line, for the scene's glow
@@ -33,6 +46,9 @@ export function createTracker(section, { steps: selector = '[data-step]' } = {})
   let u = 0;
   let stage = -1;
   let closed = false;
+  let stripHidden = false;
+  let room = 0;
+  let lastW = window.innerWidth;
   const listeners = new Set();
 
   function measure() {
@@ -48,7 +64,15 @@ export function createTracker(section, { steps: selector = '[data-step]' } = {})
       const r = el.getBoundingClientRect();
       return r.top + y + r.height / 2;
     });
+    const words = safes[0]?.[0];
+    const top = words && words !== steps[0] ? Math.round(words.getBoundingClientRect().top + y) : 0;
+    // a block's words can reflow without the section changing size (a font arriving)
+    safes.forEach((own) => own.forEach((el) => ro.observe(el)));
     compute();
+    if (top !== room) {
+      room = top;
+      section.style.setProperty('--room', `${top}px`);
+    }
   }
 
   function compute() {
@@ -75,7 +99,18 @@ export function createTracker(section, { steps: selector = '[data-step]' } = {})
       stage = s;
       section.dataset.stage = String(s);
     }
-    const c = u > n - 0.44;
+    // Is a line of the story near the ledger strip? Read after the stage (the strip holds the new
+    // stage's line: a layout, seven times a story) and before any other write.
+    const strip = loose[0]?.getBoundingClientRect();
+    const hide = !!strip && strip.width > 0 && [s - 1, s, s + 1].some((k) => safes[k]?.some((el) => {
+      const r = el.getBoundingClientRect();
+      return r.left < strip.right && r.right > strip.left && r.top < strip.bottom + 64 && r.bottom > strip.top - 64;
+    }));
+    if (hide !== stripHidden) {
+      stripHidden = hide;
+      section.toggleAttribute('data-strip-hidden', hide);
+    }
+    const c = u > n - (closed ? 0.54 : 0.44);
     if (c !== closed) {
       closed = c;
       section.toggleAttribute('data-closed', c);
@@ -84,10 +119,20 @@ export function createTracker(section, { steps: selector = '[data-step]' } = {})
   }
 
   const onScroll = () => compute();
+  const onResize = () => {
+    const keep = window.innerWidth !== lastW && u > 0 && u < centres.length - 0.5 ? u : null;
+    lastW = window.innerWidth;
+    measure();
+    if (keep != null && centres.length > 1) {
+      const i = Math.min(Math.floor(keep), centres.length - 2);
+      const y = centres[i] + (centres[i + 1] - centres[i]) * (keep - i) - window.innerHeight / 2;
+      if (Math.abs(y - window.scrollY) > 2) window.scrollTo(0, y);
+    }
+  };
   const ro = new ResizeObserver(measure);
   ro.observe(section);
   window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', measure, { passive: true });
+  window.addEventListener('resize', onResize, { passive: true });
   measure();
 
   return {
@@ -99,6 +144,9 @@ export function createTracker(section, { steps: selector = '[data-step]' } = {})
     },
     get steps() {
       return centres.length;
+    },
+    get room() {
+      return room;
     },
     subscribe(fn) {
       listeners.add(fn);
@@ -133,9 +181,11 @@ export function createTracker(section, { steps: selector = '[data-step]' } = {})
     dispose() {
       ro.disconnect();
       window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', measure);
+      window.removeEventListener('resize', onResize);
       listeners.clear();
       section.removeAttribute('data-closed');
+      section.removeAttribute('data-strip-hidden');
+      section.style.removeProperty('--room');
     },
   };
 }

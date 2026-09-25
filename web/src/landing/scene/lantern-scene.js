@@ -246,7 +246,7 @@ export async function createLanternScene({ host, tracker, tier: requested = 'aut
 
   function applyCamera(s) {
     const { w, h } = size;
-    cameraPose(s.cam, w, h, layout, pose);
+    cameraPose(s.cam, w, h, layout, pose, tracker?.room);
     camera.position.fromArray(pose.pos);
     camera.lookAt(pose.tgt[0], pose.tgt[1], pose.tgt[2]);
     camera.aspect = w / h;
@@ -339,7 +339,7 @@ export async function createLanternScene({ host, tracker, tier: requested = 'aut
     lp[1].set(WORLD.B[0], WORLD.B[1] + WORLD.flame[1], WORLD.B[2]);
     lc[1].set(M.C.lit.r, M.C.lit.g, M.C.lit.b).multiplyScalar(s.B.paper * Math.max(0, Math.min(1, (s.B.bloomH + 0.8) / 1.6)));
     const j = s.shares[2];
-    const jihoon = s.C.opacity > 0.01 ? j[3] * 0.35 : 0;
+    const jihoon = s.C.opacity > 0.01 ? j[3] * 0.6 : 0;
     if (s.lock >= jihoon) {
       lp[2].set(WORLD.seal[0], PLANE_Y + 0.12, WORLD.seal[1]);
       lc[2].set(M.C.ember.r, M.C.ember.g, M.C.ember.b).multiplyScalar(0.35 * s.lock);

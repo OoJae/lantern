@@ -7,7 +7,10 @@
    and rises 8px; the new one is clip-revealed from the top. All finite. */
 header.site .brand { view-transition-name: site-brand; }
 header.site nav { view-transition-name: site-nav; }
-::view-transition { pointer-events: none; }
+/* Under the pages' images, Night: where neither shows (above the reveal's edge as it comes down), the
+   ground is the page's tone rather than the bare canvas under the grain (--grain-ground), a shade
+   darker. */
+::view-transition { pointer-events: none; background: var(--night); }
 ::view-transition-group(site-brand),
 ::view-transition-group(site-nav),
 ::view-transition-group(nav-wick) { animation-duration: 420ms; animation-timing-function: var(--ease-carry); }
@@ -51,3 +54,16 @@ header.site nav { view-transition-name: site-nav; }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none; }
   :root:active-view-transition header.site .lm-flame { animation: none; }
 }
+
+/* ---- a page still loading ------------------------------------------------------------------------
+   A lazy page's loading line (App.jsx's fallback, .page-loading) and a page's own (/demo loading the
+   contract, /attacks running the attack) stand a window tall, so the footer waits below the fold and
+   does not rise into view, then drop away, as the page arrives. A route change holds the old page
+   until the new one is ready (router.jsx): these show on a direct load, or past the hold. */
+.page-loading,
+main > .page:has(> .loading) { min-height: calc(100svh - var(--header-h, var(--header-min))); }
+
+/* ---- focus after a route change from the keyboard -------------------------------------------------
+   App.jsx moves focus to the new page's h1 (or the #hash target), so a screen reader announces the
+   page. It is not a control: no ring round a heading. The ring stays on everything that is one. */
+main [tabindex="-1"]:focus { outline: none; }

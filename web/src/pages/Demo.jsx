@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from '../lib/router.jsx';
 import { FIELD_LABEL, LEDGER_LABEL, hex, short, toHex, clockText } from '../lib/format.js';
 import { Honesty } from '../components/Honesty.jsx';
@@ -24,6 +24,8 @@ export default function Demo() {
   const inPanel = useRef(false);  // whether the visitor last clicked, tapped or moved focus inside "Try to break it"
   const deepLinked = useRef(false);
   const landed = useRef(new Set()); // the steps on screen at the last commit: those not in it are arriving now
+  const following = useRef(false); // whether the reader was following the story when the last run began
+  const beatSeen = useRef(0);      // the beat the story was at before the last run, to tell a new beat
 
   // For the stamp's stagger only (class names): after each commit, remember which steps are on screen.
   useEffect(() => {
@@ -42,8 +44,19 @@ export default function Demo() {
   }, []);
 
   // Run steps until `stop(nextStep)` says so. One state update per batch.
-  const run = useCallback(async (stop) => {
+  const run = useCallback(async (stop, follow = true) => {
     if (!session || busy || session.runner.done) return;
+    // A reader following the story (at least half its newest step, or of the next one, on screen and
+    // clear of the header) keeps what arrives in view; one reading the panels or "Try to break it" is
+    // left where they are, even with the controls still in sight.
+    const top = document.querySelector('header.site')?.getBoundingClientRect().bottom ?? 0;
+    const seen = (el) => {
+      const r = el?.getBoundingClientRect();
+      if (!r || !r.height) return false;
+      const shown = Math.min(r.bottom, window.innerHeight) - Math.max(r.top, top);
+      return shown >= Math.min(r.height, window.innerHeight - top) / 2;
+    };
+    following.current = follow && ['.steps > li:last-child', '.upcoming'].some((q) => seen(document.querySelector(q)));
     setBusy(true);
     const batch = [];
     try {
@@ -75,7 +88,7 @@ export default function Demo() {
     if (!session || deepLinked.current) return;
     deepLinked.current = true;
     const beat = Number(new URLSearchParams(window.location.search).get('beat'));
-    if (beat > 0 && beat <= 10) run((step, batch) => batch.at(-1).beat >= beat);
+    if (beat > 0 && beat <= 10) run((step, batch) => batch.at(-1).beat >= beat, false);
     if (new URLSearchParams(window.location.search).get('autoplay') === '1') setPlaying(true);
     // The panel renders only once the contract has loaded, too late for the browser's own jump.
     if (window.location.hash === '#break') document.getElementById('break')?.scrollIntoView();
@@ -89,10 +102,32 @@ export default function Demo() {
     return () => clearTimeout(t);
   }, [playing, busy, session, records.length, run]);
 
-  // Keep the current beat in view on narrow screens, where the rail scrolls sideways.
+  // Keep the current beat in view on narrow screens, where the rail scrolls sideways. Only the rail
+  // moves, and only sideways: the page stays where the reader is.
   useEffect(() => {
-    railRef.current?.querySelector('[aria-current="step"]')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+    const rail = railRef.current;
+    const pill = rail?.querySelector('[aria-current="step"]');
+    if (!pill) return;
+    const r = rail.getBoundingClientRect();
+    const p = pill.getBoundingClientRect();
+    rail.scrollLeft += (p.left + p.width / 2) - (r.left + r.width / 2);
   }, [records.length, review]);
+
+  // What just arrived stays in view, for a reader following the story: at once (no smooth scroll),
+  // and only as far as needed (each target's scroll-margin clears the sticky header). The controls
+  // come into view, so the next press is at hand, unless that would hide the newest step; and a new
+  // beat's title is never hidden for either.
+  useEffect(() => {
+    const beatNow = records.length ? records.at(-1).beat : 0;
+    const newBeat = beatNow !== beatSeen.current;
+    beatSeen.current = beatNow;
+    if (review !== null || !records.length || !following.current) return;
+    following.current = false;
+    const near = (el) => el?.scrollIntoView({ block: 'nearest' });
+    near(controlsRef.current);
+    near(document.querySelector('.steps > li:last-child'));
+    if (newBeat) near(document.querySelector('.beat-head'));
+  }, [records.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const inView = (el) => {
@@ -159,7 +194,7 @@ export default function Demo() {
                 <button type="button" className={`beat ${state}`} disabled={!reachable}
                   aria-current={shown === b.n ? 'step' : undefined}
                   onClick={() => setReview(b.n === current ? null : b.n)}>
-                  <span className="num">{b.n === 10 ? '✦' : b.n}</span>
+                  <span className="num" aria-hidden={b.n === 10 ? 'true' : undefined}>{b.n === 10 ? '✦' : b.n}</span>
                   <span className="title">{b.title}</span>
                 </button>
               </li>
@@ -279,10 +314,20 @@ function Recorded({ r }) {
   const rec = RECORDED[r.id];
   if (!rec || r.kind !== 'call') return null;
   const where = `recorded ${RECORDED_ON} on a local chain`;
-  const text = rec.outcome === 'accepted'
-    ? `${where}: block ${rec.tx.blockHeight} · proved in ${rec.timings.prove} s${rec.sponsorship ? ' · fee paid by a sponsor' : ''}`
-    : `${where}: refused the same way, before any transaction`;
-  return <p className="recorded-chip" data-recorded={rec.outcome}>{text}</p>;
+  if (rec.outcome !== 'accepted') {
+    return <p className="recorded-chip" data-recorded={rec.outcome}>{`${where}: refused the same way, before any transaction`}</p>;
+  }
+  // Each item unbroken (a figure never parts from its unit), its separator hung at the end of the
+  // line it closes. The text reads exactly as one line of plain spaces.
+  const items = [`block ${rec.tx.blockHeight}`, `proved in ${rec.timings.prove} s`, ...(rec.sponsorship ? ['fee paid by a sponsor'] : [])];
+  return (
+    <p className="recorded-chip" data-recorded={rec.outcome}>
+      {`${where}: `}
+      {items.map((t, i) => (
+        <Fragment key={t}>{i > 0 && ' '}<span className="nb">{i < items.length - 1 ? `${t} ·` : t}</span></Fragment>
+      ))}
+    </p>
+  );
 }
 
 function Summary({ records }) {

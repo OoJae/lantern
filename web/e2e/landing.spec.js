@@ -271,3 +271,137 @@ test('leaving the landing and coming back, again and again, leaves one canvas at
   if (software) expect(stalls.length).toBeLessThanOrEqual(4);
   else expect(stalls).toEqual([]);
 });
+
+// ---- The layout holds the words clear of everything else, on every screen ----------------------
+
+// The poster draws the lantern at the scene's own place and size (the canvas fades in over it with
+// no jump), so its geometry stands for both: the tests below read it with WebGL off.
+async function withoutWebGL(page) {
+  await page.addInitScript(() => {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
+      return /webgl/i.test(type) ? null : getContext.call(this, type, ...rest);
+    };
+  });
+}
+// The drawn lantern's box in viewport px: its paper (the body path) and the whole lit lantern
+// (roof, paper and foot, the cord running up out of the frame).
+const lanternBox = (page) => page.evaluate(() => {
+  const svg = [...document.querySelectorAll('.stage svg.lantern-poster > svg')].find((s) => getComputedStyle(s).display !== 'none');
+  const lit = svg.querySelector('.lp-lit');
+  const paper = [...lit.querySelectorAll('path')].find((p) => p.getAttribute('d').startsWith('M-151 -96')).getBoundingClientRect();
+  return { paperLeft: paper.left, foot: lit.getBoundingClientRect().bottom };
+});
+const portrait = (page) => page.evaluate(() => innerWidth / innerHeight < 0.8);
+
+test('on a wide screen the h1 ends 20px short of the lantern\'s paper, at every size', async ({ page }) => {
+  test.skip((page.viewportSize().width) < 1080, 'the wide layout, resized');
+  await withoutWebGL(page);
+  await openLanding(page);
+  await expect(night(page)).toHaveAttribute('data-scene', 'poster');
+  await page.evaluate(() => document.fonts.ready);
+  // Fraunces widens as it shrinks (its optical size): the fit is read off the line's real width.
+  for (const [width, height] of [[900, 700], [1024, 768], [1180, 820], [1280, 800], [1440, 900], [1920, 1080]]) {
+    await page.setViewportSize({ width, height });
+    await expect.poll(async () => {
+      const right = await page.locator('.hero h1').evaluate((h) => {
+        const r = document.createRange();
+        r.selectNodeContents(h);
+        return Math.max(...[...r.getClientRects()].map((x) => x.right));
+      });
+      const gap = (await lanternBox(page)).paperLeft - right;
+      return gap >= 18 && gap <= 26 ? 'clear' : `gap ${gap.toFixed(1)}px at ${width} x ${height}`;
+    }).toBe('clear');
+  }
+});
+
+test('the ledger strip never prints over the story\'s words', async ({ page }) => {
+  test.skip((page.viewportSize().width) < 1080, 'the strip is shown from 1080px');
+  await withoutWebGL(page);
+  await openLanding(page);
+  const { shown, over } = await page.evaluate(async () => {
+    const section = document.querySelector('section.night');
+    const end = document.querySelector('#after-story').getBoundingClientRect().top + window.scrollY;
+    const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const hit = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+    let shown = 0;
+    const over = [];
+    for (let y = 0; y < end; y += 20) {
+      window.scrollTo(0, y);
+      await frame();
+      if (section.hasAttribute('data-strip-hidden') || section.hasAttribute('data-closed')) continue;
+      const lines = [...section.querySelectorAll('.ledger-strip span')]
+        .filter((s) => getComputedStyle(s).display !== 'none')
+        .map((s) => s.getBoundingClientRect());
+      if (!lines.length) continue;
+      shown += 1;
+      const words = [...section.querySelectorAll('.story [data-text-safe]')].map((e) => e.getBoundingClientRect());
+      if (lines.some((l) => words.some((w) => hit(l, w)))) over.push(`${y} (stage ${section.dataset.stage})`);
+    }
+    return { shown, over };
+  });
+  expect(over, 'scroll positions where the strip overlaps the words').toEqual([]);
+  // It still prints: at every block centred, the strip is out.
+  expect(shown).toBeGreaterThan(20);
+  for (let i = 1; i < STEPS; i++) {
+    await toStep(page, i);
+    await expect(night(page)).toHaveAttribute('data-stage', String(i));
+    await expect(night(page)).not.toHaveAttribute('data-strip-hidden', /.*/);
+  }
+});
+
+test('on a phone the first screen holds the words, both buttons and the scroll cue, under the lantern', async ({ page }) => {
+  const own = page.viewportSize();
+  await withoutWebGL(page);
+  // The project's own phone, then the short ones (an SE, a small Android, the 320px floor).
+  for (const size of [own, { width: 375, height: 667 }, { width: 360, height: 640 }, { width: 320, height: 568 }]) {
+    await page.setViewportSize(size);
+    await openLanding(page);
+    if (!(await portrait(page))) continue;
+    await expect(night(page)).toHaveAttribute('data-scene', 'poster');
+    await page.evaluate(() => document.fonts.ready);
+    await expect.poll(async () => {
+      const { words, cta, cue, fold } = await page.evaluate(() => ({
+        words: document.querySelector('.hero-text').getBoundingClientRect().top,
+        cta: document.querySelector('.hero .cta').getBoundingClientRect().bottom,
+        cue: document.querySelector('.hero-foot').getBoundingClientRect().bottom,
+        fold: window.innerHeight,
+      }));
+      const { foot } = await lanternBox(page);
+      const problems = [];
+      if (cta > fold) problems.push(`the buttons end at ${cta} of ${fold}`);
+      if (cue > fold + 1) problems.push(`the scroll cue's row ends at ${cue} of ${fold}`);
+      if (foot > words) problems.push(`the lantern's foot (${foot}) is under the words (${words})`);
+      return problems.join('; ') || `clear at ${size.width} x ${size.height}`;
+    }).toBe(`clear at ${size.width} x ${size.height}`);
+    await expect(page.locator('.hero').getByRole('link', { name: 'Watch a recovery' })).toBeInViewport({ ratio: 1 });
+  }
+});
+
+test('on a phone each block, while it is the current one, is on the screen whole', async ({ page }) => {
+  test.skip(!(await page.evaluate(() => innerWidth / innerHeight < 0.8)), 'a portrait screen');
+  await openLanding(page);
+  const headerBottom = await page.locator('header.site').evaluate((h) => h.getBoundingClientRect().bottom);
+  for (let i = 1; i < STEPS; i++) {
+    await toStep(page, i);
+    await expect(night(page)).toHaveAttribute('data-stage', String(i));
+    const box = await page.locator(`[data-step="${i}"] .chapter-text`).evaluate((e) => {
+      const r = e.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, fold: window.innerHeight };
+    });
+    expect(box.bottom, `block ${i}'s last line`).toBeLessThanOrEqual(box.fold);
+    expect(box.top, `block ${i}'s first line`).toBeGreaterThanOrEqual(headerBottom);
+  }
+});
+
+test('turning the screen or resizing the window mid-story keeps the reader\'s place', async ({ page }) => {
+  test.skip((page.viewportSize().width) < 1080, 'starts on a wide screen');
+  await openLanding(page);
+  await toStep(page, 5);
+  await expect(night(page)).toHaveAttribute('data-stage', '5');
+  for (const size of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1280, height: 720 }]) {
+    await page.setViewportSize(size);
+    await expect(night(page)).toHaveAttribute('data-stage', '5');
+    await expect(night(page)).not.toHaveAttribute('data-closed', /.*/);
+  }
+});

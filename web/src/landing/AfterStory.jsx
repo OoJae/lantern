@@ -87,7 +87,7 @@ export default function AfterStory({ reveal }) {
 
       <p className="what-is-real" data-reveal="">
         <span className="rv">
-          The same story also ran with real proofs on a local chain. <Link to="/about">What is real <Arrow /></Link>
+          The same story also ran with real proofs, on a local chain and on Midnight’s public test network. <Link to="/about">What is real <Arrow /></Link>
         </span>
       </p>
     </>

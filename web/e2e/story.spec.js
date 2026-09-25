@@ -195,3 +195,165 @@ test('the attack step’s table of designs fits a phone, the held design’s sea
   expect(await held.evaluate((el) => getComputedStyle(el, '::before').backgroundImage)).toContain('255, 138, 61');
   await expectNoSideScroll(page);
 });
+
+// Following the story step by step, as the video does at 1280×720: each press keeps the page with the
+// reader (the beat rail scrolls sideways only, never the page back up to it), and what arrives lands
+// in view, clear of the sticky header, with the controls still at hand.
+const press = (page) => page.locator('.controls .primary').evaluate((b) => b.click()); // no scrolling first
+const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+const inView = (loc) => loc.evaluate((el) => {
+  const r = el.getBoundingClientRect();
+  return r.top >= document.querySelector('header.site').getBoundingClientRect().bottom - 1 && r.bottom <= window.innerHeight + 1;
+});
+const railCentred = (page) => page.locator('.beats').evaluate((rail) => {
+  const r = rail.getBoundingClientRect();
+  const p = rail.querySelector('[aria-current="step"]').getBoundingClientRect();
+  const end = rail.scrollWidth - rail.clientWidth;
+  return Math.abs((p.left + p.width / 2) - (r.left + r.width / 2)) <= 1
+    || (rail.scrollLeft <= 1 && p.left + p.width / 2 < r.left + r.width / 2)
+    || (rail.scrollLeft >= end - 1 && p.left + p.width / 2 > r.left + r.width / 2);
+});
+
+for (const [width, height] of [[1280, 720], [390, 844]]) {
+  test(`at ${width}×${height}, each step taken lands in view and the page never jumps back to the beat rail`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto('/demo?beat=7');
+    await expect(page.locator('[data-step="7.1"]')).toBeVisible();
+    await frames(page);
+    expect(await railCentred(page)).toBe(true);
+    for (let n = 2; n <= 5; n++) {
+      await page.locator('.steps > li').last().evaluate((el) => el.scrollIntoView({ block: 'center' }));
+      const before = await page.evaluate(() => window.scrollY);
+      await press(page);
+      await expect(page.locator('.steps > li')).toHaveCount(n);
+      await frames(page);
+      expect(await page.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(before);
+      expect(await inView(page.locator('.steps > li').last())).toBe(true);
+      expect(await railCentred(page)).toBe(true);
+    }
+    // A new beat arrives with its title in view.
+    await page.getByRole('button', { name: 'Run to the end' }).click();
+    await expect(page.getByTestId('summary')).toBeVisible();
+    await frames(page);
+    expect(await inView(page.locator('.beat-head h1'))).toBe(true);
+    expect(await railCentred(page)).toBe(true);
+  });
+}
+
+test('following beat 8 step by step at 1280×720, the lock plays in view', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/demo?beat=8');
+  await expect(page.locator('[data-step="8.1"]')).toBeVisible();
+  const lock = page.locator('.step[data-step="8.11"]');
+  for (let i = 0; i < 12 && !(await lock.count()); i++) {
+    const n = await page.locator('.steps > li').count();
+    await press(page);
+    await expect(page.locator('.steps > li')).toHaveCount(n + 1);
+  }
+  await frames(page);
+  expect(await inView(lock)).toBe(true);
+  expect(await inView(lock.locator('.chip.ok'))).toBe(true);
+  expect(await inView(page.locator('.controls'))).toBe(true);
+});
+
+test('a reader who has scrolled away from the story is left where they are', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await openDemo(page);
+  await page.getByRole('button', { name: 'Autoplay' }).click();
+  await expect(page.locator('.step')).toHaveCount(1, { timeout: 10_000 });
+  await frames(page); // the first step has landed, and been kept in view
+  await page.locator('#break').evaluate((s) => s.scrollIntoView());
+  const panelTop = () => page.locator('#break').evaluate((s) => s.getBoundingClientRect().top);
+  const before = await panelTop();
+  // From here, count every scroll the page asks for.
+  await page.evaluate(() => {
+    window.scrollsAsked = 0;
+    const own = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function scrollIntoView(...args) { window.scrollsAsked++; return own.apply(this, args); };
+  });
+  await expect(page.locator('.step')).toHaveCount(3, { timeout: 10_000 });
+  await frames(page);
+  // The story moved on twice; the page asked for no scroll, and left the reader at the panel.
+  expect(await page.evaluate(() => window.scrollsAsked)).toBe(0);
+  await expect(page.locator('#break')).toBeInViewport();
+  // Where the engine anchors the scroll to what is on screen, the panel is held still: the steps that
+  // landed above it (the story's grid is never the anchor, though its tail is under the header) did
+  // not push it down the screen.
+  if (await page.evaluate(() => CSS.supports('overflow-anchor', 'auto'))) {
+    expect(Math.abs((await panelTop()) - before)).toBeLessThanOrEqual(2);
+    await expect(page.locator('.steps > li').last()).not.toBeInViewport();
+  }
+});
+
+test('at the end of a beat the sticky state column stays clear of the header', async ({ page }) => {
+  for (const [width, height] of [[1280, 720], [1440, 900], [1920, 1080]]) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/demo?beat=8');
+    await expect(page.locator('[data-step="8.1"]')).toBeVisible();
+    await page.getByRole('button', { name: 'Play this beat' }).click();
+    await expect(page.locator('[data-step="8.11"]')).toBeVisible();
+    await settle(page);
+    for (const above of [24, 84]) {
+      await page.locator('.hint').evaluate((h, a) => window.scrollBy(0, h.getBoundingClientRect().bottom - window.innerHeight + a), above);
+      const header = await page.locator('header.site').evaluate((h) => h.getBoundingClientRect().bottom);
+      const title = await page.locator('.panel.clock h2').evaluate((h) => h.getBoundingClientRect().top);
+      expect(title, `${width}×${height}, the hint ${above}px above the fold`).toBeGreaterThanOrEqual(header);
+    }
+  }
+});
+
+test('a recorded chip keeps each figure with its unit, on the measure of the step’s words', async ({ page }) => {
+  await openDemo(page);
+  await page.getByRole('button', { name: 'Run to the end' }).click();
+  await page.getByRole('button', { name: /Seventy-two hours/ }).click();
+  await expect(page.locator('[data-step="8.11"] .recorded-chip .nb'))
+    .toHaveText([/^block \d+ ·$/, /^proved in [\d.]+ s ·$/, 'fee paid by a sponsor']);
+  for (const width of [320, 360, 390, 640, 1080, 1280, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const r = await page.locator('.step .recorded-chip').evaluateAll((chips) => ({
+      broken: chips.flatMap((c) => [...c.querySelectorAll('.nb')]
+        .filter((s) => new Set([...s.getClientRects()].map((q) => Math.round(q.top))).size > 1).map((s) => s.textContent)),
+      spilling: chips.filter((c) => c.scrollWidth > c.clientWidth).length,
+      widths: new Set(chips.map((c) => Math.round(c.getBoundingClientRect().width))).size,
+    }));
+    expect(r.broken, `${width}px`).toEqual([]);
+    expect(r.spilling, `${width}px`).toBe(0);
+    expect(r.widths, `${width}px: one measure for every chip`).toBe(1);
+  }
+  await expectNoSideScroll(page);
+});
+
+// axe cannot measure the rail (each pill's thread overlaps it and it reports them incomplete), so its
+// colours are checked here: every pill's words and numeral at 4.5:1 or better, in every state.
+test('the beat rail keeps its contrast in every state, and the epilogue’s mark is not read out', async ({ page }) => {
+  await page.goto('/demo?beat=5');
+  await expect(page.locator('.steps > li')).toHaveCount(1);
+  await settle(page);
+  const measure = () => page.locator('.beats .beat').evaluateAll((pills) => {
+    const rgb = (s) => s.match(/[\d.]+/g).map(Number);
+    const opaque = (c, under) => (c.length === 4 && c[3] === 0 ? under : c.slice(0, 3));
+    const lum = (c) => {
+      const f = (v) => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+      return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+    };
+    const ratio = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((p, q) => q - p); return (hi + 0.05) / (lo + 0.05); };
+    const NIGHT = [9, 10, 15];
+    return pills.map((p) => {
+      const num = p.querySelector('.num');
+      const bg = opaque(rgb(getComputedStyle(p).backgroundColor), NIGHT);
+      const numBg = opaque(rgb(getComputedStyle(num).backgroundColor), bg);
+      return { state: p.className, words: ratio(rgb(getComputedStyle(p).color), bg), numeral: ratio(rgb(getComputedStyle(num).color), numBg) };
+    });
+  });
+  const pills = await measure();
+  expect(new Set(pills.map((p) => p.state.replace('beat ', '')))).toEqual(new Set(['done', 'current', 'todo']));
+  for (const p of pills) {
+    expect(p.words, `${p.state}: words`).toBeGreaterThanOrEqual(4.5);
+    expect(p.numeral, `${p.state}: numeral`).toBeGreaterThanOrEqual(4.5);
+  }
+  await page.getByRole('button', { name: 'Run to the end' }).click();
+  await expect(page.getByTestId('summary')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Epilogue', exact: true })).toHaveAttribute('aria-current', 'step');
+  await settle(page);
+  for (const p of await measure()) expect(p.words, `${p.state}: words`).toBeGreaterThanOrEqual(4.5);
+});

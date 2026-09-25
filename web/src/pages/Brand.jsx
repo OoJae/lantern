@@ -176,7 +176,7 @@ export default function Brand() {
   const [css] = useState(readRoot);
   return (
     <section className="page brand-kit">
-      <header className="bk-top">
+      <header className="bk-top" id="contents">
         <div className="bk-intro">
           <p className="eyebrow">The brand, and every file of it</p>
           <h1>Brand <em>kit</em></h1>
@@ -293,6 +293,7 @@ function Section({ n, id, title, dek, children }) {
         <p className="bk-num" aria-hidden="true">{String(n).padStart(2, '0')}</p>
         <h2 id={`${id}-title`}>{title}</h2>
         <p className="bk-dek">{dek}</p>
+        <a className="bk-up" href="#contents"><span className="bk-up-arrow" aria-hidden="true">↓</span>Contents</a>
       </header>
       <div className="bk-body">{children}</div>
     </section>

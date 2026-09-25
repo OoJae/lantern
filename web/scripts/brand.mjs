@@ -17,6 +17,8 @@
 //   web/public/brand-kit/lantern-lockup@2x.png, web/public/favicon.ico (16 + 32)
 // The manifest the /brand page lists its downloads from: web/src/brand/kit.js
 //
+// And web/public/og.jpg, og.png as a JPEG (the file og:image names).
+//
 // With --og, also the social card, web/public/og.png (1200 x 630): the landing's own 3D scene at its
 // hero frame (src/landing/scene/lantern-scene.js, bundled here with Vite and drawn on the GPU where
 // there is one), with the words, the lockup, three share lights and the seal composed over it. The
@@ -256,6 +258,25 @@ try {
 }
 
 if (process.argv.includes('--og')) write(join(PUBLIC, 'og.png'), await socialCard());
+// og.jpg: the same card as a JPEG at quality 90, about a seventh of og.png's size and to the eye the
+// same. index.html's og:image names it: some link scrapers skip an image this large as a PNG. Encoded
+// from og.png on disk on every run, so it always matches it (and, drawing nothing, it is the same
+// bytes from run to run). og.png stays the kit's lossless copy.
+if (existsSync(join(PUBLIC, 'og.png'))) write(join(PUBLIC, 'og.jpg'), await jpegOf(readFileSync(join(PUBLIC, 'og.png'))));
+
+async function jpegOf(png) {
+  const { width, height } = { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
+  const b = await chromium.launch();
+  try {
+    const page = await b.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
+    await page.setContent(`<!doctype html><html><body><img src="data:image/png;base64,${png.toString('base64')}" width="${width}" height="${height}"></body></html>`);
+    await page.addStyleTag({ content: 'html,body{margin:0}img{display:block}' });
+    await page.locator('img').evaluate((img) => img.decode());
+    return await page.screenshot({ type: 'jpeg', quality: 90, clip: { x: 0, y: 0, width, height } });
+  } finally {
+    await b.close();
+  }
+}
 
 // ---------------------------------------------------------------------------------
 // the social card (--og)
@@ -394,9 +415,19 @@ async function socialCard() {
 // brand-kit/, the favicons and the social card, with its type, size in bytes and pixel size, read
 // back from the files on disk (so an og.png left from an earlier --og run is listed as it is)
 
-const TYPES = { '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
+const TYPES = { '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon' };
 function pixels(file, buf) {
   if (file.endsWith('.png')) return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+  if (file.endsWith('.jpg')) {
+    // the first start-of-frame marker (FFC0 to FFCF, bar C4, C8 and CC) holds the size
+    for (let i = 2; i < buf.length;) {
+      const marker = buf[i + 1];
+      if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+        return { width: buf.readUInt16BE(i + 7), height: buf.readUInt16BE(i + 5) };
+      }
+      i += 2 + buf.readUInt16BE(i + 2);
+    }
+  }
   if (file.endsWith('.ico')) {
     const sizes = [];
     for (let i = 0; i < buf.readUInt16LE(4); i += 1) sizes.push(buf.readUInt8(6 + 16 * i) || 256);
@@ -415,7 +446,7 @@ function pixels(file, buf) {
     }
   };
   walk(KIT);
-  for (const name of ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png', 'og.png']) {
+  for (const name of ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png', 'og.png', 'og.jpg']) {
     if (existsSync(join(PUBLIC, name))) files.push(join(PUBLIC, name));
   }
   const rows = files

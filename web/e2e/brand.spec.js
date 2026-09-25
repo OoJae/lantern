@@ -23,10 +23,23 @@ const contrast = (a, b) => {
 const rgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
 // The pixel size a PNG says it is (its IHDR chunk).
 const pngSize = (buf) => ({ width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) });
+// The pixel size a JPEG says it is (its first start-of-frame marker: FFC0 to FFCF, bar C4, C8, CC).
+const jpegSize = (buf) => {
+  expect(buf.readUInt16BE(0), 'a JPEG').toBe(0xffd8);
+  for (let i = 2; i < buf.length;) {
+    const marker = buf[i + 1];
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+      return { width: buf.readUInt16BE(i + 7), height: buf.readUInt16BE(i + 5) };
+    }
+    i += 2 + buf.readUInt16BE(i + 2);
+  }
+  return null;
+};
 
 const TYPES = {
   svg: /^image\/svg\+xml/,
   png: /^image\/png/,
+  jpg: /^image\/jpeg/,
   ico: /^image\/(x-icon|vnd\.microsoft\.icon)/,
   txt: /^text\/plain/,
 };
@@ -113,21 +126,31 @@ test('the social card is 1200 × 630 at an absolute address, and the icons are l
   await page.goto('/');
   const meta = (key) => page.locator(`head meta[property="${key}"], head meta[name="${key}"]`).getAttribute('content');
   const image = await meta('og:image');
-  expect(image).toBe('https://lantern-midnight.vercel.app/og.png');
+  // a JPEG: some link scrapers skip an image as large as the PNG
+  expect(image).toBe('https://lantern-midnight.vercel.app/og.jpg');
+  expect(await meta('og:image:type')).toBe('image/jpeg');
   expect(await meta('og:image:width')).toBe('1200');
   expect(await meta('og:image:height')).toBe('630');
   expect(await meta('og:image:alt')).toBe('A paper lantern glowing in the dark beside the words: Lose the device. Keep the identity.');
   expect(await meta('og:title')).toBeTruthy();
   expect(await meta('og:description')).toBeTruthy();
   expect(await meta('twitter:card')).toBe('summary_large_image');
+  expect(await meta('twitter:image:alt')).toBe(await meta('og:image:alt'));
   expect(await meta('theme-color')).toBe('#090A0F');
   await expect(page.locator('head link[rel="manifest"]')).toHaveCount(0);
 
   // the card itself, served from this site under the path the absolute address names
   const card = await page.request.get(new URL(image).pathname);
   expect(card.status()).toBe(200);
-  expect(card.headers()['content-type']).toMatch(TYPES.png);
-  expect(pngSize(await card.body())).toEqual({ width: 1200, height: 630 });
+  expect(card.headers()['content-type']).toMatch(TYPES.jpg);
+  const bytes = await card.body();
+  expect(jpegSize(bytes)).toEqual({ width: 1200, height: 630 });
+  expect(bytes.length).toBeLessThan(300 * 1024);
+  // and the lossless copy the brand kit offers
+  const png = await page.request.get('/og.png');
+  expect(png.status()).toBe(200);
+  expect(png.headers()['content-type']).toMatch(TYPES.png);
+  expect(pngSize(await png.body())).toEqual({ width: 1200, height: 630 });
 
   const icons = await page.locator('head link[rel="icon"], head link[rel="apple-touch-icon"]').evaluateAll((ls) => ls.map((l) => [l.rel, l.getAttribute('href'), l.getAttribute('sizes'), l.getAttribute('type')]));
   expect(icons).toEqual([
@@ -174,4 +197,64 @@ test('an address with no page says so, with the lantern out, and leads back', as
   await expect(page.locator('main svg[data-name="03-dark"]')).toBeVisible();
   await page.getByRole('link', { name: 'Back to the start' }).click();
   await expect(page).toHaveURL(/\/$/);
+});
+
+// The page runs to about 20,000px: every section leads back to the contents, which are there.
+test('/brand: every section leads back to the contents', async ({ page }) => {
+  await openBrand(page);
+  const ups = page.locator('.bk-section .bk-head').getByRole('link', { name: 'Contents' });
+  await expect(ups).toHaveCount(8);
+  for (const href of await ups.evaluateAll((as) => as.map((a) => a.getAttribute('href')))) expect(href).toBe('#contents');
+  await expect(page.locator('#contents')).toContainText('Brand kit');
+  await expect(page.locator('#contents nav[aria-label="On this page"]')).toHaveCount(1);
+  // taken from the last section, it jumps back to the top, clear of the header
+  await ups.last().click();
+  await expect(page).toHaveURL(/\/brand#contents$/);
+  const top = await page.locator('#contents').evaluate((el) => el.getBoundingClientRect().top);
+  const header = await page.locator('header.site').evaluate((h) => h.getBoundingClientRect().bottom);
+  expect(top).toBeGreaterThanOrEqual(header - 1);
+  await expect(page.getByRole('heading', { level: 1 })).toBeInViewport();
+});
+
+// The header over paper. Its ground is see-through: over a Hanji plate at 72% Night it turned a mid
+// grey, and the Ash nav fell to 2.9:1. The scrim is now denser (tokens.css). Measured from the pixels
+// drawn (blur and all) in the nav's own padding, with a paper plate right under the header.
+test('/brand: the nav reads at 4.5:1 or more with a paper plate under the header', async ({ page }) => {
+  await openBrand(page);
+  const plate = page.locator('.bk-press');
+  await expect(plate).toHaveClass(/\bpaper\b/);
+  const headerBottom = await page.locator('header.site').evaluate((h) => h.getBoundingClientRect().bottom);
+  // the plate's middle under the header's middle, so the blur sees only paper
+  await plate.evaluate((el, hb) => {
+    const r = el.getBoundingClientRect();
+    window.scrollBy(0, r.top + r.height / 2 - hb / 2);
+  }, headerBottom);
+  const box = await plate.evaluate((el) => { const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }; });
+  expect(box.top).toBeLessThan(-20);
+  expect(box.bottom).toBeGreaterThan(headerBottom + 20);
+  const navs = await page.locator('header.site .nav').evaluateAll((as) => as.map((a) => {
+    const r = a.getBoundingClientRect();
+    return { x: Math.round(r.left + 3), y: Math.round(r.top + r.height / 2), color: getComputedStyle(a).color };
+  }));
+  const under = navs.filter((n) => n.x > box.left + 20 && n.x < box.right - 20);
+  expect(under.length).toBeGreaterThan(0);
+  const vw = await page.evaluate(() => window.innerWidth);
+  const shot = await page.screenshot({ clip: { x: 0, y: 0, width: vw, height: Math.ceil(headerBottom) }, scale: 'css' });
+  const grounds = await page.evaluate(async ({ png, points }) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${png}`;
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = img.width;
+    c.height = img.height;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    return points.map(({ x, y }) => [...g.getImageData(x, y, 1, 1).data.slice(0, 3)]);
+  }, { png: shot.toString('base64'), points: under });
+  const hex = (rgbs) => `#${rgbs.map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+  const toHex = (css) => hex(css.match(/\d+/g).slice(0, 3).map(Number));
+  under.forEach((n, i) => {
+    const ratio = contrast(toHex(n.color), hex(grounds[i]));
+    expect(ratio, `${n.color} on ${hex(grounds[i])}`).toBeGreaterThanOrEqual(4.5);
+  });
 });

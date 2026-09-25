@@ -48,7 +48,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!assets/).*)",
+      "source": "/((?!assets/|brand-kit/|fonts/).*)",
       "destination": "/index.html"
     }
   ],

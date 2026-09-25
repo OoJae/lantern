@@ -33,9 +33,12 @@ const reducedMotion = () => typeof window !== 'undefined' && Boolean(window.matc
 // Each [data-reveal] block under root that matches selector unmasks once, the first time it comes
 // into view: it gets data-shown. styles/landing.css does nothing with either attribute unless
 // html.motion is set (main.jsx), so without motion every word is simply there. Returns the
-// disconnect function.
+// disconnect function. Without IntersectionObserver every block opens at once.
 function observeReveals(root, selector) {
-  if (typeof IntersectionObserver === 'undefined') return () => {};
+  if (typeof IntersectionObserver === 'undefined') {
+    root.querySelectorAll(selector).forEach((el) => el.setAttribute('data-shown', ''));
+    return () => {};
+  }
   const io = new IntersectionObserver((entries) => {
     for (const e of entries) {
       if (!e.isIntersecting) continue;
@@ -171,9 +174,12 @@ export default function Landing() {
     return () => mq.removeEventListener('change', follow);
   }, []);
 
-  // The story's clock: the tracker writes data-stage on the section. Then, after the first paint and
-  // at idle, the WebGL scene loads (a chunk of its own, three.js inside it: never on the first
-  // load) and fades in over the poster once its first frame is up. If it cannot run (no WebGL2, a
+  // The story's clock: the tracker writes data-stage on the section. Then, once the hero has landed
+  // (any route change that brought the page finished, and its lines risen: 640ms, the last one
+  // 280ms late) and at idle, the WebGL scene loads (a chunk of its own, three.js inside it: never on
+  // the first load) and fades in over the poster once its first frame is up. Until then the poster
+  // is the lantern: the words rise, then the lantern comes alive, one thing after the other, and
+  // the scene's setup never lands in the middle of the reveal. If it cannot run (no WebGL2, a
   // shader that fails, a lost context, a device too slow for it), it has already torn itself down
   // when it says so, and the poster stays: data-scene poster.
   useEffect(() => {
@@ -186,25 +192,28 @@ export default function Landing() {
     const idle = window.requestIdleCallback ?? ((fn) => setTimeout(fn, 1));
     const cancelIdle = window.cancelIdleCallback ?? clearTimeout;
     let idleId = null;
-    const raf = requestAnimationFrame(() => {
-      idleId = idle(async () => {
-        try {
-          const { createLanternScene } = await import('../landing/scene/lantern-scene.js');
-          if (ac.signal.aborted) return;
-          // Resolves after the scene's first frame, or at once (a no-op) when it could not start,
-          // having called onFail first: then the mode is already poster and stays so.
-          scene = await createLanternScene({ host: hostRef.current, tracker, tier: 'auto', onFail: poster, signal: ac.signal });
-          if (!ac.signal.aborted) setMode((m) => (m === 'pending' ? 'webgl' : m));
-        } catch {
-          poster();
-        }
-      });
+    let wait = 0;
+    const load = async () => {
+      try {
+        const { createLanternScene } = await import('../landing/scene/lantern-scene.js');
+        if (ac.signal.aborted) return;
+        // Resolves after the scene's first frame, or at once (a no-op) when it could not start,
+        // having called onFail first: then the mode is already poster and stays so.
+        scene = await createLanternScene({ host: hostRef.current, tracker, tier: 'auto', onFail: poster, signal: ac.signal });
+        if (!ac.signal.aborted) setMode((m) => (m === 'pending' ? 'webgl' : m));
+      } catch {
+        poster();
+      }
+    };
+    const cancelRoute = afterRouteChange(() => {
+      wait = setTimeout(() => { idleId = idle(load, { timeout: 1500 }); }, 1000);
     });
     return () => {
       // StrictMode runs this between its two mounts: a scene still setting up hears the abort and
       // tears itself down; one already drawing is disposed (its context released, its canvas gone).
       ac.abort();
-      cancelAnimationFrame(raf);
+      cancelRoute();
+      clearTimeout(wait);
       if (idleId != null) cancelIdle(idleId);
       scene?.dispose();
       tracker.dispose();

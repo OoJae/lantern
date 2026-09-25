@@ -45,7 +45,7 @@ The official criteria and their weights, and where each is evidenced:
 | Criterion | Weight | Where to look |
 |---|---:|---|
 | Engineering & Implementation | 40% | [`contracts/src/lantern.compact`](contracts/src/lantern.compact) and [`host.compact`](contracts/src/host.compact); [How Lantern uses Midnight](#how-lantern-uses-midnight): the dual ledger, private state and each primitive by file; `npm run compile:check` |
-| Quality Assurance & Reliability | 15% | 210 tests in [`test/`](test/), including a leak scanner with a positive control and tests of the committed chain records; 74 browser tests, run in Chromium in CI and in WebKit and Firefox before release; CI on Node 20, 22 and 24; [21 defects found and fixed](#found-and-fixed-in-review) |
+| Quality Assurance & Reliability | 15% | 210 tests in [`test/`](test/), including a leak scanner with a positive control and tests of the committed chain records; 97 browser tests, run in Chromium in CI and in WebKit and Firefox before release; CI on Node 20, 22 and 24; [21 defects found and fixed](#found-and-fixed-in-review) |
 | Product & Vision | 15% | [Who it is for](#who-it-is-for-and-why-now), [Roadmap](#roadmap), [Limitations](#limitations) |
 | User Experience & Design | 15% | [The hosted demo](https://lantern-midnight.vercel.app/demo): every accept and refusal comes from the compiled contract, and each contract call shows how the same step went in the local-chain run. Below the story, [try to break it](https://lantern-midnight.vercel.app/demo#break): pick an attack, such as flipping a byte of a share, and the contract refuses it in its own words. Deep links (`/demo?beat=7`), a phone layout and automated accessibility checks |
 | Communication | 10% | This README and [SECURITY.md](SECURITY.md) |
@@ -81,8 +81,8 @@ npm run web:install
 npm run web                                 # the dev server, http://localhost:5173 (Node 22.12 or later); runs until Ctrl-C
 npm run web:build && npm run web:preview    # or the production build with the hosted site's headers, http://localhost:4319
 npx --prefix web playwright install chromium   # once, before the first browser-test run; on Linux or WSL add --with-deps
-npm run web:e2e                             # the 74 browser tests in Chromium, at desktop size and as an emulated Pixel 7
-npx --prefix web playwright install webkit firefox && npm run e2e:cross --prefix web   # the same 74 in WebKit, as an emulated iPhone 15, and in Firefox
+npm run web:e2e                             # the 97 browser tests in Chromium, at desktop size and as an emulated Pixel 7
+npx --prefix web playwright install webkit firefox && npm run e2e:cross --prefix web   # the same 97 in WebKit, as an emulated iPhone 15, and in Firefox
 ```
 
 **Real proofs on a local chain** (Docker, Node 24 or later, compact 0.31.1):
@@ -190,7 +190,7 @@ Every private-to-public crossing is a `disclose()`. What the public fields still
 
 ## Measured
 
-**Tests.** 210 Vitest tests in 14 files: lantern 33, record 32, succession 31, adversarial 27, host 22, identity 10, devnet 9, shamir 9, leakscan 8, story 8, concurrency 6, portable 6, authentication 5, host-snapshot 4. Three node:test tests of the sponsor's policy. Seventy-four Playwright tests, eleven of them for the "Try to break it" panel, run in CI in Chromium at desktop size and as an emulated Pixel 7 (148 runs), and before release in WebKit, as an emulated iPhone 15, and in Firefox (222 runs).
+**Tests.** 210 Vitest tests in 14 files: lantern 33, record 32, succession 31, adversarial 27, host 22, identity 10, devnet 9, shamir 9, leakscan 8, story 8, concurrency 6, portable 6, authentication 5, host-snapshot 4. Three node:test tests of the sponsor's policy. Ninety-seven Playwright tests, twelve of them for the "Try to break it" panel, run in CI in Chromium at desktop size and as an emulated Pixel 7 (194 runs), and before release in WebKit, as an emulated iPhone 15, and in Firefox (291 runs).
 
 **Circuits.** All 17 are ZKIR v2, the deployable ledger-8 path. `npm run cost:check` measures them, and fails if any exceeds k = 14 or if this table differs from the measurement.
 

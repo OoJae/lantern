@@ -434,3 +434,33 @@ test('the honest control is drawn as the lock, until its world is replaced', asy
   await expect.poll(() => fill(result.locator('.chip.ok'))).not.toBe(EMBER);
   await expect(result.locator('.chip.ok')).toHaveText('accepted');
 });
+
+// A verdict lands where it can be seen: pressing a card's button with the card's top at the header
+// still shows the result's stamp, at 1280×720, the video's size. The jump to the panel leaves one
+// hairline under the header, its own: the rule above the panel sits behind it.
+test('a verdict lands in view, and the jump to the panel shows one hairline, not two', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await openDemo(page);
+  await page.getByRole('button', { name: 'Build the world' }).click();
+  await expect(page.locator('.breakit')).toHaveAttribute('data-world', 'built');
+  const headerBottom = () => page.locator('header.site').evaluate((h) => h.getBoundingClientRect().bottom);
+  const tamper = card(page, 'tamper');
+  await tamper.evaluate((c) => window.scrollBy(0, c.getBoundingClientRect().top - document.querySelector('header.site').getBoundingClientRect().bottom - 12));
+  await tamper.getByRole('button', { name: 'Flip the byte and finalize' }).click();
+  const chip = tamper.locator('.try-result .chip.no');
+  await expect(chip).toBeVisible();
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const box = await chip.evaluate((el) => { const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom }; });
+  expect(box.top).toBeGreaterThanOrEqual(await headerBottom());
+  expect(box.bottom).toBeLessThanOrEqual(720);
+
+  await page.evaluate(() => { window.history.replaceState(null, '', '/demo'); window.scrollTo(0, 0); });
+  await page.locator('.hint').getByRole('link', { name: 'try to break it' }).click();
+  await landsClear(page);
+  const rule = await page.locator('#break').evaluate((s) => {
+    const r = s.getBoundingClientRect();
+    return { top: r.top + parseFloat(getComputedStyle(s, '::before').top), border: getComputedStyle(s).borderTopStyle };
+  });
+  expect(rule.border).toBe('none');
+  expect(rule.top).toBeLessThan(await headerBottom());
+});

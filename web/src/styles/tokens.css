@@ -110,7 +110,10 @@
   --muted-on-paper: #5C574E; /* muted text inside an inverted (Hanji) scope: 5.67:1 */
   --ember-deep: #B84A16;     /* brand kit only: the flame on paper */
   --hanji-hover: #F6EFE0;    /* primary button hover */
-  --scrim: rgb(9 10 15 / 0.72);       /* Night at 72%: the header over the page */
+  /* Night at 90%: the header over the page. Over a Hanji surface scrolling under it (a paper plate on
+     /brand, the inverted card on /demo) the band stays (32, 32, 34): Ash reads 5.0:1 on it, Hanji 12.9:1.
+     At 72% the same band was a mid grey (72, 70, 68), and the Ash nav fell to 2.9:1. */
+  --scrim: rgb(9 10 15 / 0.9);
   /* The ground under the grain (body::before, grain.png). Hanji specks can only lift Night, so the
      page is laid a shade darker and the grain brings it back: averaged the way the eye averages a fine
      texture (in linear light), grain over this ground is exactly Night, per channel. Half the texels
@@ -201,7 +204,11 @@
   --margin: clamp(20px, 5vw, 80px);
   --gutter: clamp(16px, 1.8vw, 28px);
   --max-landing: 1440px;
-  --max-app: 1320px;   /* /demo, /attacks */
+  /* /demo, /attacks. Narrower than the landing's frame on purpose: the app pages hold a working
+     column and a side column, and at 1440 they would run their lines too long. So on a screen wider
+     than 1320px the header's lockup and nav sit up to 60px further in than on the landing; a route
+     change carries them there (420ms, motion.css) rather than letting them jump. */
+  --max-app: 1320px;
   --max-prose: 760px;  /* /about, /brand */
   --frame: var(--max-app); /* the width .frame centres, margins included; a page or route sets its own */
 

@@ -28,7 +28,8 @@
 .bk-meta { margin: var(--space-6) 0 0; }
 
 /* ---- the top: the h1, the lede, the contents ------------------------------------------------------- */
-.bk-top { padding-top: clamp(24px, 4vw, 64px); row-gap: var(--space-6); }
+/* The eyebrow starts where every app page's does: .page's 24px, then 28px (.page-head's margin). */
+.bk-top { padding-top: 28px; row-gap: var(--space-6); scroll-margin-top: var(--header-h, var(--header-min)); }
 .bk-intro,
 .bk-contents { grid-column: 1 / -1; min-width: 0; }
 .bk-intro h1 { margin-bottom: 0.3em; }
@@ -193,6 +194,25 @@
 }
 .bk-head h2 em { font-weight: 360; }
 .bk-dek { margin: 0; max-width: 34ch; color: var(--muted); }
+/* Back to the contents, from every section: the page runs to about 20,000px. On a wide screen the
+   section's head is held in view, so the way back always is. The arrow is the site's own (Lantern
+   Sans's down arrow, turned). */
+.bk-up {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  margin-top: var(--space-3);
+  font-size: var(--step--1);
+  line-height: 1;
+  color: var(--muted);
+  text-decoration: none;
+}
+.bk-up-arrow { display: inline-block; rotate: 180deg; }
+@media (hover: hover) {
+  .bk-up { transition: color var(--dur-hover) var(--ease-settle); }
+  .bk-up:hover { color: var(--ink); }
+}
 .bk-body > p { max-width: 62ch; }
 .bk-body > h3 {
   margin: var(--space-8) 0 var(--space-3);

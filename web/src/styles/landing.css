@@ -80,7 +80,7 @@
     color: var(--ash);
     white-space: nowrap;
     clip-path: inset(-20px);
-    transition: clip-path var(--dur-card) var(--ease-snuff);
+    transition: clip-path var(--dur-card) var(--ease-settle);
   }
   /* Ash is the floor for text over the stage (6:1 on Night, and the scene's text ceiling is set
      for Hanji), so the printout lies in a pocket of Night that feathers out 20px: a window or a
@@ -91,8 +91,14 @@
     box-shadow: 0 0 12px 8px var(--night);
   }
   /* Once the story's last frame has closed (the tracker's data-closed), the printout wipes away
-     with it, before the stage scrolls up under the header. */
-  .night[data-closed] .ledger-strip { clip-path: inset(-20px calc(100% + 20px) -20px -20px); }
+     with it, before the stage scrolls up under the header. It also steps aside, quickly, whenever a
+     line of the story comes near it (the tracker's data-strip-hidden: the next block rising into
+     the bottom-left corner, the last one leaving it), and prints back once the words are clear. */
+  .night:is([data-closed], [data-strip-hidden]) .ledger-strip {
+    clip-path: inset(-20px calc(100% + 20px) -20px -20px);
+    transition-timing-function: var(--ease-snuff);
+  }
+  .night[data-strip-hidden] .ledger-strip { transition-duration: var(--dur-hover); }
   .ledger-strip span { display: none; }
   .ledger-strip span::before {
     content: "";
@@ -205,6 +211,7 @@
 .hero .lede {
   max-width: 30ch;
   margin: 0 0 var(--space-7);
+  text-wrap: balance;
 }
 .cta {
   display: flex;
@@ -328,15 +335,29 @@
    story sits low, across the full width. The breakpoints are the poster's and the scene's own. */
 .chapter > :where(:not(.hero-poster)) { grid-column: 1 / -1; }
 
-/* Wide, the lantern hangs beside the h1: the h1's longer line ("Keep the identity.", 5.66em) ends
-   20px short of the lantern's paper at every size. The lantern stands where the scene's hero frame
-   (K0) puts it: centred 0.23 of min(width, 1440px) right of the middle, its body 302/900 of the
-   screen's height wide. At 1440 x 900 this leaves the h1 at 143px of step-6's 144. */
+/* Wide, the lantern hangs beside the h1: the h1's longer line ("Keep the identity.") ends 20px
+   short of the lantern's paper at every size. The lantern stands where the scene's hero frame (K0)
+   and the poster put it: centred 0.23 of min(width, 1440px) right of the middle, its paper 302px
+   of the 1440 x 900 frame wide, the frame fitted into the screen (by its height on a wide screen,
+   by its width on a squarer one, where the scene's camera pulls back). The line is not a fixed
+   number of ems: Fraunces' optical size opens it up as the type gets smaller (5.65em at 144px,
+   5.93em at 84px, 6.57em at 70px; the same in all three engines). So the size is read off the
+   line's measured width, from 48px to 144px, as a line through those points: 70px at 459.6px of
+   room, then 0.179px of size per px of room, steeper between 459.6px and 521.6px (76px at 481.5,
+   84px at 497.8, 90px at 521.6), and 0.185 from there (144px at 813.6px): 143px of step-6's 144 at
+   1440 x 900, and the same 20px everywhere else. */
 @media (min-aspect-ratio: 4/5) {
   .hero h1 {
-    --lantern-left: calc(50vw + min(23vw, 331.2px) - 151vh / 9);
+    --lantern-left: calc(50vw + min(23vw, 331.2px) - min(151vw / 14.4, 151vh / 9));
     --frame-left: max(var(--margin), calc(50vw - 720px + var(--margin)));
-    font-size: min(var(--h1), calc((var(--lantern-left) - 20px - var(--frame-left)) / 5.66));
+    --h1-room: calc(var(--lantern-left) - 20px - var(--frame-left));
+    font-size: min(var(--h1), calc(
+      70px + 0.179 * (var(--h1-room) - 459.6px)
+      + 0.095 * max(0px, var(--h1-room) - 459.6px)
+      + 0.217 * max(0px, var(--h1-room) - 481.5px)
+      - 0.239 * max(0px, var(--h1-room) - 497.8px)
+      - 0.067 * max(0px, var(--h1-room) - 521.6px)
+    ));
   }
 }
 @media (min-aspect-ratio: 4/5) and (min-width: 1080px) {
@@ -349,6 +370,8 @@
 @media (min-aspect-ratio: 4/5) and (min-width: 640px) and (max-width: 1079.98px) {
   .hero-text { grid-column: 1 / span 5; }
   .chapter-text { grid-column: 1 / span 4; }
+  /* a phone on its side: a column wider, as the hero's (the lantern's paper starts right of it) */
+  @media (max-height: 500px) { .chapter-text { grid-column: 1 / span 5; } }
   .blackout .chapter-text { grid-column: 2 / span 6; justify-self: center; }
 }
 @media (min-aspect-ratio: 4/5) and (max-width: 639.98px) {
@@ -365,12 +388,33 @@
   .hero-text {
     align-self: start;
     margin-top: calc(51lvh + 16px - var(--header-h, var(--header-min)));
-    padding-block: 0 var(--space-2);
+    padding-block: 0 var(--space-3);
   }
-  .hero .eyebrow { margin-bottom: var(--space-3); }
+  .hero .eyebrow { margin-bottom: var(--space-2); }
   .hero h1 { margin-bottom: var(--space-4); }
-  .hero .lede { margin-bottom: var(--space-5); }
-  .hero-foot { padding-block: var(--space-3) var(--space-4); }
+  .hero .lede { margin-bottom: var(--space-4); }
+  .hero-foot { padding-block: var(--space-2) var(--space-3); }
+  /* The first screen (the small viewport: Safari's toolbar showing) holds the words, the buttons and
+     the scroll cue's row. Where there is room they start under the lantern's foot; where there is
+     not (a short phone), they rise until the cue's row ends on the fold, and the lantern shrinks
+     above them: the tracker writes where they start (--room), and the scene's hero frame and the
+     poster fit the lantern into the space above it (choreography.js, cameraPose). Row 1 is that
+     space, at most down to the lantern's foot; row 3 takes whatever is left. */
+  .night:not([data-scene="still"]) .hero {
+    height: var(--story-h);
+    grid-template-rows: minmax(0, calc(51lvh + 16px - var(--header-h, var(--header-min)))) auto minmax(0, 1fr) auto var(--after-fold);
+  }
+  .night:not([data-scene="still"]) .hero-text { grid-row: 2; margin-top: 0; }
+  .night:not([data-scene="still"]) .hero-foot { grid-row: 4; }
+  /* The poster's lantern, as the scene's: shrunk about a point 8% down the stage until its foot (51%
+     at full size) ends 16px above the words, at no less than 0.35 of its size (then its foot still
+     ends there). At every stage, so it never jumps. */
+  .stage > .lantern-poster {
+    --fit-h: clamp(35%, (var(--room, 100vh) - 16px - 8%) / 0.43, 100%);
+    bottom: auto;
+    height: var(--fit-h);
+    top: min(8% - 0.08 * var(--fit-h), var(--room, 100vh) - 16px - 0.51 * var(--fit-h));
+  }
   .night:not([data-scene="still"]) .chapter > .chapter-text {
     /* placed against the block's whole box in every engine (WebKit takes a placed grid item's
        area instead): the frame's padding is its left and right */
@@ -380,6 +424,10 @@
     left: var(--frame-pad);
     right: var(--frame-pad);
     margin-inline: 0 auto;
+    /* A block longer than the space under that line (a short phone, Safari's toolbar showing) rises
+       by exactly what it lacks, so its last line and its links are on the screen while the scene
+       shows it: the percentage is the block's own height. */
+    translate: 0 min(0px, calc(50svh - 10lvh - var(--space-4) - 100%));
   }
   .night:not([data-scene="still"]) .blackout > .chapter-text { margin-inline: auto; }
   .blackout .chapter-text { justify-self: center; }
@@ -390,17 +438,37 @@
   }
   .night .button { text-shadow: none; }
 }
+/* A shorter phone: a block of the story set a little tighter, so it rises less (above). */
+@media (max-aspect-ratio: 4/5) and (max-height: 760px) {
+  .kicker { margin-bottom: var(--space-3); }
+  .chapter h2 { margin-bottom: var(--space-4); }
+  .chapter-text > p:not(.kicker, :last-child) { margin-bottom: var(--space-3); }
+}
 /* A short phone (568px, an SE): at 1.3 the last lines of the block just read would still be on
    screen, under the header and over the lantern, when the next block is current. */
 @media (max-aspect-ratio: 4/5) and (max-height: 620px) {
   .landing { --pace: 1.5; }
 }
+/* A phone on its side: the header takes a sixth of the height, so every block is set tighter,
+   smaller and a column wider, and centred in the space beneath the header, to be read whole there. */
+@media (min-aspect-ratio: 4/5) and (max-height: 500px) {
+  .night:not([data-scene="still"]) .chapter:not(.hero) { padding-top: var(--header-h, var(--header-min)); }
+  .chapter-text > p:not(.kicker) { max-width: 46ch; }
+  .chapter h2 { font-size: min(var(--step-5), 12vh); margin-bottom: var(--space-4); }
+  .kicker, .hero .eyebrow { margin-bottom: var(--space-3); }
+  .chapter-text > p:not(.kicker, :last-child) { margin-bottom: var(--space-3); }
+  .chapter-text > p:not(.kicker, .chapter-links) { font-size: var(--step--1); }
+  .hero-text { padding-block: var(--space-4) var(--space-3); }
+  .hero h1, .hero .lede { margin-bottom: var(--space-4); }
+  .quote { margin-bottom: var(--space-4); }
+}
 /* A phone: the buttons share the row, and wrap to a column each where they cannot. */
 @media (max-width: 479.98px) {
   .cta .button { flex: 1 1 auto; padding-inline: var(--space-4); }
   .hero-foot { flex-wrap: wrap; row-gap: 0; column-gap: var(--space-3); }
-  .scroll-cue { gap: var(--space-3); }
-  .scroll-cue::after { width: var(--space-5); }
+  /* so the cue and "Skip the story" share one row from 375px */
+  .scroll-cue { gap: var(--space-2); }
+  .scroll-cue::after { width: var(--space-4); }
 }
 
 /* ---- stacked: reduced motion, an illustrated essay -------------------------------------------------
@@ -668,12 +736,12 @@
   html.motion [data-reveal] > .rv:nth-child(3) { --delay: 140ms; }
   html.motion [data-reveal] > .rv:nth-child(4) { --delay: 210ms; }
   html.motion [data-reveal] > .rv:nth-child(5) { --delay: 280ms; }
-  /* the hero: eyebrow, the h1's two lines, the lede, the buttons, then the foot */
+  /* the hero: eyebrow, the h1's two lines, the lede, then the buttons with the foot (five steps) */
   html.motion .hero h1 > .rv:first-child { --delay: 70ms; }
   html.motion .hero h1 > .rv + .rv { --delay: 140ms; }
   html.motion .hero [data-reveal] > .rv:nth-child(3) { --delay: 210ms; }
   html.motion .hero [data-reveal] > .rv:nth-child(4) { --delay: 280ms; }
-  html.motion .hero .hero-foot[data-reveal] > .rv { --delay: 350ms; }
+  html.motion .hero .hero-foot[data-reveal] > .rv { --delay: 280ms; }
   /* cards 40ms apart */
   html.motion .designs > .rv:nth-child(2) { --delay: 40ms; }
   html.motion .designs > .rv:nth-child(3) { --delay: 80ms; }

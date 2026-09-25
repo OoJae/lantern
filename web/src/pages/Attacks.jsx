@@ -6,11 +6,21 @@ import { TargetTable } from '../components/TargetTable.jsx';
 // first load.
 import { Pictogram } from '../brand/Pictogram.jsx';
 
+// The enumeration's verdicts are a pure function of the four designs, so one run per session is
+// enough: a second visit renders complete at once, instead of holding the page change for the run.
+// (It is not deferred until after the route change: the change waits for this page's loading line to
+// go, so the two would wait on each other until the router's cap.)
+let cached = null;
+
 export default function Attacks() {
-  const [e, setE] = useState(null);
+  const [e, setE] = useState(cached);
   useEffect(() => {
+    if (cached) return undefined;
     let cancelled = false;
-    import('../lib/engine.js').then((engine) => { if (!cancelled) setE(engine.runEnumeration()); });
+    import('../lib/engine.js').then((engine) => {
+      cached ??= engine.runEnumeration();
+      if (!cancelled) setE(cached);
+    });
     return () => { cancelled = true; };
   }, []);
 

@@ -283,6 +283,9 @@ button:disabled, button[aria-disabled="true"] { cursor: not-allowed; color: var(
 }
 
 /* ---- page rules: /demo, then the tables, /attacks and /about. Every value is a token (tokens.css). --- */
+/* Whatever takes the focus is scrolled clear of the sticky header, not under it. */
+.page :is(a, button, input, [tabindex]) { scroll-margin-top: calc(var(--header-h, 60px) + 12px); }
+
 /* ---- honesty strip ---------------------------------------------------------------------------------
    The first thing on every page that runs circuits: a Lacquer band with a 2px Hanji rule. Its lead,
    "Runs in your browser.", is set in Fraunces italic, and from 1080px hangs in a column of its own. */
@@ -311,7 +314,9 @@ button:disabled, button[aria-disabled="true"] { cursor: not-allowed; color: var(
    the width of <main>). A 1px Rib cord runs the whole way; the beats hang 2px below it. The beat shown
    is a Hanji pill whose numeral is Night on an Ember disc, the rail's only Ember; a beat done is Hanji,
    its numeral in a closed ring; a beat not reached is Ash, and disabled. Each numeral hangs from the
-   cord by a thread, like a lantern with its name tag beside it. At the window's edges the rail fades. */
+   cord by a thread in Edge, like a lantern with its name tag beside it; the pills hang 8px below the
+   cord, so the string reads at the video's scale. The epilogue's numeral is a seal's dot, drawn, not a
+   glyph. At the window's edges the rail fades, and focus scrolling stops clear of the fade. */
 main:has(> .page.demo) { container-type: inline-size; }
 .beats {
   --bleed: max(var(--margin), calc((100cqw - var(--max-app)) / 2 + var(--margin)));
@@ -319,6 +324,7 @@ main:has(> .page.demo) { container-type: inline-size; }
   margin: 0 calc(-1 * var(--bleed)) var(--space-6);
   overflow-x: auto;
   overscroll-behavior-x: contain;
+  scroll-padding-inline: calc(var(--fade) + 8px);
   scrollbar-width: thin;
   scrollbar-color: var(--rib) transparent;
   -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent);
@@ -326,7 +332,7 @@ main:has(> .page.demo) { container-type: inline-size; }
 }
 .beats ol {
   position: relative;
-  list-style: none; margin: 0; padding: 8px var(--bleed) 12px;
+  list-style: none; margin: 0; padding: 14px var(--bleed) 12px;
   display: flex; gap: var(--space-2); min-width: max-content;
 }
 /* The cord: the ol is as wide as the whole rail, margins included, so it runs edge to edge. */
@@ -335,18 +341,23 @@ main:has(> .page.demo) { container-type: inline-size; }
   background: var(--rib); pointer-events: none;
 }
 .beats li { position: relative; }
-/* The thread, from the cord to the top of the numeral's disc; a filled pill covers all but the 2px gap. */
+/* The thread, from the cord to the top of the numeral's disc; a filled pill covers all but the 8px hang. */
 .beats li::before {
-  content: ""; position: absolute; left: 21px; top: -2px; width: 1px; height: 9px;
-  background: var(--rib); pointer-events: none;
+  content: ""; position: absolute; left: 21px; top: -9px; width: 1px; height: 16px;
+  background: var(--edge); pointer-events: none;
 }
 .beats .beat {
-  position: relative;
+  position: relative; vertical-align: top;
   gap: 10px; padding: 0 18px 0 6px;
   font-weight: 500; white-space: nowrap;
   color: var(--ink); border-color: var(--edge);
 }
-.beats li:last-child .num { font-size: 15px; }
+/* Out of the grid's flow (the hidden glyph is a grid item of its own), so the dot sits dead centre. */
+.beats li:last-child .num { position: relative; font-size: 0; }
+.beats li:last-child .num::after {
+  content: ""; position: absolute; inset: 0; margin: auto;
+  width: 7px; height: 7px; border-radius: 50%; background: currentColor;
+}
 .beat .num {
   flex: none; display: grid; place-items: center;
   width: 30px; height: 30px; border-radius: 50%;
@@ -360,7 +371,7 @@ main:has(> .page.demo) { container-type: inline-size; }
 }
 .beats .beat.current .num {
   background: var(--ember); border-color: var(--ember); color: var(--night);
-  box-shadow: 0 0 12px rgb(255 138 61 / 0.45);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--ember) 45%, transparent);
 }
 /* Where the story is, while an earlier beat is shown: open, its ring still to close. */
 .beats .beat.todo:not(:disabled) .num { border-style: dashed; }
@@ -371,13 +382,20 @@ main:has(> .page.demo) { container-type: inline-size; }
    The story takes seven of the twelve columns, the state the other five. */
 .demo-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-7) var(--gutter); }
 @media (min-width: 1080px) {
-  .demo-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: start; }
+  /* Never the scroll's anchor. Its sticky column cannot anchor, and after a jump to "Try to break it"
+     its tail sits under the header: chosen, it would let each step that lands above push the panel
+     down the screen. Skipped, the anchor is in the panel, which the browser then holds still. */
+  .demo-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: start; overflow-anchor: none; }
   .story-col { grid-column: 1 / span 7; }
-  /* Stops clear of the sticky header, whatever its measured height. */
+  /* The story's row runs 96px on past the hint, so the sticky state column is not pushed up under the
+     header while the end of a beat is read (.breakit gives the same 96px back). */
+  .story-col { padding-bottom: var(--space-9); }
   .side-col {
     grid-column: 8 / -1;
+    /* Stops clear of the sticky header, whatever its measured height. */
     position: sticky; top: calc(var(--header-h, 60px) + 12px);
     max-height: calc(100vh - var(--header-h, 60px) - 24px); overflow-y: auto;
+    overscroll-behavior: contain;
     scrollbar-width: thin; scrollbar-color: var(--rib) transparent;
     /* What runs on below the fold fades out rather than being cut; the last 32px are space. Not while
        focused: a mask would cut off the focus ring. */
@@ -387,7 +405,7 @@ main:has(> .page.demo) { container-type: inline-size; }
   }
   .side-col:focus-visible { -webkit-mask-image: none; mask-image: none; }
 }
-.beat-head { margin: 0 0 var(--space-6); }
+.beat-head { margin: 0 0 var(--space-6); scroll-margin-top: calc(var(--header-h, 60px) + 12px); }
 .beat-head h1 { margin-bottom: 0.28em; }
 .caption { margin: 0; max-width: 40rem; font-size: var(--step-1); line-height: var(--leading-1); letter-spacing: var(--tracking-1); color: var(--ink); }
 
@@ -405,6 +423,7 @@ main:has(> .page.demo) { container-type: inline-size; }
   padding: 20px 20px 20px 24px;
   border-top: 1px solid var(--line);
 }
+.step, .try-result, .controls { scroll-margin: calc(var(--header-h, 60px) + 12px) 0 var(--space-5); }
 .step::before, .try-result::before {
   content: ""; position: absolute; left: 0; top: 20px; bottom: 20px;
   border-left: 2px solid var(--rule);
@@ -434,12 +453,14 @@ main:has(> .page.demo) { container-type: inline-size; }
 .step .meta, .try-result .meta { margin: var(--space-2) 0 0; }
 .meta.warn { color: var(--ink); font-weight: 560; }
 .inline-attack { margin-top: var(--space-4); }
-/* Where the committed chain run took the same step: mono, a dashed Edge frame. */
+/* Where the committed chain run took the same step: mono, a dashed Edge frame, the measure of the step's
+   words, so a chip that wraps leaves no ragged hole. Each item keeps its figure and unit together. */
 .recorded-chip {
-  display: inline-block; margin: var(--space-3) 0 0; padding: 0.3em 0.8em;
+  display: block; max-width: 42rem; margin: var(--space-3) 0 0; padding: 0.3em 0.8em;
   border: 1px dashed var(--edge); border-radius: var(--radius-chip);
   font-family: var(--font-mono); font-size: var(--step--2); line-height: 1.45; color: var(--muted);
 }
+.recorded-chip .nb { white-space: nowrap; }
 @media (max-width: 639.98px) {
   .step, .try-result { padding: 18px 0 18px 18px; }
   .step::before, .try-result::before { top: 18px; bottom: 18px; }
@@ -575,7 +596,15 @@ p.upcoming { padding-block: var(--space-4); }
   width: 16px; height: 16px; border-radius: var(--radius-surface); border: 1px solid var(--edge);
   display: grid; place-items: center; font-size: 11px; font-weight: 600; line-height: 1;
 }
-.absent .ticked .box { background: var(--ink); border-color: var(--ink); color: var(--ground); }
+.absent .ticked .box { position: relative; background: var(--ink); border-color: var(--ink); color: var(--ground); font-size: 0; }
+/* The tick is drawn, so every system shows the same one (the glyph is outside the fonts). It is placed
+   out of the grid's flow (the hidden glyph is a grid item of its own), centred, then lifted 1px, as a
+   tick's weight sits low. */
+.absent .ticked .box::after {
+  content: ""; position: absolute; inset: 0; margin: auto;
+  width: 8px; height: 4px;
+  border: solid var(--ground); border-width: 0 0 1.5px 1.5px; transform: translateY(-1px) rotate(-45deg);
+}
 .absent .bad .box { border-style: dashed; border-color: var(--ink); color: var(--ink); }
 .absent .pending { color: var(--muted); }
 .absent .count { font-family: var(--font-mono); font-size: var(--step--2); color: var(--muted); }
@@ -619,10 +648,12 @@ p.upcoming { padding-block: var(--space-4); }
 }
 .person { border: 1px solid var(--rib); border-radius: var(--radius-surface); padding: 10px 12px 12px; min-width: 0; }
 .person .name { margin: 0 0 6px; font-size: var(--step--1); font-weight: 560; line-height: 1.4; }
-.person .name .tag { margin-left: 0.4em; vertical-align: 1px; }
+.person .name .tag { display: table; margin: 4px 0 0; }
 /* Gone: a dashed frame, the name struck in Ash. Turned: a dashed Edge frame and an inverted tag. */
 .person.gone { border-style: dashed; border-color: var(--edge); }
-.person.gone .name { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--muted); }
+.person.gone .name { color: var(--muted); }
+/* The strike is on the name's own line, never on the tag set under it. */
+.person.gone .name::first-line { text-decoration: line-through var(--muted); }
 .person.turned { border-style: dashed; border-color: var(--edge); }
 .person.turned .tag { background: var(--ink); border-color: var(--ink); color: var(--ground); }
 .person .meta { margin: 0; }
@@ -638,14 +669,24 @@ p.upcoming { padding-block: var(--space-4); }
 .holds li.is-share.shares-3::before { margin-right: 16px; box-shadow: 8px 0 0 var(--ember), 16px 0 0 var(--ember); }
 
 /* ---- demo: try to break it -------------------------------------------------------------------------- */
-/* Linked to as #break: the jump stops 12px clear of the sticky header. That header is one 60px row
-   (52px on a phone) while the brand and nav fit side by side, and taller once the nav wraps below the
-   brand. Where that happens depends on the engine and the fonts, so the app measures the header into
-   --header-h rather than this file guessing at breakpoints. */
+/* Linked to as #break: the jump stops 24px clear of the sticky header, at "Your turn". That header is
+   one 60px row (52px on a phone) while the brand and nav fit side by side, and taller once the nav
+   wraps below the brand. Where that happens depends on the engine and the fonts, so the app measures
+   the header into --header-h rather than this file guessing at breakpoints. The Rib rule that parts
+   the panel from the story is drawn 48px above the section, so after a jump it sits behind the header
+   rather than a second hairline under the header's own. */
 .breakit {
-  margin-top: var(--space-9); padding-top: var(--space-7);
-  border-top: 1px solid var(--rib);
-  scroll-margin-top: calc(var(--header-h, 60px) + 12px);
+  position: relative;
+  margin-top: calc(var(--space-9) + var(--space-7));
+  scroll-margin-top: calc(var(--header-h, 60px) + var(--space-5));
+}
+.breakit::before {
+  content: ""; position: absolute; left: 0; right: 0; top: calc(-1 * var(--space-7));
+  border-top: 1px solid var(--rib); pointer-events: none;
+}
+/* From 1080px the story's row already runs 96px past the hint (.story-col). */
+@media (min-width: 1080px) {
+  .breakit { margin-top: var(--space-7); }
 }
 .breakit-head { max-width: 52rem; margin-bottom: var(--space-6); }
 .breakit-head h2 { font-size: var(--step-3); line-height: var(--leading-3); letter-spacing: var(--tracking-3); margin-bottom: 0.3em; }
@@ -681,6 +722,10 @@ p.upcoming { padding-block: var(--space-4); }
 .try.control > * { max-width: 52rem; }
 .choice { border: 0; padding: 0; margin: 0 0 var(--space-3); display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; }
 .choice legend { float: left; margin-right: 4px; padding: 0; font-size: var(--step--1); color: var(--muted); }
+/* On the narrowest phones the question takes a row of its own, and the two answers share the next. */
+@media (max-width: 399.98px) {
+  .choice legend { float: none; width: 100%; margin: 0 0 2px; }
+}
 .choice label, .field { display: inline-flex; align-items: center; gap: 8px; font-size: var(--step--1); }
 .choice label { min-height: 32px; }
 .choice input { accent-color: var(--hanji); width: 18px; height: 18px; margin: 0; }
@@ -693,10 +738,10 @@ p.upcoming { padding-block: var(--space-4); }
 .field input[aria-invalid="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
 .share { margin: var(--space-2) 0 var(--space-3); }
 .share .meta { margin-bottom: var(--space-2); }
-/* The share as it arrives: 32 mono cells. The fingerprint's four show; the chosen byte is an inverted
-   Hanji cell; the rest are masked, "··" in Ash. */
+/* The share as it arrives: 32 mono cells, four rows of eight, like a hex dump. The fingerprint's four
+   show; the chosen byte is an inverted Hanji cell; the rest are masked, "··" in Ash. */
 .share-bytes {
-  display: flex; flex-wrap: wrap; gap: 3px; margin: 0;
+  display: grid; grid-template-columns: repeat(8, max-content); gap: 3px; margin: 0;
   font-family: var(--font-mono); font-size: var(--step--2); line-height: 1; color: var(--ink);
 }
 .share-bytes > * {
@@ -718,7 +763,8 @@ p.upcoming { padding-block: var(--space-4); }
 .try-result .facts { margin: 0 0 var(--space-2); }
 .try .circuit { background: var(--ground); }
 .try-result .why { margin: var(--space-3) 0 0; font-size: var(--step--1); line-height: var(--leading--1); color: var(--ink); }
-.try-result .who .tag { margin-left: 8px; }
+.try-result .who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.try-result .who .tag { margin-left: 0; }
 /* From a world since replaced: kept, but set back, and dashed. */
 .try-result.stale { border-top-style: dashed; --rule: var(--rib); }
 .try-result.stale::before { border-left-style: dashed; }
@@ -1013,7 +1059,10 @@ p.upcoming { padding-block: var(--space-4); }
   font-size: var(--step-3); font-weight: 340; line-height: var(--leading-3); letter-spacing: var(--tracking-3);
 }
 .recorded-body > p:first-child { max-width: 60ch; }
-.recorded-body[aria-busy] { min-height: 22rem; }
+/* Until the certificate arrives, its body keeps the room the text will take at this width: three
+   chords of the measured height against the certificate's width, then the four-column figures. */
+.recorded-body[aria-busy] { min-height: max(1380px - 233cqi, 1060px - 127cqi, 717px - 41.5cqi, 23.5rem); }
+@container (min-width: 600px) { .recorded-body[aria-busy] { min-height: 23.5rem; } }
 .recorded .counts {
   clear: both;
   grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 0;
@@ -1069,6 +1118,7 @@ p.upcoming { padding-block: var(--space-4); }
   content: ""; position: absolute; left: 0.15em; top: 0.57em; width: 0.46em; height: 0.46em;
   border: 1px solid var(--muted); border-radius: 50%;
 }
+.about .spread-body > * { max-width: 42rem; }
 .about .spread-body > p:last-child { margin-bottom: 0; }
 .about .onward { margin-top: var(--space-5); }
 

@@ -178,7 +178,7 @@ for (const width of [320, 375, 768, 1024, 1280]) {
     await openAbout(page);
     expect(await overflowing()).toEqual([]);
     await expect(page.getByRole('columnheader')).toHaveCount(5);
-    await expect(page.getByRole('rowheader')).toHaveCount(3);
+    await expect(page.getByRole('rowheader')).toHaveCount(5);
     await expectNoSideScroll(page);
   });
 }
@@ -211,4 +211,35 @@ test('/about: the certificate of the local-chain run arrives after the page, sea
   await settle(page);
   await expectFiniteAnimations(page);
   await expectNoSeriousA11yIssues(page);
+});
+
+// On a slow network the certificate arrives after the page: until then its placeholder keeps the room
+// the certificate will take, so what follows it does not jump when it lands.
+test('/about: the certificate’s placeholder keeps the room the certificate takes', async ({ browser, baseURL }) => {
+  const RECORD = /\/assets\/local-devnet-[^/]+\.js$/;
+  for (const width of [320, 390, 1440]) {
+    // A fresh context for each width: WebKit would otherwise serve the record from its memory cache
+    // on the next load, past the route, and the certificate would arrive before it could be held.
+    // It keeps the project's device (a phone stays a phone): only the width changes.
+    const { userAgent, deviceScaleFactor, isMobile, hasTouch } = test.info().project.use;
+    const context = await browser.newContext({ baseURL, userAgent, deviceScaleFactor, isMobile, hasTouch, viewport: { width, height: 900 } });
+    const page = await context.newPage();
+    let release;
+    const held = new Promise((r) => { release = r; });
+    await page.route(RECORD, async (route) => { await held; await route.continue(); });
+    // WebKit holds the load event for the held chunk: wait only for the document.
+    await page.goto('/about', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('.recorded-body[aria-busy]')).toBeAttached();
+    // document.fonts.ready waits for that load event too (WebKit, per the spec): load each face instead.
+    const fontsIn = () => page.evaluate(() => Promise.all([...document.fonts].map((f) => f.load().catch(() => null))));
+    await fontsIn();
+    const height = () => page.locator('.recorded').evaluate((el) => el.getBoundingClientRect().height);
+    const before = await height();
+    release();
+    await expect(page.locator('.recorded-body:not([aria-busy])')).toBeAttached();
+    await fontsIn();
+    const after = await height();
+    expect(Math.abs(after - before), `${width}px: ${Math.round(before)} held, ${Math.round(after)} arrived`).toBeLessThanOrEqual(48);
+    await context.close();
+  }
 });

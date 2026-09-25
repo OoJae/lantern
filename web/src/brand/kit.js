@@ -29,4 +29,5 @@ export const KIT = {
   '/favicon.ico': { type: 'image/x-icon', bytes: 1233, sizes: [16, 32] },
   '/apple-touch-icon.png': { type: 'image/png', bytes: 4074, width: 180, height: 180 },
   '/og.png': { type: 'image/png', bytes: 766307, width: 1200, height: 630 },
+  '/og.jpg': { type: 'image/jpeg', bytes: 103976, width: 1200, height: 630 },
 };

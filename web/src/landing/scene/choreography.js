@@ -67,7 +67,7 @@ const WIDE = {
   // The new phone, large and unlit, the guardians round it, their two lights coming back to it.
   K4: { pos: [1.92, 0.69, 5.72], tgt: [1.55, -0.14, 1.63], shift: [0.245, 0.02], zoom: 0.697 },
   // Jihoon: his lantern, his ring, the card coming down on it; his guardian's light in the air.
-  K5: { pos: [-3.53, 1.87, 7.22], tgt: [-1.45, -0.25, -1.7], shift: [0.22, -0.115], zoom: 1.176 },
+  K5: { pos: [-3.53, 1.42, 7.22], tgt: [-1.45, -0.7, -1.7], shift: [0.22, -0.115], zoom: 1.176 },
   // Close on the phone's flame and the seal, the seal clear of the phone's foot.
   K6a: { pos: [3.16, 1.95, 7.32], tgt: [-0.04, -1.79, -0.94], shift: [0.24, 0.02], zoom: 1.176 },
   // Drawn back for the lock and the bloom: the phone whole, the seal and the tree below it, the
@@ -110,7 +110,15 @@ export const MOVES = [
 // squarer window, and the lens shift narrows with them; past the 1440 grid the shift stays in
 // grid pixels, so the subject stays over columns 8 to 11 on an ultrawide screen.
 // Returns { pos, tgt, zoom, ox, oy }: ox, oy are setViewOffset's x and y in CSS px.
-export function cameraPose(cam, w, h, layout, out = { pos: [0, 0, 0], tgt: [0, 0, 0], zoom: 1, ox: 0, oy: 0 }) {
+//
+// room (optional, px from the top of the stage) is where the hero's words start on the first
+// screen (the tracker's room). On a short portrait screen the words, anchored to the fold, start
+// higher than the tall hero frame's lantern foot (51% of the stage): there the hero lantern
+// shrinks about a point near the top of the frame (8% down, so its cord still runs out of it)
+// until its foot ends 16px above the words, at no less than 0.35 of its size. Only in K0, fading
+// out over the first move (cam.k0). The poster's tall drawing does the same (styles/landing.css,
+// --room).
+export function cameraPose(cam, w, h, layout, out = { pos: [0, 0, 0], tgt: [0, 0, 0], zoom: 1, ox: 0, oy: 0 }, room = 0) {
   const aspect = w / h;
   const t = cam.tgt;
   let k = 1;
@@ -126,6 +134,12 @@ export function cameraPose(cam, w, h, layout, out = { pos: [0, 0, 0], tgt: [0, 0
   out.zoom = cam.zoom;
   out.ox = -sx * Math.min(w, 1440);
   out.oy = cam.shift[1] * h;
+  const foot = (room - 16) / h;
+  if (layout === 'tall' && room > 0 && cam.k0 > 0 && foot < 0.51) {
+    const s = Math.max(0.35, (foot - 0.08) / 0.43);
+    out.zoom *= 1 + (s - 1) * cam.k0;
+    out.oy += ((0.5 - foot + 0.17 * s) * h - out.oy) * cam.k0;
+  }
   return out;
 }
 
@@ -206,7 +220,7 @@ export const SEGMENTS = [
 export function createState() {
   const v3 = () => [0, 0, 0];
   return {
-    cam: { pos: v3(), tgt: v3(), shift: [0, 0], zoom: 1 },
+    cam: { pos: v3(), tgt: v3(), shift: [0, 0], zoom: 1, k0: 1 },
     bgLift: 1,
     plane: 0,
     close: 0,
@@ -256,6 +270,8 @@ function camera(s, u, K) {
   s.cam.shift[0] = lerp(from.shift[0], to.shift[0], e);
   s.cam.shift[1] = lerp(from.shift[1], to.shift[1], e);
   s.cam.zoom = lerp(from.zoom ?? 1, to.zoom ?? 1, e);
+  // how much of the hero frame is left (cameraPose's hero fit): all of it until the first move
+  s.cam.k0 = from === K.K0 ? (to === K.K0 ? 1 : 1 - e) : 0;
 }
 
 // ---------------------------------------------------------------------------------------------
