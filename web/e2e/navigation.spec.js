@@ -263,6 +263,9 @@ for (const [name, path, chunk, h1] of [
   ['Attack it', '/attacks', 'Attacks', 'One attacker, four guardian designs'],
 ]) {
   test(`a first visit to ${path} reveals the page itself, never its loading line`, async ({ page }) => {
+    // Timed against a local server. Over a real network a first visit can need more than the route's
+    // 1.5 s hold (the contract is 1.4 MB of wasm), and then the loading line is the right thing to show.
+    test.skip(!!process.env.BASE_URL, 'the hold is timed against a local server');
     const vt = await watchTransitions(page);
     await page.route(`**/assets/${chunk}-*.js`, async (route) => {
       await new Promise((r) => setTimeout(r, 300));
