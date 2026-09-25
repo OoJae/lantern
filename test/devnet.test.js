@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { flavour, SHIPPED_LINE, FLAVOUR_LINE, FLAVOUR_DELAY_SECONDS } from '../devnet/flavour.mjs';
+import { retryOutOfDustWindow } from '../devnet/src/dust-window.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 const read = (p) => readFileSync(join(root, p), 'utf8');
@@ -84,5 +85,30 @@ describe('the devnet runner', () => {
       expect(hostsIn(code(text)).filter((h) => !ALLOWED.includes(h)), f).toEqual([]);
       if (!f.endsWith('/config.mjs')) expect(text, f).not.toMatch(PREPROD_HOST);
     }
+  });
+});
+
+describe('a DUST spend refused as outside its time window (node error 171)', () => {
+  const refused = () => new Error('1010: Invalid Transaction: Custom error: 171');
+  const noWait = { sleep: async () => {} };
+
+  it('is resubmitted until the node accepts it', async () => {
+    let calls = 0;
+    const r = await retryOutOfDustWindow(async () => { if (++calls < 3) throw refused(); return 'in block'; }, noWait);
+    expect([r, calls]).toEqual(['in block', 3]);
+  });
+
+  it('is the only refusal resubmitted: any other error is thrown at once', async () => {
+    let calls = 0;
+    const other = new Error('1010: Invalid Transaction: Custom error: 170');
+    await expect(retryOutOfDustWindow(async () => { calls++; throw other; }, noWait)).rejects.toBe(other);
+    expect(calls).toBe(1);
+  });
+
+  it('gives up after its attempts and throws the last refusal', async () => {
+    let calls = 0;
+    await expect(retryOutOfDustWindow(async () => { calls++; throw refused(); }, { ...noWait, attempts: 4 }))
+      .rejects.toThrow(/Custom error: 171/);
+    expect(calls).toBe(4);
   });
 });

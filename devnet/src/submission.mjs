@@ -7,6 +7,7 @@
 // local node closes instantly, so the local runs never met it, and they keep the default.
 // Same call, same events; one socket.
 import { ApiPromise, WsProvider } from '@polkadot/api';
+import { retryOutOfDustWindow } from './dust-window.mjs';
 
 const TIMEOUT_MS = 10 * 60_000;
 const CLOSE_MS = 5_000;
@@ -20,34 +21,38 @@ export function persistentSubmissionService(relayURL) {
   // A failed connection is not kept: the next submission tries again.
   const api = () => (apiP ??= ApiPromise.create({ provider: (provider = new WsProvider(relayURL.toString())), noInitWarn: true })
     .catch((e) => { apiP = null; throw e; }));
+  const submitOnce = (bytes, waitFor) => new Promise((resolve, reject) => {
+    let unsub = null;
+    let done = false;
+    const stop = (u) => { try { u?.(); } catch { /* already closed */ } };
+    const finish = (settle, value) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      stop(unsub);
+      settle(value);
+    };
+    // The clock starts before the connection: a node that never answers is a timeout too.
+    const timer = setTimeout(() => finish(reject, new Error(`no ${waitFor} status from the node after ${TIMEOUT_MS / 1000} s`)), TIMEOUT_MS);
+    Promise.resolve().then(api).then((node) => {
+      if (done) return undefined;
+      return node.tx.midnight.sendMnTransaction(`0x${Buffer.from(bytes).toString('hex')}`).send((result) => {
+        const s = result.status;
+        const base = { tx: bytes, txHash: result.txHash.toString() };
+        const height = () => BigInt(result.blockNumber?.toString() ?? '0');
+        if (s.isInvalid || s.isDropped || s.isUsurped || s.isFinalityTimeout) finish(reject, new Error(`the node reports the transaction ${s.type}`));
+        else if (waitFor === 'Submitted' && (s.isReady || s.isBroadcast || s.isFuture)) finish(resolve, { _tag: 'Submitted', ...base });
+        else if (s.isInBlock && waitFor !== 'Finalized') finish(resolve, { _tag: 'InBlock', ...base, blockHash: s.asInBlock.toString(), blockHeight: height() });
+        else if (s.isFinalized) finish(resolve, { _tag: 'Finalized', ...base, blockHash: s.asFinalized.toString(), blockHeight: height() });
+      });
+    }).then((u) => { if (!u) return; unsub = u; if (done) stop(u); }).catch((e) => finish(reject, e));
+  });
   return {
-    async submitTransaction(tx, waitFor = 'InBlock') {
+    // A spend the node refuses as outside its DUST time window is resubmitted: see dust-window.mjs.
+    submitTransaction(tx, waitFor = 'InBlock') {
       const bytes = tx.serialize();
-      return new Promise((resolve, reject) => {
-        let unsub = null;
-        let done = false;
-        const stop = (u) => { try { u?.(); } catch { /* already closed */ } };
-        const finish = (settle, value) => {
-          if (done) return;
-          done = true;
-          clearTimeout(timer);
-          stop(unsub);
-          settle(value);
-        };
-        // The clock starts before the connection: a node that never answers is a timeout too.
-        const timer = setTimeout(() => finish(reject, new Error(`no ${waitFor} status from the node after ${TIMEOUT_MS / 1000} s`)), TIMEOUT_MS);
-        Promise.resolve().then(api).then((node) => {
-          if (done) return undefined;
-          return node.tx.midnight.sendMnTransaction(`0x${Buffer.from(bytes).toString('hex')}`).send((result) => {
-            const s = result.status;
-            const base = { tx: bytes, txHash: result.txHash.toString() };
-            const height = () => BigInt(result.blockNumber?.toString() ?? '0');
-            if (s.isInvalid || s.isDropped || s.isUsurped || s.isFinalityTimeout) finish(reject, new Error(`the node reports the transaction ${s.type}`));
-            else if (waitFor === 'Submitted' && (s.isReady || s.isBroadcast || s.isFuture)) finish(resolve, { _tag: 'Submitted', ...base });
-            else if (s.isInBlock && waitFor !== 'Finalized') finish(resolve, { _tag: 'InBlock', ...base, blockHash: s.asInBlock.toString(), blockHeight: height() });
-            else if (s.isFinalized) finish(resolve, { _tag: 'Finalized', ...base, blockHash: s.asFinalized.toString(), blockHeight: height() });
-          });
-        }).then((u) => { if (!u) return; unsub = u; if (done) stop(u); }).catch((e) => finish(reject, e));
+      return retryOutOfDustWindow(() => submitOnce(bytes, waitFor), {
+        onRetry: (n, of) => console.log(`  the node refused a DUST spend as outside its time window (error 171): the same transaction again in 12 s (${n + 1} of ${of})`),
       });
     },
     async close() {
