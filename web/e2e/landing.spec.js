@@ -133,6 +133,13 @@ for (const [w, h] of [[320, 568], [375, 667]]) {
       await page.locator(sel).scrollIntoViewIfNeeded();
       await expectNoSideScroll(page);
     }
+    // Each guardian's name tag stays inside its design's card: a tag wider than its column would
+    // cross the gutter, and at the edge of the page scroll it sideways.
+    const spills = await page.locator('.design').evaluateAll((cards) => cards.flatMap((card) => {
+      const c = card.getBoundingClientRect();
+      return [...card.querySelectorAll('.name-tag')].filter((tag) => tag.getBoundingClientRect().right > c.right + 0.5).map((tag) => tag.textContent);
+    }));
+    expect(spills).toEqual([]);
   });
 }
 
