@@ -1,0 +1,53 @@
+/* Lantern: motion between pages. Imported after styles.css by main.jsx. */
+/* ---- route change, "carry the light" -------------------------------------------------------------
+   Used only when router.jsx wraps navigate() in document.startViewTransition. The header's ground
+   does not animate. Its lockup and nav are carried (420ms) to where the new page's frame puts them,
+   which on a wide screen differs between the landing (1440px) and the app (1320px); elsewhere they
+   stay put. The wick travels to the new item; the logo's flame flares once; the old page snuffs out
+   and rises 8px; the new one is clip-revealed from the top. All finite. */
+header.site .brand { view-transition-name: site-brand; }
+header.site nav { view-transition-name: site-nav; }
+::view-transition { pointer-events: none; }
+::view-transition-group(site-brand),
+::view-transition-group(site-nav),
+::view-transition-group(nav-wick) { animation-duration: 420ms; animation-timing-function: var(--ease-carry); }
+/* The header's ground stays put, and its lockup and nav show their new state from the first frame:
+   the flare and the wick are the motion. So only the new images show: the old header's ground is a
+   translucent scrim, and left under the new one it would double it to near black. */
+::view-transition-group(site-header),
+::view-transition-new(site-header),
+::view-transition-new(site-brand),
+::view-transition-new(site-nav) { animation: none; }
+::view-transition-old(site-header),
+::view-transition-old(site-brand),
+::view-transition-old(site-nav) { animation: none; opacity: 0; }
+/* To or from the landing, where no nav item is current, the wick has nowhere to travel. Leaving
+   an item, it snuffs out where it stood, shrinking to its middle, before the nav has moved far. Arriving
+   at one, it waits for the nav to land (the nav is carried 420ms when the frame changes) and then
+   lights from its middle, as the new page settles. */
+::view-transition-old(nav-wick):only-child { animation: 160ms var(--ease-snuff) both vt-wick-snuff; }
+::view-transition-new(nav-wick):only-child { animation: 200ms var(--ease-settle) 320ms both vt-wick-light; }
+@keyframes vt-wick-snuff { to { opacity: 0; transform: scaleX(0.3); } }
+@keyframes vt-wick-light { from { opacity: 0; transform: scaleX(0.3); } }
+/* The old page snuffs out and rises 8px; the new one is revealed from the top as it settles 12px.
+   The old page is cut off at the header's lower edge as it rises: the header's image cannot blur what
+   passes under it, and would show the old page's text there sharp. */
+::view-transition-old(root) { animation: 200ms var(--ease-snuff) both vt-snuff; }
+::view-transition-new(root) { animation: 420ms var(--ease-settle) 100ms both vt-reveal; }
+@keyframes vt-snuff {
+  from { clip-path: inset(var(--header-h, 0px) 0 0 0); }
+  to { opacity: 0; transform: translateY(-8px); clip-path: inset(calc(var(--header-h, 0px) + 8px) 0 0 0); }
+}
+@keyframes vt-reveal { from { clip-path: inset(0 0 100% 0); transform: translateY(12px); } to { clip-path: inset(0); transform: none; } }
+/* The flame in the logo flares once while the page changes: up 30% from its foot, and back on the
+   ignite spring. Its own rule: a browser without :active-view-transition drops only this. */
+:root:active-view-transition header.site .lm-flame {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: flame-flare var(--dur-route) var(--ease-settle);
+}
+@keyframes flame-flare { 35% { transform: scale(1.3); animation-timing-function: var(--ease-ignite); } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none; }
+  :root:active-view-transition header.site .lm-flame { animation: none; }
+}

@@ -1,0 +1,185 @@
+/* The landing scene's poster (LanternPoster.jsx). Import once, from the landing page or its
+   stylesheet: every rule is scoped to .lantern-poster or its .lp-* layers.
+
+   Each layer (.lp-l) shows or hides with the story stage, read from [data-stage] on any ancestor
+   (section.night, written by the tracker) or on the poster itself (its stage prop). With no
+   data-stage anywhere the poster shows stage 0, the hero. Transitions are finite opacity fades
+   on SVG shapes only (never on text); none under reduced motion.
+
+   Layers, by stage (0 hero, 1 seal, 2 guardians, 3 blackout, 4 new phone, 5 72 hours,
+   6 the lock, 7 the DApp):
+     lp-halo lp-lit   the lit lantern and its air            0 1 2 . . . 6 7
+     lp-dark          the new phone's unlit lantern          . . . . 4 5 . .
+     lp-line          the ledger line                        . 1 2 . 4 5 6 7
+     lp-seal          the closed seal                        . 1 2 3 4 5 . .
+     lp-seal-lit      the lit seal (the lock), lp-lockglow   . . . . . . 6 .
+     lp-seal-old      the retired seal, lp-succ successor    . . . . . . . 7
+     lp-card          the veto card beside the lantern       . 1 2 . . . . .
+     lp-tree          leaves knotted to the root             . . 2 . 4 5 6 7
+     lp-guards        three guardian lanterns                . . 2 . 4 5 6 .   (faint after 2)
+     lp-g12 lp-g3     the shares at the guardians            . . 2 3 . . . .   (g3 also 4)
+     lp-bembers       two lights back beside the phone       . . . . 4 5 . .
+     lp-ring          the recovery ring; lp-nulls nullifiers . . . . 4 5 6 7
+     lp-ticks-dim     its 72 ticks, waiting                  . . . . 4 . . .
+     lp-ticks         its 72 ticks, filled                   . . . . . 5 6 7
+     lp-c             Jihoon's lantern                       . . . . . 5 . .
+     lp-veto          his ring, the card over it             . . . . . 5 6 .
+     lp-cember        his light, dimmed                      . . . . . 5 . .
+     lp-windows       the two DApp windows                   . . . . . . . 7 */
+
+.lantern-poster {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.lantern-poster .lp-tall {
+  display: none;
+}
+/* Wide, past 1440px: the scene keeps its lens shift in the 1440 grid's pixels (0.23 x 1440 right
+   of centre, choreography.js cameraPose), so the lantern stays over columns 8 to 11 of the centred
+   frame. The drawing puts it at 73% of the poster's width; move the poster back by the difference.
+   The stage behind it is the same Night. */
+@media (min-aspect-ratio: 4/5) {
+  .lantern-poster {
+    transform: translateX(calc(min(23%, 331.2px) - 23%));
+    transition: transform 900ms var(--ease-carry, cubic-bezier(0.65, 0, 0.35, 1));
+  }
+  /* The blackout's text is centred, and the scene's camera re-centres on it (K3): so does the
+     poster, the three embers settling above the words and the seal below them. */
+  [data-stage="3"] .lantern-poster,
+  .lantern-poster[data-stage="3"] {
+    transform: translateX(-23%);
+  }
+}
+@media (max-aspect-ratio: 4/5) {
+  .lantern-poster .lp-wide {
+    display: none;
+  }
+  .lantern-poster .lp-tall {
+    display: inline;
+  }
+}
+.lantern-poster .lp-l {
+  opacity: 0;
+  transition: opacity 640ms var(--ease-settle, cubic-bezier(0.16, 1, 0.3, 1));
+}
+/* the lantern snuffs slowly, and lights at the lock's pace */
+.lantern-poster .lp-lit,
+.lantern-poster .lp-halo {
+  transition-duration: 900ms;
+}
+
+/* stage 0, and no stage at all */
+.lantern-poster .lp-halo,
+.lantern-poster .lp-lit {
+  opacity: 1;
+}
+/* stage 1 */
+[data-stage="1"] .lp-line,
+[data-stage="1"] .lp-seal,
+[data-stage="1"] .lp-card {
+  opacity: 1;
+}
+/* stage 2 */
+[data-stage="2"] .lp-line,
+[data-stage="2"] .lp-tree,
+[data-stage="2"] .lp-seal,
+[data-stage="2"] .lp-card,
+[data-stage="2"] .lp-guards,
+[data-stage="2"] .lp-g12,
+[data-stage="2"] .lp-g3 {
+  opacity: 1;
+}
+/* stage 3 */
+[data-stage="3"] .lp-halo,
+[data-stage="3"] .lp-lit {
+  opacity: 0;
+}
+[data-stage="3"] .lp-seal,
+[data-stage="3"] .lp-g12,
+[data-stage="3"] .lp-g3 {
+  opacity: 1;
+}
+/* stage 4 */
+[data-stage="4"] .lp-halo,
+[data-stage="4"] .lp-lit {
+  opacity: 0;
+}
+[data-stage="4"] .lp-guards {
+  opacity: 0.3;
+}
+[data-stage="4"] .lp-tree {
+  opacity: 0.8;
+}
+[data-stage="4"] .lp-dark,
+[data-stage="4"] .lp-line,
+[data-stage="4"] .lp-ring,
+[data-stage="4"] .lp-ticks-dim,
+[data-stage="4"] .lp-nulls,
+[data-stage="4"] .lp-seal,
+[data-stage="4"] .lp-g3,
+[data-stage="4"] .lp-bembers {
+  opacity: 1;
+}
+/* stage 5 */
+[data-stage="5"] .lp-halo,
+[data-stage="5"] .lp-lit {
+  opacity: 0;
+}
+[data-stage="5"] .lp-guards {
+  opacity: 0.3;
+}
+[data-stage="5"] .lp-cember {
+  opacity: 0.45;
+}
+[data-stage="5"] .lp-tree {
+  opacity: 0.8;
+}
+[data-stage="5"] .lp-dark,
+[data-stage="5"] .lp-line,
+[data-stage="5"] .lp-ring,
+[data-stage="5"] .lp-ticks,
+[data-stage="5"] .lp-nulls,
+[data-stage="5"] .lp-seal,
+[data-stage="5"] .lp-c,
+[data-stage="5"] .lp-veto,
+[data-stage="5"] .lp-bembers {
+  opacity: 1;
+}
+/* stage 6: Jihoon's lantern and light have gone; his vetoed ring and the card stay */
+[data-stage="6"] .lp-guards {
+  opacity: 0.3;
+}
+[data-stage="6"] .lp-veto {
+  opacity: 0.6;
+}
+[data-stage="6"] .lp-tree {
+  opacity: 0.8;
+}
+[data-stage="6"] .lp-line,
+[data-stage="6"] .lp-ring,
+[data-stage="6"] .lp-ticks,
+[data-stage="6"] .lp-nulls,
+[data-stage="6"] .lp-lockglow,
+[data-stage="6"] .lp-seal-lit {
+  opacity: 1;
+}
+/* stage 7 */
+[data-stage="7"] .lp-ring,
+[data-stage="7"] .lp-ticks,
+[data-stage="7"] .lp-nulls {
+  opacity: 0.6;
+}
+[data-stage="7"] .lp-line,
+[data-stage="7"] .lp-tree,
+[data-stage="7"] .lp-windows,
+[data-stage="7"] .lp-seal-old,
+[data-stage="7"] .lp-succ {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lantern-poster,
+  .lantern-poster .lp-l {
+    transition: none;
+  }
+}

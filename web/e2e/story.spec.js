@@ -85,3 +85,113 @@ test('autoplay steps on its own, and pauses', async ({ page }) => {
   await page.waitForTimeout(2000);
   await expect(page.locator('.step')).toHaveCount(n);
 });
+
+// The demo draws its states without a second hue: Hanji ink, Night paper, Ash and Edge. Ember, the
+// flame, marks one thing only: the lock, a finalizeRecovery the contract accepted (design-spec "Demo
+// states").
+const RGB = {
+  hanji: 'rgb(236, 228, 210)', night: 'rgb(9, 10, 15)', ash: 'rgb(148, 142, 131)', edge: 'rgb(104, 102, 97)',
+  rib: 'rgb(44, 45, 53)', ember: 'rgb(255, 138, 61)', none: 'rgba(0, 0, 0, 0)',
+};
+// Wait until every animation on the page has finished, as the accessibility check does.
+const settle = (page) => page.evaluate(async () => {
+  for (let round = 0; round < 10; round++) {
+    const running = document.getAnimations().filter((a) => a.playState !== 'finished');
+    if (running.length === 0) return;
+    await Promise.all(running.map((a) => a.finished.catch(() => {})));
+  }
+});
+const chipColours = (page) => page.locator('.step .chip').evaluateAll((els) => els.map((el) => {
+  const s = getComputedStyle(el);
+  return { text: el.textContent, color: s.color, background: s.backgroundColor, border: s.borderTopColor };
+}));
+const rule = (step) => step.evaluate((el) => {
+  const s = getComputedStyle(el, '::before');
+  return `${s.borderLeftStyle} ${s.borderLeftColor}`;
+});
+
+test('the states have no second hue, and the lock is the one Ember chip', async ({ page }) => {
+  await page.goto('/demo?beat=8');
+  await expect(page.locator('[data-ready="true"]')).toBeVisible();
+  await page.getByRole('button', { name: 'Play this beat' }).click();
+  const lock = page.locator('.step[data-step="8.11"]');
+  await expect(lock).toHaveAttribute('data-circuit', 'finalizeRecovery');
+  await expect(lock).toHaveAttribute('data-outcome', 'accepted');
+  await settle(page);
+
+  const chips = await chipColours(page);
+  expect(chips.length).toBeGreaterThan(8);
+  for (const c of chips) {
+    expect([RGB.hanji, RGB.night, RGB.ash], `text colour of “${c.text}”`).toContain(c.color);
+    expect([RGB.none, RGB.hanji, RGB.ember], `fill of “${c.text}”`).toContain(c.background);
+    expect([RGB.none, RGB.hanji, RGB.edge, RGB.ember], `outline of “${c.text}”`).toContain(c.border);
+  }
+  expect(chips.filter((c) => c.background === RGB.ember).map((c) => c.text)).toEqual(['accepted']);
+  await expect(lock.locator('.chip.ok')).toHaveCSS('background-color', RGB.ember);
+
+  // Each outcome's rule: accepted solid Hanji, refused dashed Ash, the clock dotted Hanji, the lock Ember.
+  expect(await rule(page.locator('.step[data-step="8.2"]'))).toBe(`dashed ${RGB.ash}`);
+  expect(await rule(page.locator('.step.clock'))).toBe(`dotted ${RGB.hanji}`);
+  expect(await rule(page.locator('.step.offchain').first())).toBe(`solid ${RGB.rib}`);
+  expect(await rule(lock)).toBe(`solid ${RGB.ember}`);
+  for (const step of await page.locator('.step[data-outcome="accepted"]:not([data-step="8.11"])').all()) {
+    expect(await rule(step)).toBe(`solid ${RGB.hanji}`);
+  }
+});
+
+test('the clock rolls to its new time and leaves only that time on screen', async ({ page }) => {
+  await page.goto('/demo?beat=8');
+  await expect(page.locator('[data-ready="true"]')).toBeVisible();
+  const time = page.locator('.clock .time');
+  const before = await time.textContent();
+  await page.getByRole('button', { name: 'Next step' }).click();
+  await page.getByRole('button', { name: /simulated clock/ }).click();
+  await expect(page.locator('.step.clock')).toContainText('72 h 10 min');
+  await expect(time).not.toHaveText(before);
+  // The time that was shown is decoration while it rolls away, and is gone once it has.
+  await settle(page);
+  await expect(page.locator('.clock .time-was')).toHaveCount(0);
+  await expect(page.locator('.clock .time')).toHaveCount(1);
+  // The 72-tick ring, one tick an hour of the timelock, is full: its fill has no dash left to draw.
+  await expect(page.locator('.clock-arc')).toHaveAttribute('aria-hidden', 'true');
+  expect(Number(await page.locator('.clock-arc .arc-fill').getAttribute('stroke-dashoffset'))).toBe(0);
+  await page.getByRole('button', { name: 'Start again, new secrets' }).click();
+  await expect(time).toHaveText(before);
+});
+
+test('with reduced motion, steps, seals, the clock and the lock arrive at once', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/demo?beat=8');
+  await expect(page.locator('[data-ready="true"]')).toBeVisible();
+  await page.getByRole('button', { name: 'Play this beat' }).click();
+  await expect(page.locator('.step[data-step="8.11"]')).toBeVisible();
+  // Only a button's colour may still be easing (it was disabled while the beat ran).
+  const moving = await page.evaluate(() => document.getAnimations()
+    .filter((a) => a.playState !== 'finished' && !a.effect?.target?.closest?.('button'))
+    .map((a) => `${a.animationName || a.transitionProperty} on ${a.effect?.target?.className}${a.effect?.pseudoElement ?? ''}`));
+  expect(moving).toEqual([]);
+  expect(await page.locator('.step[data-step="8.11"] .chip.ok').evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(RGB.ember);
+  await expect(page.locator('.clock .time-was')).toBeHidden();
+  await expect(page.locator('.clock .time')).toBeVisible();
+});
+
+// The attacker's step carries the four designs' results: on a phone each design is a card, so the
+// table never hides a column off its edge; the design that held is the one Ember light in it.
+test('the attack step’s table of designs fits a phone, the held design’s seal lit', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await openDemo(page);
+  await page.getByRole('button', { name: 'Run to the end' }).click();
+  await expect(page.getByTestId('summary')).toBeVisible();
+  const rail = page.locator('.beats button');
+  for (let i = 0; i < await rail.count(); i++) {
+    await rail.nth(i).click();
+    if (await page.locator('.inline-attack').count()) break;
+  }
+  const table = page.locator('.inline-attack .table-wrap');
+  await expect(table).toBeVisible();
+  expect(await table.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+  await expect(table.getByRole('columnheader')).toHaveCount(4);
+  const held = table.locator('tr[data-verdict="HELD"] .chip.ok');
+  expect(await held.evaluate((el) => getComputedStyle(el, '::before').backgroundImage)).toContain('255, 138, 61');
+  await expectNoSideScroll(page);
+});

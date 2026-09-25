@@ -1,7 +1,7 @@
 // "Try to break it": every attack the panel offers, run against the compiled contract in the
 // browser. Each refusal is asserted by the contract's exact assert message.
 import { test, expect } from '@playwright/test';
-import { BANNED, openDemo, expectNoSeriousA11yIssues, expectNoSideScroll } from './helpers.js';
+import { BANNED, openDemo, expectNoSeriousA11yIssues, expectNoSideScroll, landsClear } from './helpers.js';
 
 // The contract's own messages (contracts/src/lantern.compact), as the story expects them too.
 const REFUSED = {
@@ -51,14 +51,6 @@ const panelStrings = (page) => page.locator('.breakit').evaluate((root) => {
 // The two-digit hex numbers standing alone in those strings: how a byte would show.
 const hexBytes = (strings) => new Set(strings
   .flatMap((s) => s.match(/(?<![0-9a-z])[0-9a-f]{2}(?![0-9a-z])/gi) ?? []).map((t) => t.toLowerCase()));
-
-async function landsClear(page) {
-  await expect(page.locator('#break')).toBeInViewport();
-  const header = await page.locator('header.site').evaluate((h) => h.getBoundingClientRect().bottom);
-  const panel = await page.locator('#break').evaluate((s) => s.getBoundingClientRect().top);
-  expect(panel).toBeGreaterThanOrEqual(header);
-  expect(panel - header).toBeLessThan(40);
-}
 
 async function expectRefused(result, key, circuit) {
   await expect(result).toHaveAttribute('data-outcome', 'refused');
@@ -416,4 +408,29 @@ test('the panel makes no request: its code arrived with the page', async ({ page
   await page.getByRole('button', { name: 'Reset, new secrets' }).click();
   await expect(page.locator('.breakit')).toHaveAttribute('data-world', 'built');
   expect(after).toEqual([]);
+});
+
+// The control is the lock: a finalizeRecovery the contract accepted, the panel's one Ember chip. Once its
+// world is replaced, the result is set back and the chip loses its light.
+test('the honest control is drawn as the lock, until its world is replaced', async ({ page }) => {
+  const EMBER = 'rgb(255, 138, 61)';
+  const fill = (loc) => loc.evaluate((el) => getComputedStyle(el).backgroundColor);
+  await openDemo(page);
+  await card(page, 'guessVeto').getByRole('button', { name: 'Veto with a guess' }).click();
+  await expectRefused(card(page, 'guessVeto').locator('.try-result'), 'guessVeto', 'vetoRecovery');
+  expect(await fill(card(page, 'guessVeto').locator('.chip.no'))).not.toBe(EMBER);
+
+  await card(page, 'honest').getByRole('button', { name: 'Finalize honestly' }).click();
+  const result = card(page, 'honest').locator('.try-result');
+  await expect(result).toHaveAttribute('data-outcome', 'accepted');
+  await expect(result).toHaveAttribute('data-circuit', 'finalizeRecovery');
+  expect(await fill(result.locator('.chip.ok'))).toBe(EMBER);
+  const embers = await page.locator('.breakit .chip').evaluateAll((els, e) => els.filter((el) => getComputedStyle(el).backgroundColor === e).length, EMBER);
+  expect(embers).toBe(1);
+
+  // A new world: the control's result stays, marked as from the previous world, without the light.
+  await card(page, 'tamper').getByRole('button', { name: 'Flip the byte and finalize' }).click();
+  await expect(result).toHaveClass(/\bstale\b/);
+  await expect.poll(() => fill(result.locator('.chip.ok'))).not.toBe(EMBER);
+  await expect(result.locator('.chip.ok')).toHaveText('accepted');
 });

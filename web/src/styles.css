@@ -1,332 +1,1214 @@
-/* Lantern — night, and one warm light. System font stacks only: nothing is fetched. */
-:root {
-  --bg: #0b0f17;
-  --bg-2: #0e1420;
-  --surface: #121a29;
-  --surface-2: #172134;
-  --line: #243049;
-  --line-soft: #1b2438;
-  --text: #ece7dc;
-  --text-2: #c3c8d3;
-  --muted: #939bad;
-  --amber: #e8b45c;
-  --amber-2: #f7cf7a;
-  --amber-ink: #1c1405;
-  --amber-wash: rgba(232, 180, 92, 0.12);
-  --ok: #82d7a4;
-  --ok-wash: rgba(130, 215, 164, 0.12);
-  --no: #f4a195;
-  --no-wash: rgba(244, 161, 149, 0.12);
-  --info: #9dbdf5;
-  --info-wash: rgba(157, 189, 245, 0.12);
-  --radius: 12px;
-  --radius-sm: 8px;
-  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
-  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  color-scheme: dark;
-}
+/* Lantern, "Night watch": a hanji lantern glowing in midnight dark. Tokens live in styles/tokens.css;
+   this file is the global chrome (base type, header, footer, buttons, focus, route transition) and
+   then the page rules. Nothing here is fetched from anywhere but this site. */
+@import "./styles/tokens.css";
 
+/* ---- base ------------------------------------------------------------------------------------------ */
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* No faux bold or faux italic: emphasis is Fraunces italic, and every weight used is in a file. */
+  font-synthesis: small-caps;
+}
 body {
   margin: 0;
-  background:
-    radial-gradient(1200px 600px at 85% -10%, rgba(232, 180, 92, 0.07), transparent 60%),
-    var(--bg);
-  color: var(--text);
-  font: 16px/1.55 var(--sans);
+  /* The grain below brings this ground back to exactly Night (tokens.css, --grain-ground). */
+  background: var(--grain-ground);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--step-0);
+  font-weight: 400;
+  line-height: var(--leading-0);
+  font-kerning: normal;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* clip, not hidden: nothing may become a scroll container above a sticky element. */
   overflow-x: hidden;
+  overflow-x: clip;
+}
+/* The grain: Hanji specks, a triangular spread of 9 alpha levels from 0 to 6.3% (mean 3.1%), over
+   the ground above. A pseudo-element, never a background on an ancestor of text, so axe can still
+   measure contrast; fixed, which axe does not count as covering the text. Static: no blend mode, no
+   animation. Panels (Lacquer) paint over it. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: url("/grain.png") 0 0 / 256px 256px repeat;
+}
+/* On a dense screen, one grain texel per device pixel, not a 2-3px blot. */
+@media (min-resolution: 2dppx) {
+  body::before { background-size: 128px 128px; }
 }
 #root { min-height: 100vh; display: flex; flex-direction: column; }
 main { flex: 1; }
-a { color: var(--amber-2); text-underline-offset: 3px; }
-a:hover { color: var(--text); }
-code, pre { font-family: var(--mono); font-size: 0.86em; }
-code { overflow-wrap: anywhere; }
-h1, h2, h3 { font-family: var(--serif); font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; margin: 0 0 0.4em; }
-h1 { font-size: clamp(1.9rem, 3.2vw, 2.6rem); }
-h2 { font-size: 1.25rem; }
-h3 { font-size: 1rem; font-family: var(--sans); font-weight: 600; color: var(--text-2); margin-top: 1.1em; }
-p { margin: 0 0 0.8em; }
-:focus-visible { outline: 2px solid var(--amber-2); outline-offset: 2px; border-radius: 4px; }
+::selection { background: var(--ink); color: var(--ground); }
 
-.skip { position: absolute; left: -9999px; }
+a {
+  color: var(--ink);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--edge);
+  text-underline-offset: 0.22em;
+  transition: text-decoration-color var(--dur-hover) var(--ease-settle), color var(--dur-hover) var(--ease-settle);
+}
+code, pre, kbd, samp { font-family: var(--font-mono); font-size: 0.875em; }
+code { overflow-wrap: anywhere; }
+
+h1, h2, h3 { margin: 0 0 0.4em; text-wrap: balance; }
+h1, h2 { font-family: var(--font-display); font-optical-sizing: auto; }
+h1 { font-size: var(--step-4); font-weight: 340; line-height: var(--leading-4); letter-spacing: var(--tracking-4); }
+h2 { font-size: var(--step-2); font-weight: 360; line-height: var(--leading-2); letter-spacing: -0.01em; }
+h2.section { font-size: var(--step-3); line-height: var(--leading-3); letter-spacing: var(--tracking-3); margin-top: 2.2em; }
+h3 { font-family: var(--font-sans); font-size: var(--step-0); font-weight: 600; line-height: 1.35; margin-top: 1.1em; }
+p { margin: 0 0 0.8em; }
+/* No paragraph ends on one short word where the browser can help it. The longhand, so an element
+   that sets white-space: nowrap keeps it. */
+p, li { text-wrap-style: pretty; }
+strong, b { font-weight: 600; }
+/* There is no sans italic: emphasis is set in the display face's italic. */
+em, i, cite { font-family: var(--font-display); font-style: italic; }
+/* In running text, Fraunces italic at the body's 400 is darker than Instrument Sans around it and its
+   x-height smaller (0.47 of the em against 0.51), so an emphasised phrase reads as bold. Set it a
+   touch lighter, at the sans's x-height (its ink density then matches the sans's within 4%). Line
+   height 1: WebKit and Firefox scale the line box with the adjusted size, and a line holding an
+   emphasis would sit 1px lower than the rest; the paragraph's own line height still spaces it.
+   Headings keep their own weight and size. */
+:where(p, li, dd, dt, td, th, figcaption, blockquote) :is(em, i, cite):not(:where(h1, h2, h3, h4, h5, h6) *) {
+  font-weight: 350;
+  font-size-adjust: ex-height 0.51;
+  line-height: 1;
+}
+:lang(ko) { font-family: var(--font-kr); font-weight: 400; font-synthesis: none; }
+
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
 /* Read out, not shown: a live region whose news the page already shows another way. */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
-.skip:focus { left: 16px; top: 12px; z-index: 10; background: var(--amber); color: var(--amber-ink); padding: 8px 12px; border-radius: var(--radius-sm); }
-
-.eyebrow { font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--amber); margin-bottom: 0.5em; font-weight: 600; }
-.lede { font-size: 1.1rem; color: var(--text-2); max-width: 44rem; }
-.meta { font-size: 0.86rem; color: var(--muted); }
-.meta code { color: var(--text-2); }
-.loading { color: var(--muted); padding: 2rem 0; }
-
-/* ---- site chrome ---------------------------------------------------------- */
-header.site {
-  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-  padding: 14px clamp(16px, 4vw, 40px);
-  border-bottom: 1px solid var(--line-soft);
-  background: rgba(11, 15, 23, 0.85);
-  position: sticky; top: 0; z-index: 5;
-  backdrop-filter: blur(8px);
+.skip {
+  position: absolute; left: -9999px; top: 8px; z-index: 20;
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px;
+  background: var(--ink); color: var(--ground); border-radius: var(--radius-pill);
+  font-family: var(--font-sans); font-size: var(--step--1); font-weight: 560; text-decoration: none;
 }
-.brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-family: var(--serif); font-size: 1.3rem; font-weight: 600; }
-.mark { width: 28px; height: 28px; }
-.mark path, .hero-mark path { fill: var(--amber); }
-.mark .frame, .hero-mark .frame { fill: none; stroke: var(--amber); stroke-width: 2; }
-.mark .flame, .hero-mark .flame { fill: var(--amber-2); }
-.mark .base, .hero-mark .base { fill: none; stroke: var(--amber); stroke-width: 2; stroke-linecap: round; }
-header.site nav { display: flex; gap: 4px; flex-wrap: wrap; }
-.nav { color: var(--text-2); text-decoration: none; padding: 6px 12px; border-radius: 999px; font-size: 0.95rem; }
-.nav:hover { background: var(--surface); color: var(--text); }
-.nav[aria-current="page"] { background: var(--amber-wash); color: var(--amber-2); }
-footer.site { border-top: 1px solid var(--line-soft); padding: 20px clamp(16px, 4vw, 40px); color: var(--muted); font-size: 0.85rem; }
-footer.site p { margin: 0.2em 0; }
-/* Shown by index.html until the app mounts, so a slow connection never sees a blank page. */
-.boot { margin: 0; padding: 48px clamp(16px, 4vw, 40px); color: var(--muted); font-family: var(--serif); font-size: 1.2rem; }
+.skip:focus { left: var(--margin); }
 
-.page { max-width: 1320px; margin: 0 auto; padding: 24px clamp(16px, 4vw, 40px) 56px; }
+.eyebrow {
+  margin: 0 0 0.9em;
+  font-family: var(--font-sans); font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase;
+  text-wrap-style: balance;
+  color: var(--muted);
+}
+/* 등불 at 1.2em. Line height 1: Gowun Batang's tall ascent and descent would otherwise make an eyebrow
+   carrying it 3px taller than one without, and move everything under it. */
+.eyebrow :lang(ko) { font-size: 1.2em; line-height: 1; letter-spacing: 0.06em; text-transform: none; color: var(--ink); }
+.lede { font-size: var(--step-1); line-height: var(--leading-1); letter-spacing: var(--tracking-1); color: var(--ink); max-width: 44rem; }
+.meta { font-size: var(--step--1); line-height: var(--leading--1); color: var(--muted); }
+.meta code { color: var(--ink); }
+/* Waiting, in one voice: the line index.html shows until the app mounts (.boot, so a slow connection
+   never sees a blank page), and a page's or a panel's own "Loading…" (.loading), all in Fraunces
+   italic, Ash. */
+.loading, .boot {
+  font-family: var(--font-display); font-style: italic; font-weight: 360;
+  font-size: var(--step-1); line-height: var(--leading-1); letter-spacing: var(--tracking-1);
+  color: var(--muted);
+}
+.loading { margin: 0; padding: var(--space-6) 0; }
+.boot { margin: 0; padding: 48px var(--margin); }
+
+/* ---- the header ---------------------------------------------------------------------------------
+   One row, 60px (52px on a phone): the compact lockup, then the nav. It stays the same element on
+   every route, and App.jsx measures its height into --header-h (#break and .side-col stop below it).
+   It is a .frame: its lockup starts on the content's left edge and its nav ends on the right one. The
+   frame is the app's (1320px) except on the landing, which is 1440px wide. */
+[data-route="home"] { --frame: var(--max-landing); }
+header.site {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  column-gap: var(--space-4);
+  min-height: var(--header-min);
+  padding-block: 0;
+  background: var(--scrim);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--rib);
+  view-transition-name: site-header;
+}
+/* Over the landing's scene: no backdrop blur (a per-frame cost there, over a canvas redrawn every
+   frame) and no hairline. Without a blur, any see-through ground would let the story's lines show
+   through the nav as they scroll up under it, so the header here is the night itself: solid Night,
+   the colour the scene draws at the top of its frame. */
+header.site[data-route="home"] {
+  background: var(--night);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-bottom-color: transparent;
+}
+/* ...and below it the Night runs on for 32px down to nothing, so the header ends in no hard edge: the
+   lantern's cord runs up into the dark, and a line of text on its way up dims into it rather than
+   meeting an edge. Fixed, just under the header (which is stuck to the top), rather than absolute:
+   axe counts an absolutely placed pseudo-element with a background as covering every link in the
+   header, and would stop measuring the nav's contrast. */
+header.site[data-route="home"]::after {
+  content: "";
+  position: fixed; left: 0; right: 0; top: var(--header-h, var(--header-min)); height: 32px;
+  background: linear-gradient(var(--night), transparent);
+  pointer-events: none;
+}
+
+/* The home link: the compact lockup (mark and outlined wordmark) at a 17px cap height, where the mark
+   takes its eave; below 400px the mark alone, the same drawing at the same size. 44px square at least. */
+.brand {
+  display: inline-flex; align-items: center; min-height: 44px; min-width: 44px;
+  color: var(--ink); text-decoration: none;
+}
+.brand svg { display: block; flex: none; }
+.brand .mark-alone { display: none; }
+@media (max-width: 399.98px) {
+  .brand .lockup { display: none; }
+  /* The mark's ink starts 6u into its 24u box: pull it back onto the margin. */
+  .brand .mark-alone { display: block; margin-inline-start: calc(32px * -6 / 24); }
+  /* The link's 44px box already runs 28px past the mark's ink: that is the gap. Down to 300px the
+     nav then keeps to one row. */
+  header.site { column-gap: 0; }
+}
+
+header.site nav { display: flex; flex-wrap: wrap; margin-inline-end: -12px; }
+.nav {
+  position: relative; display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px;
+  font-family: var(--font-sans); font-size: var(--step--1); font-weight: 500; font-stretch: 90%; line-height: 1;
+  color: var(--muted); text-decoration: none;
+  transition: color var(--dur-hover) var(--ease-settle);
+}
+.nav[aria-current="page"] { color: var(--ink); }
+/* The wick: a 2px Hanji line under the current item. It carries view-transition-name nav-wick, so a
+   route change can move it to the new item. */
+.nav .wick {
+  position: absolute; left: 12px; right: 12px; bottom: 7px; height: 2px;
+  border-radius: 1px; background: var(--hanji);
+  view-transition-name: nav-wick;
+}
+@media (max-width: 479.98px) {
+  header.site nav { margin-inline-end: -8px; }
+  .nav { padding: 0 8px; font-stretch: 80%; }
+  .nav .wick { left: 8px; right: 8px; }
+}
+
+/* ---- the footer: a colophon on the same frame and columns as the page ------------------------------ */
+footer.site {
+  row-gap: var(--space-5);
+  align-items: start;
+  padding-block: var(--space-7) var(--space-8);
+  border-top: 1px solid var(--rib);
+  color: var(--muted); font-size: var(--step--1); line-height: var(--leading--1);
+}
+footer.site p { margin: 0; }
+.footer-lockup { grid-column: 1 / -1; }
+.footer-lockup svg { display: block; }
+.footer-lines { grid-column: 1 / -1; display: grid; gap: var(--space-2); }
+/* Licence and toolchain: one line of mono, each name kept whole. */
+.footer-lines .colophon { font-family: var(--font-mono); font-size: var(--step--2); letter-spacing: 0.01em; }
+.colophon span, .footer-lines .nowrap { white-space: nowrap; }
+.footer-lines .fiction { margin-top: var(--space-3); font-family: var(--font-display); font-style: italic; font-size: var(--step-0); line-height: var(--leading-1); }
+@media (min-width: 640px) {
+  .footer-lockup { grid-column: 1 / span 3; }
+  .footer-lines { grid-column: 4 / -1; }
+}
+@media (min-width: 1080px) {
+  .footer-lockup { grid-column: 1 / span 4; }
+  .footer-lines { grid-column: 5 / span 6; }
+}
+
+.page { max-width: var(--max-app); margin: 0 auto; padding: 24px var(--margin) 56px; }
 .page.narrow { max-width: 860px; }
 .page-head { margin: 28px 0 20px; }
-h2.section { margin-top: 2.2em; }
 
-/* ---- buttons -------------------------------------------------------------- */
+/* ---- buttons ------------------------------------------------------------------------------------
+   Secondary: an Edge outline. Primary: an ink pill, ground text (Hanji and Night; the other way round
+   on paper). Pressed, a button sinks 1px and shrinks to .98 (90ms); released, it springs back (260ms
+   ignite). A text-link button (.linkish) does neither. Every transition is finite. */
 button, .button {
-  font: inherit; font-size: 0.95rem; cursor: pointer;
-  color: var(--text); background: var(--surface-2);
-  border: 1px solid var(--line); border-radius: 999px;
-  padding: 9px 16px; text-decoration: none; display: inline-block;
+  -webkit-appearance: none; appearance: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5em;
+  min-height: 44px; padding: 0 20px; margin: 0;
+  font-family: var(--font-sans); font-size: var(--step--1); font-weight: 500; line-height: 1.2; text-align: center;
+  color: var(--ink); background: transparent;
+  border: 1px solid var(--edge); border-radius: var(--radius-pill);
+  text-decoration: none; cursor: pointer;
+  transition:
+    transform var(--dur-release) var(--ease-ignite),
+    background-color var(--dur-hover) var(--ease-settle),
+    border-color var(--dur-hover) var(--ease-settle),
+    color var(--dur-hover) var(--ease-settle);
 }
-button:hover:not(:disabled), .button:hover { border-color: var(--amber); color: var(--text); }
-button:disabled { opacity: 0.45; cursor: not-allowed; }
-button.primary, .button.primary { background: var(--amber); color: var(--amber-ink); border-color: var(--amber); font-weight: 600; }
-button.primary:hover:not(:disabled), .button.primary:hover { background: var(--amber-2); color: var(--amber-ink); }
-.linkish { background: none; border: 0; color: var(--amber-2); padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+button:active:not(:disabled):not([aria-disabled="true"]):not(.linkish), .button:active {
+  transform: translateY(1px) scale(0.98);
+  transition:
+    transform var(--dur-press) var(--ease-press),
+    background-color var(--dur-hover) var(--ease-settle),
+    border-color var(--dur-hover) var(--ease-settle),
+    color var(--dur-hover) var(--ease-settle);
+}
+button.primary, .button.primary { background: var(--ink); border-color: var(--ink); color: var(--ground); font-weight: 560; }
+button:disabled, button[aria-disabled="true"] { cursor: not-allowed; color: var(--muted); background: transparent; border-color: var(--rib); }
+/* A CTA's arrow is an aria-hidden span: it nudges 3px on hover. */
+.button .arrow, button .arrow { display: inline-block; transition: transform var(--dur-hover) var(--ease-settle); }
+.linkish {
+  display: inline; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none;
+  font: inherit; color: var(--ink);
+  text-decoration: underline; text-decoration-thickness: 1px; text-decoration-color: var(--edge); text-underline-offset: 0.22em;
+}
 
-/* ---- honesty strip --------------------------------------------------------- */
+/* Hover only where there is a pointer that hovers: on a phone a tapped button or link would keep its
+   hover look until the next tap somewhere else. */
+@media (hover: hover) {
+  a:hover { text-decoration-color: currentColor; }
+  .nav:hover { color: var(--ink); }
+  button:hover:not(:disabled):not([aria-disabled="true"]), .button:hover { border-color: var(--ink); color: var(--ink); }
+  button.primary:hover:not(:disabled):not([aria-disabled="true"]), .button.primary:hover {
+    background: var(--ink-hover); border-color: var(--ink-hover); color: var(--ground);
+  }
+  .button:hover .arrow, button:hover:not(:disabled) .arrow { transform: translateX(3px); }
+  .linkish:hover:not(:disabled):not([aria-disabled="true"]) { text-decoration-color: currentColor; }
+}
+@media (prefers-reduced-motion: reduce) {
+  button, .button { transition-property: background-color, border-color, color; }
+  button:active:not(:disabled):not([aria-disabled="true"]):not(.linkish), .button:active { transform: none; }
+  .button .arrow, button .arrow { transition: none; }
+  .button:hover .arrow, button:hover:not(:disabled) .arrow { transform: none; }
+}
+
+/* ---- page rules: /demo, then the tables, /attacks and /about. Every value is a token (tokens.css). --- */
+/* ---- honesty strip ---------------------------------------------------------------------------------
+   The first thing on every page that runs circuits: a Lacquer band with a 2px Hanji rule. Its lead,
+   "Runs in your browser.", is set in Fraunces italic, and from 1080px hangs in a column of its own. */
 .honesty {
-  border: 1px solid var(--line); border-left: 3px solid var(--amber);
-  background: var(--surface); border-radius: var(--radius-sm);
-  padding: 12px 16px; margin: 4px 0 20px; font-size: 0.93rem; color: var(--text-2);
+  margin: var(--space-2) 0 var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface);
+  border-left: 2px solid var(--ink);
+  border-radius: 0 var(--radius-surface) var(--radius-surface) 0;
+  font-size: var(--step--1); line-height: var(--leading--1); color: var(--ink);
 }
-.honesty p { margin: 0 0 0.3em; }
-.honesty p:last-child { margin: 0; }
-.honesty strong { color: var(--text); }
-
-/* ---- landing -------------------------------------------------------------- */
-.landing .hero { text-align: center; padding: clamp(40px, 9vw, 110px) 0 clamp(32px, 6vw, 72px); }
-.hero-mark { width: 64px; height: 64px; filter: drop-shadow(0 0 22px rgba(247, 207, 122, 0.45)); margin-bottom: 18px; }
-.landing h1 { font-size: clamp(2.4rem, 6vw, 4.2rem); margin-bottom: 0.35em; }
-.landing .lede { margin: 0 auto 1.6em; font-size: clamp(1.05rem, 1.6vw, 1.25rem); }
-.cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
-.facts article { background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 20px; }
-.facts h2 { font-size: 1.1rem; color: var(--amber-2); }
-.facts p { color: var(--text-2); font-size: 0.95rem; margin: 0; }
-
-/* ---- demo: beat rail ------------------------------------------------------ */
-.beats { margin: 0 0 20px; overflow-x: auto; scrollbar-width: thin; }
-.beats ol { list-style: none; display: flex; gap: 6px; padding: 2px; margin: 0; min-width: max-content; }
-.beat {
-  display: flex; align-items: center; gap: 8px; border-radius: 999px;
-  padding: 6px 12px 6px 6px; font-size: 0.85rem; background: var(--bg-2); color: var(--muted);
-  border: 1px solid var(--line-soft); white-space: nowrap;
+.honesty p { margin: 0; max-width: 60rem; }
+.honesty p + p { margin-top: var(--space-1); }
+.honesty strong {
+  font-family: var(--font-display); font-style: italic; font-weight: 400;
+  font-size: var(--step-1); line-height: 1; letter-spacing: var(--tracking-1);
 }
-.beat .num {
-  width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
-  font-size: 0.78rem; font-weight: 700; background: var(--surface-2); color: var(--muted);
-}
-.beat.done { color: var(--text-2); border-color: var(--line); }
-.beat.done .num { background: var(--ok-wash); color: var(--ok); }
-.beat.current { color: var(--text); border-color: var(--amber); background: var(--amber-wash); }
-.beat.current .num { background: var(--amber); color: var(--amber-ink); }
-
-/* ---- demo: layout ---------------------------------------------------------- */
-.demo-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
 @media (min-width: 1080px) {
-  .demo-grid { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: start; }
-  .side-col { position: sticky; top: 76px; max-height: calc(100vh - 92px); overflow-y: auto; padding-right: 4px; }
+  .honesty { --lead: 14rem; padding-left: calc(var(--space-5) + var(--lead)); }
+  .honesty strong { float: left; width: var(--lead); margin: 0.02em 0 0 calc(-1 * var(--lead)); padding-right: var(--gutter); }
 }
-.beat-head { margin-bottom: 14px; }
-.caption { color: var(--text-2); font-size: 1.05rem; }
 
-.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+/* ---- demo: the beat rail, a festival string ------------------------------------------------------
+   The one place the page leaves its frame: the rail runs from one edge of the window to the other and
+   scrolls sideways, its first beat on the content's left edge (--bleed is the frame's own margin, from
+   the width of <main>). A 1px Rib cord runs the whole way; the beats hang 2px below it. The beat shown
+   is a Hanji pill whose numeral is Night on an Ember disc, the rail's only Ember; a beat done is Hanji,
+   its numeral in a closed ring; a beat not reached is Ash, and disabled. Each numeral hangs from the
+   cord by a thread, like a lantern with its name tag beside it. At the window's edges the rail fades. */
+main:has(> .page.demo) { container-type: inline-size; }
+.beats {
+  --bleed: max(var(--margin), calc((100cqw - var(--max-app)) / 2 + var(--margin)));
+  --fade: min(var(--bleed), 48px);
+  margin: 0 calc(-1 * var(--bleed)) var(--space-6);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rib) transparent;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent);
+}
+.beats ol {
+  position: relative;
+  list-style: none; margin: 0; padding: 8px var(--bleed) 12px;
+  display: flex; gap: var(--space-2); min-width: max-content;
+}
+/* The cord: the ol is as wide as the whole rail, margins included, so it runs edge to edge. */
+.beats ol::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 5px; height: 1px;
+  background: var(--rib); pointer-events: none;
+}
+.beats li { position: relative; }
+/* The thread, from the cord to the top of the numeral's disc; a filled pill covers all but the 2px gap. */
+.beats li::before {
+  content: ""; position: absolute; left: 21px; top: -2px; width: 1px; height: 9px;
+  background: var(--rib); pointer-events: none;
+}
+.beats .beat {
+  position: relative;
+  gap: 10px; padding: 0 18px 0 6px;
+  font-weight: 500; white-space: nowrap;
+  color: var(--ink); border-color: var(--edge);
+}
+.beats li:last-child .num { font-size: 15px; }
+.beat .num {
+  flex: none; display: grid; place-items: center;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid currentColor;
+  font-family: var(--font-mono); font-size: 13px; line-height: 1; font-variant-numeric: tabular-nums;
+}
+/* Specific enough to hold against the shared button hover, which would ink a Hanji pill in Hanji. */
+.beats button.beat.current,
+.beats button.beat.current:hover {
+  background: var(--ink); border-color: var(--ink); color: var(--ground);
+}
+.beats .beat.current .num {
+  background: var(--ember); border-color: var(--ember); color: var(--night);
+  box-shadow: 0 0 12px rgb(255 138 61 / 0.45);
+}
+/* Where the story is, while an earlier beat is shown: open, its ring still to close. */
+.beats .beat.todo:not(:disabled) .num { border-style: dashed; }
+.beats .beat:disabled { color: var(--muted); border-color: var(--rib); }
+.beats .beat:disabled .num { border-color: var(--rib); }
+
+/* ---- demo: layout ------------------------------------------------------------------------------------
+   The story takes seven of the twelve columns, the state the other five. */
+.demo-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-7) var(--gutter); }
+@media (min-width: 1080px) {
+  .demo-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: start; }
+  .story-col { grid-column: 1 / span 7; }
+  /* Stops clear of the sticky header, whatever its measured height. */
+  .side-col {
+    grid-column: 8 / -1;
+    position: sticky; top: calc(var(--header-h, 60px) + 12px);
+    max-height: calc(100vh - var(--header-h, 60px) - 24px); overflow-y: auto;
+    scrollbar-width: thin; scrollbar-color: var(--rib) transparent;
+    /* What runs on below the fold fades out rather than being cut; the last 32px are space. Not while
+       focused: a mask would cut off the focus ring. */
+    padding-bottom: var(--space-6);
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--space-6)), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - var(--space-6)), transparent);
+  }
+  .side-col:focus-visible { -webkit-mask-image: none; mask-image: none; }
+}
+.beat-head { margin: 0 0 var(--space-6); }
+.beat-head h1 { margin-bottom: 0.28em; }
+.caption { margin: 0; max-width: 40rem; font-size: var(--step-1); line-height: var(--leading-1); letter-spacing: var(--tracking-1); color: var(--ink); }
+
+/* ---- demo: steps -----------------------------------------------------------------------------------
+   No card: each step is a stretch of the page between Rib hairlines, with its outcome as a rule down
+   its left side. Accepted: solid Hanji. Refused: dashed Ash. Off the ledger: Rib. The clock: dotted
+   Hanji. The lock (finalizeRecovery accepted): Ember. Unexpected: the whole step inverted, Hanji paper
+   and Night ink (tokens.css). The same drawing serves a "Try to break it" result. */
+.steps { list-style: none; padding: 0; margin: 0; border-bottom: 1px solid var(--line); }
+.steps:empty { border-bottom: 0; }
 .step, .try-result {
-  background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--radius);
-  padding: 14px 16px; border-left: 3px solid var(--line);
+  --rule: var(--line);
+  --lag: 0ms;
+  position: relative;
+  padding: 20px 20px 20px 24px;
+  border-top: 1px solid var(--line);
 }
-.step.accepted, .try-result.accepted { border-left-color: var(--ok); }
-.step.refused, .try-result.refused { border-left-color: var(--no); }
-.step.offchain { border-left-color: var(--info); }
-.step.clock { border-left-color: var(--amber); }
-.step.unexpected, .try-result.unexpected { border-color: var(--no); background: var(--no-wash); }
-.step .who, .try-result .who { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
-.step .say, .try-result .say { margin-bottom: 8px; }
-.result { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.circuit { background: var(--bg-2); border: 1px solid var(--line-soft); padding: 2px 8px; border-radius: 6px; color: var(--text-2); }
-.chip { font-size: 0.82rem; padding: 3px 10px; border-radius: 999px; font-weight: 600; }
-.chip.ok { background: var(--ok-wash); color: var(--ok); }
-.chip.no { background: var(--no-wash); color: var(--no); }
-.chip.off { background: var(--info-wash); color: var(--info); }
-.chip.clock { background: var(--amber-wash); color: var(--amber-2); }
-.detail { color: var(--text-2); font-size: 0.9rem; }
-.step .meta, .try-result .meta { margin: 8px 0 0; }
-.meta.warn { color: var(--no); }
-.inline-attack { margin-top: 10px; }
+.step::before, .try-result::before {
+  content: ""; position: absolute; left: 0; top: 20px; bottom: 20px;
+  border-left: 2px solid var(--rule);
+}
+.step.accepted, .try-result.accepted { --rule: var(--ink); }
+.step.refused, .try-result.refused { --rule: var(--muted); }
+.step.refused::before, .try-result.refused::before { border-left-style: dashed; }
+.step.clock { --rule: var(--ink); }
+.step.clock::before { border-left-style: dotted; }
+.step.unexpected, .try-result.unexpected { border-top-color: transparent; }
+.step .who, .try-result .who {
+  margin: 0 0 var(--space-2);
+  font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase;
+  color: var(--muted);
+}
+.step .say, .try-result .say { margin: 0 0 var(--space-3); max-width: 42rem; }
+.result { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); align-items: center; }
+/* The circuit: a mono pill, raised a step from the ground it sits on. */
+.circuit {
+  padding: 0.2em 0.75em; border-radius: var(--radius-pill);
+  background: var(--surface); border: 1px solid var(--line); color: var(--ink);
+  font-size: var(--step--1); line-height: 1.35;
+}
+.detail { color: var(--muted); font-size: var(--step--1); }
+.step.clock .detail { font-family: var(--font-mono); color: var(--ink); }
+.step .meta, .try-result .meta { margin: var(--space-2) 0 0; }
+.meta.warn { color: var(--ink); font-weight: 560; }
+.inline-attack { margin-top: var(--space-4); }
+/* Where the committed chain run took the same step: mono, a dashed Edge frame. */
+.recorded-chip {
+  display: inline-block; margin: var(--space-3) 0 0; padding: 0.3em 0.8em;
+  border: 1px dashed var(--edge); border-radius: var(--radius-chip);
+  font-family: var(--font-mono); font-size: var(--step--2); line-height: 1.45; color: var(--muted);
+}
+@media (max-width: 639.98px) {
+  .step, .try-result { padding: 18px 0 18px 18px; }
+  .step::before, .try-result::before { top: 18px; bottom: 18px; }
+  .step.unexpected, .try-result.unexpected { padding-right: 16px; }
+}
 
-.upcoming { margin-top: 14px; padding: 12px 16px; border: 1px dashed var(--line); border-radius: var(--radius); color: var(--muted); }
-.upcoming p:last-child { margin: 0; }
-.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
-.hint { font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
-.summary { margin-top: 16px; padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--line); }
-.summary.good { border-color: var(--ok); background: var(--ok-wash); }
-.summary.bad { border-color: var(--no); background: var(--no-wash); }
+/* ---- demo: chips -----------------------------------------------------------------------------------
+   Fragment Mono, 0.9em corners (a refusal wraps at 375px, and a pill would not hold it). No second hue:
+   accepted is filled with ink and carries a closed seal; refused is outlined and carries an open ring,
+   the brand's seal with a 60° gap at one o'clock; off the ledger is an aside in Ash italic; the clock is
+   outlined. The seal glyph sits on the first line, whatever the chip wraps to. */
+.chip {
+  display: inline-flex; align-items: flex-start; gap: 0.5em;
+  padding: 0.25em 0.8em; border: 1px solid transparent; border-radius: var(--radius-chip);
+  font-family: var(--font-mono); font-size: var(--step--1); font-weight: 400; line-height: 1.35;
+}
+.chip.ok, .chip.no { padding-left: 0.55em; }
+.chip.ok::before, .chip.no::before {
+  content: ""; flex: none; width: 0.7em; height: 0.7em; margin-top: 0.325em;
+  border: 0.1em solid currentColor; border-radius: 50%;
+}
+.chip.ok { background: var(--ink); border-color: var(--ink); color: var(--ground); }
+.chip.ok::before { background: radial-gradient(circle, currentColor 0 0.11em, transparent 0.12em); }
+.chip.no { color: var(--ink); border-color: var(--edge); }
+@property --seal-sweep { syntax: "<angle>"; inherits: false; initial-value: 300deg; }
+.chip.no::before {
+  --seal-sweep: 300deg;
+  -webkit-mask: conic-gradient(from 60deg, #000 var(--seal-sweep), transparent 0);
+  mask: conic-gradient(from 60deg, #000 var(--seal-sweep), transparent 0);
+}
+.chip.off { padding-inline: 0; font-family: var(--font-display); font-style: italic; font-size: var(--step-0); line-height: 1.25; color: var(--muted); }
+.chip.clock { border-color: var(--edge); color: var(--ink); }
+
+/* The lock: the one Ember chip. A finalizeRecovery the contract accepted, as the story or the control
+   expected (an unexpected accept is paper, and Ember never sits on Hanji). Its seal is filled; its step's
+   rule is Ember. The light spreads from the seal across the chip (--lock-r). */
+@property --lock-r { syntax: "<length>"; inherits: false; initial-value: 0px; }
+.step.accepted[data-circuit="finalizeRecovery"]:not(.unexpected),
+.try-result.accepted[data-circuit="finalizeRecovery"]:not(.unexpected):not(.stale) { --rule: var(--ember); }
+.step.accepted[data-circuit="finalizeRecovery"]:not(.unexpected) .chip.ok,
+.try-result.accepted[data-circuit="finalizeRecovery"]:not(.unexpected):not(.stale) .chip.ok {
+  --lock-r: 16em;
+  background: var(--ember) radial-gradient(circle at 0.9em 0.95em, var(--ember) var(--lock-r), var(--hanji) calc(var(--lock-r) + 1px));
+  border-color: var(--ember); color: var(--night);
+}
+.step.accepted[data-circuit="finalizeRecovery"]:not(.unexpected) .chip.ok::before,
+.try-result.accepted[data-circuit="finalizeRecovery"]:not(.unexpected):not(.stale) .chip.ok::before {
+  box-shadow: inset 0 0 0 0.25em var(--night);
+}
+
+/* ---- demo: the upcoming step, the controls, the summary -------------------------------------------- */
+.upcoming {
+  margin: var(--space-5) 0 0; padding: var(--space-4) var(--space-5) var(--space-5);
+  border: 1px dashed var(--rib); border-radius: var(--radius-surface);
+}
+.upcoming .eyebrow { margin-bottom: var(--space-2); }
+.upcoming p:not(.eyebrow) {
+  margin: 0; max-width: 40rem;
+  font-family: var(--font-display); font-style: italic; font-weight: 360;
+  font-size: var(--step-1); line-height: var(--leading-1); color: var(--ink);
+}
+p.upcoming { padding-block: var(--space-4); }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-5); }
+/* 14px in from each end, so the five fit on one row of the story's seven columns at 1440. */
+.controls button { padding-inline: 14px; }
+.hint { margin: var(--space-3) 0 0; font-size: var(--step--1); line-height: var(--leading--1); color: var(--muted); }
+.hint code { color: var(--ink); }
+.summary {
+  margin-top: var(--space-6); padding: var(--space-5);
+  background: var(--surface); border-left: 2px solid var(--ink);
+  border-radius: 0 var(--radius-surface) var(--radius-surface) 0;
+}
+.summary p { margin: 0 0 var(--space-2); }
+.summary p:first-child { font-size: var(--step-1); line-height: var(--leading-1); }
+.summary p:first-child strong { font-family: var(--font-display); font-style: italic; font-weight: 400; }
 .summary p:last-child { margin: 0; }
-
-/* ---- demo: side panels ----------------------------------------------------- */
-.side-col { display: grid; gap: 14px; }
-.panel { background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 14px 16px; }
-.panel h2 { font-size: 1.02rem; font-family: var(--sans); font-weight: 700; margin-bottom: 4px; }
-.clock .time { font-family: var(--mono); font-size: 1.05rem; color: var(--amber-2); margin: 4px 0; }
-.clock .meta { margin: 0; }
-
-.absent ul { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 4px; }
-.absent li { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; font-size: 0.9rem; }
-.absent .box { width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--line); display: grid; place-items: center; font-size: 0.75rem; font-weight: 800; }
-.absent .ticked .box { background: var(--ok-wash); border-color: var(--ok); color: var(--ok); }
-.absent .bad .box { background: var(--no-wash); border-color: var(--no); color: var(--no); }
-.absent .pending { color: var(--muted); }
-.absent .count { color: var(--muted); font-size: 0.8rem; }
-
-.counts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; margin: 8px 0 0; }
-.counts div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--line-soft); padding: 3px 0; font-size: 0.86rem; }
-.counts dt { color: var(--muted); }
-.counts dd { margin: 0; font-family: var(--mono); color: var(--text); }
-.values { list-style: none; padding: 0; margin: 4px 0 0; display: grid; gap: 4px; }
-.values li { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.86rem; }
-.values li[data-retired="true"] code { text-decoration: line-through; color: var(--muted); }
-.tag { font-size: 0.74rem; padding: 1px 8px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); border: 1px solid var(--line); margin-left: 6px; }
-.tag.no { color: var(--no); border-color: rgba(244, 161, 149, 0.4); }
-
-.persons { list-style: none; padding: 0; margin: 8px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
-.person { border: 1px solid var(--line-soft); border-radius: var(--radius-sm); padding: 8px 10px; background: var(--bg-2); }
-.person .name { font-weight: 600; font-size: 0.9rem; margin: 0 0 4px; }
-.person.gone { border-style: dashed; background: transparent; }
-.person.gone .name { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line); }
-.person.gone .name .tag { text-decoration: none; }
-.person.turned { border-color: rgba(244, 161, 149, 0.5); }
-.person.turned .tag { color: var(--no); }
-.person .meta { margin: 0; }
-.holds { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; font-size: 0.8rem; color: var(--text-2); }
-.holds li { display: flex; justify-content: space-between; gap: 6px; }
-.holds code { color: var(--muted); }
-
-/* ---- demo: try to break it ---------------------------------------------------- */
-/* Linked to as #break: the jump stops 12px clear of the sticky header. That header is 65px tall while
-   the brand and nav share a row, 113px once the nav drops below the brand, and 153px once the nav
-   itself wraps (Chromium, macOS). Where each happens depends on the engine and the system font, so
-   the app measures the header into --header-h rather than this file guessing at breakpoints. */
-.breakit { margin-top: 40px; padding-top: 28px; border-top: 1px solid var(--line-soft); scroll-margin-top: calc(var(--header-h, 65px) + 12px); }
-.breakit-head { max-width: 52rem; margin-bottom: 16px; }
-.breakit-head h2 { font-size: clamp(1.5rem, 2.4vw, 1.9rem); }
-.try-world { margin-bottom: 16px; }
-.try-world h3, .try h3 { margin: 0 0 6px; color: var(--text); font-size: 1.02rem; }
-.try-world ul.plain { margin: 0 0 10px; font-size: 0.93rem; }
-.try-world ul.plain li { margin-bottom: 0.25em; }
-.try-world .counts { margin: 0 0 10px; }
-.try-world .counts dd { text-align: right; overflow-wrap: anywhere; }
-.tries { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; align-items: start;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
-.try { background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 14px 16px; min-width: 0; }
-.try .what { color: var(--text-2); font-size: 0.95rem; }
-/* The control is not one attack among six: it gets a row of its own. */
-.try.control { grid-column: 1 / -1; }
-.try.control > * { max-width: 52rem; }
-.choice { border: 0; padding: 0; margin: 0 0 10px; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
-.choice legend { float: left; margin-right: 4px; padding: 0; font-size: 0.9rem; color: var(--text-2); }
-.choice label, .field { display: inline-flex; align-items: center; gap: 8px; font-size: 0.93rem; }
-.choice input { accent-color: var(--amber); width: 18px; height: 18px; margin: 0; }
-.field { flex-wrap: wrap; margin-bottom: 4px; color: var(--text-2); }
-.field input {
-  font: inherit; width: 5.5em; padding: 6px 10px; border-radius: var(--radius-sm);
-  background: var(--bg-2); color: var(--text); border: 1px solid var(--line);
+/* A step that did not go as expected turns the summary to paper, like the step itself. */
+.summary.bad {
+  --ink: var(--night); --muted: var(--muted-on-paper); --surface: var(--hanji); --line: var(--edge); --ground: var(--hanji);
+  background: var(--hanji); color: var(--night); border-left-color: var(--night);
 }
-.field input[aria-invalid="true"] { border-color: var(--no); }
-.share { margin: 0 0 10px; }
-.share .meta { margin-bottom: 4px; }
-.share-bytes { display: flex; flex-wrap: wrap; gap: 2px 6px; margin: 0; font-family: var(--mono); font-size: 0.8rem; color: var(--text-2); }
-.share-bytes mark { background: var(--no-wash); color: var(--no); border-radius: 3px; outline: 1px solid var(--no); }
+@media (max-width: 560px) {
+  .controls button { flex: 1 1 auto; }
+}
+
+/* ---- demo: side panels -------------------------------------------------------------------------------
+   Lacquer, 2px corners. Titles in Fraunces; everything counted in Fragment Mono. */
+.side-col { display: grid; gap: var(--space-3); align-content: start; }
+/* Between the phone and the two-column page, the clock and the ticks share a row; the ledger, the
+   DApp and the devices each take the full width, where their two-column lists fit. */
+@media (min-width: 640px) and (max-width: 1079.98px) {
+  .side-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .side-col .ledger, .side-col .host, .side-col .people { grid-column: 1 / -1; }
+}
+.panel { background: var(--surface); border-radius: var(--radius-surface); padding: var(--space-5); }
+@media (max-width: 639.98px) {
+  .panel, .tries .try { padding: 20px; }
+}
+.panel h2 { margin: 0 0 var(--space-2); font-size: var(--step-2); font-weight: 360; line-height: var(--leading-2); }
+.panel h3 {
+  margin: var(--space-5) 0 var(--space-2);
+  font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase; color: var(--muted);
+}
+.panel .meta { margin: 0; }
+
+/* The simulated clock: the time in Fragment Mono beside a ring of 72 ticks, one for each hour of the
+   timelock, filled as the clock passes them. When the story waits the timelock out, the time that was
+   shown slides up and out as the new one slides in under the same mask, and the ring fills. */
+.clock-face { display: flex; align-items: center; gap: var(--space-4); margin: var(--space-3) 0 var(--space-4); }
+.clock-arc { flex: none; display: block; width: 72px; height: 72px; overflow: visible; }
+.clock-arc .arc-track { stroke: var(--rib); }
+.clock-arc .arc-fill { stroke: var(--ink); }
+.clock-arc .arc-gaps { stroke: var(--surface); }
+/* The time stays on one line: in a narrow side column its size comes down to fit (20 characters of
+   Fragment Mono are 12.4em), rather than the date breaking at a hyphen. */
+.panel.clock { container-type: inline-size; }
+.clock-digits { position: relative; min-width: 0; overflow: clip; }
+.clock .time, .clock .time-was {
+  margin: 0; font-family: var(--font-mono); line-height: var(--leading-2);
+  font-size: min(var(--step-2), (100cqw - 72px - var(--space-4)) / 12.5);
+  font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap;
+}
+/* The time that was: shown only while it rolls away (with reduced motion there is no roll). */
+.clock .time-was { position: absolute; left: 0; top: 0; width: 100%; display: none; }
+
+.absent ul { list-style: none; padding: 0; margin: var(--space-4) 0 0; }
+.absent li {
+  display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: var(--space-3); align-items: center;
+  min-height: 34px; border-top: 1px solid var(--rib); font-size: var(--step--1);
+}
+.absent .box {
+  width: 16px; height: 16px; border-radius: var(--radius-surface); border: 1px solid var(--edge);
+  display: grid; place-items: center; font-size: 11px; font-weight: 600; line-height: 1;
+}
+.absent .ticked .box { background: var(--ink); border-color: var(--ink); color: var(--ground); }
+.absent .bad .box { border-style: dashed; border-color: var(--ink); color: var(--ink); }
+.absent .pending { color: var(--muted); }
+.absent .count { font-family: var(--font-mono); font-size: var(--step--2); color: var(--muted); }
+
+.counts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-5); margin: var(--space-4) 0 0; }
+.counts div {
+  display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2);
+  min-width: 0; padding: 7px 0; border-top: 1px solid var(--rib); font-size: var(--step--1);
+}
+.counts dt { color: var(--muted); }
+.counts dd { margin: 0; font-family: var(--font-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.values { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); }
+.counts + .values { margin-top: var(--space-4); }
+/* Three counts: one to a row, rather than two and an orphan. */
+.host .counts { grid-template-columns: minmax(0, 1fr); }
+.values li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: var(--step--1); }
+.values code { font-size: var(--step--1); color: var(--ink); }
+/* Each identity commitment is a seal: closed while it is the current one, a dashed Ash ring retired. */
+.ledger .values li[data-retired]::before {
+  content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%;
+  border: 1.5px solid var(--ink); background: radial-gradient(circle, var(--ink) 0 1.6px, transparent 2px);
+}
+.ledger .values li[data-retired="true"]::before { border: 1.5px dashed var(--muted); background: none; }
+.values li[data-retired="true"] code { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--muted); }
+/* A vetoed recovery: its hash is struck through by a 1px Hanji line. */
+.values li[data-vetoed="true"] code { position: relative; color: var(--muted); }
+.values li[data-vetoed="true"] code::after {
+  content: ""; position: absolute; left: -2px; right: -2px; top: 50%; height: 1px;
+  background: var(--ink); transform-origin: 0 50%;
+}
+.tag {
+  display: inline-block; padding: 0.05em 0.6em; border: 1px solid var(--edge); border-radius: var(--radius-chip);
+  font-family: var(--font-mono); font-size: var(--step--2); line-height: 1.45; font-weight: 400;
+  letter-spacing: 0; text-transform: none; color: var(--ink);
+}
+.tag.no { background: var(--ink); border-color: var(--ink); color: var(--ground); }
+
+.persons {
+  list-style: none; padding: 0; margin: var(--space-4) 0 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); gap: var(--space-2);
+}
+.person { border: 1px solid var(--rib); border-radius: var(--radius-surface); padding: 10px 12px 12px; min-width: 0; }
+.person .name { margin: 0 0 6px; font-size: var(--step--1); font-weight: 560; line-height: 1.4; }
+.person .name .tag { margin-left: 0.4em; vertical-align: 1px; }
+/* Gone: a dashed frame, the name struck in Ash. Turned: a dashed Edge frame and an inverted tag. */
+.person.gone { border-style: dashed; border-color: var(--edge); }
+.person.gone .name { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--muted); }
+.person.turned { border-style: dashed; border-color: var(--edge); }
+.person.turned .tag { background: var(--ink); border-color: var(--ink); color: var(--ground); }
+.person .meta { margin: 0; }
+.holds { list-style: none; padding: 0; margin: 0; display: grid; gap: 3px; font-size: var(--step--2); line-height: 1.45; color: var(--ink); }
+.holds li { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.holds li > span { flex: 1; min-width: 0; }
+.holds code { font-size: var(--step--2); color: var(--muted); }
+/* A share is a light: a 5px Ember dot beside it, one for each share a device holds. */
+.holds li.is-share::before {
+  content: ""; flex: none; align-self: center; width: 5px; height: 5px; border-radius: 50%; background: var(--ember);
+}
+.holds li.is-share.shares-2::before { margin-right: 8px; box-shadow: 8px 0 0 var(--ember); }
+.holds li.is-share.shares-3::before { margin-right: 16px; box-shadow: 8px 0 0 var(--ember), 16px 0 0 var(--ember); }
+
+/* ---- demo: try to break it -------------------------------------------------------------------------- */
+/* Linked to as #break: the jump stops 12px clear of the sticky header. That header is one 60px row
+   (52px on a phone) while the brand and nav fit side by side, and taller once the nav wraps below the
+   brand. Where that happens depends on the engine and the fonts, so the app measures the header into
+   --header-h rather than this file guessing at breakpoints. */
+.breakit {
+  margin-top: var(--space-9); padding-top: var(--space-7);
+  border-top: 1px solid var(--rib);
+  scroll-margin-top: calc(var(--header-h, 60px) + 12px);
+}
+.breakit-head { max-width: 52rem; margin-bottom: var(--space-6); }
+.breakit-head h2 { font-size: var(--step-3); line-height: var(--leading-3); letter-spacing: var(--tracking-3); margin-bottom: 0.3em; }
+.breakit-head .caption { margin-bottom: var(--space-3); }
+.try-world { margin-bottom: var(--space-3); }
+.try-world h3, .try h3 {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display); font-size: var(--step-2); font-weight: 360; font-stretch: normal;
+  line-height: var(--leading-2); letter-spacing: -0.01em; text-transform: none; color: var(--ink);
+}
+.try-world ul.plain { list-style: none; margin: 0 0 var(--space-2); padding: 0; max-width: 46rem; }
+.try-world ul.plain li { position: relative; margin: 0 0 0.35em; padding-left: 1.4em; }
+/* Bullets as small open rings. */
+.try-world ul.plain li::before {
+  content: ""; position: absolute; left: 0.2em; top: 0.58em; width: 0.46em; height: 0.46em;
+  border: 1px solid var(--muted); border-radius: 50%;
+}
+.try-world .counts { margin: var(--space-3) 0 var(--space-3); }
+.try-world .counts dd { text-align: right; overflow-wrap: anywhere; }
+.try-world .meta { margin: 0 0 var(--space-3); }
+@media (min-width: 1080px) {
+  .try-world .counts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.tries {
+  list-style: none; padding: 0; margin: 0;
+  display: grid; gap: var(--space-3); align-items: start;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+}
+.try { background: var(--surface); border-radius: var(--radius-surface); padding: var(--space-5); min-width: 0; }
+.try .what { color: var(--muted); }
+/* The control is not one attack among six: it gets a row of its own, under a Hanji rule. */
+.try.control { grid-column: 1 / -1; border-top: 2px solid var(--ink); }
+.try.control > * { max-width: 52rem; }
+.choice { border: 0; padding: 0; margin: 0 0 var(--space-3); display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; }
+.choice legend { float: left; margin-right: 4px; padding: 0; font-size: var(--step--1); color: var(--muted); }
+.choice label, .field { display: inline-flex; align-items: center; gap: 8px; font-size: var(--step--1); }
+.choice label { min-height: 32px; }
+.choice input { accent-color: var(--hanji); width: 18px; height: 18px; margin: 0; }
+.field { flex-wrap: wrap; margin-bottom: var(--space-1); color: var(--muted); }
+.field input {
+  width: 5em; min-height: 40px; padding: 0 12px;
+  font-family: var(--font-mono); font-size: var(--step-0); color: var(--ink);
+  background: var(--ground); border: 1px solid var(--edge); border-radius: var(--radius-surface);
+}
+.field input[aria-invalid="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.share { margin: var(--space-2) 0 var(--space-3); }
+.share .meta { margin-bottom: var(--space-2); }
+/* The share as it arrives: 32 mono cells. The fingerprint's four show; the chosen byte is an inverted
+   Hanji cell; the rest are masked, "··" in Ash. */
+.share-bytes {
+  display: flex; flex-wrap: wrap; gap: 3px; margin: 0;
+  font-family: var(--font-mono); font-size: var(--step--2); line-height: 1; color: var(--ink);
+}
+.share-bytes > * {
+  display: inline-grid; place-items: center; min-width: 2.7ch; height: 1.9em; padding: 0 2px;
+  border-radius: var(--radius-surface); background: var(--ground);
+}
 .share-bytes .masked { color: var(--muted); }
-.try-go { margin: 0; }
-.try-progress { margin: 6px 0 0; font-size: 0.86rem; color: var(--amber-2); }
+.share-bytes mark { background: var(--ink); color: var(--ground); }
+.try-go { margin: var(--space-3) 0 0; }
+.try-progress {
+  margin: var(--space-2) 0 0; font-family: var(--font-display); font-style: italic; font-weight: 360;
+  font-size: var(--step--1); line-height: var(--leading--1); color: var(--muted);
+}
 .try-progress:empty { margin: 0; }
 /* .try-status, each card's live region, is visually hidden. It stays in the page while empty: a live
    region must exist before it is filled to be announced. */
-.try-result { margin-top: 12px; background: var(--bg-2); }
-.try-result .facts { margin: 0 0 8px; }
-.try-result .why { margin: 8px 0 0; color: var(--text-2); font-size: 0.93rem; }
-.try-result .who .tag { text-transform: none; letter-spacing: 0; font-weight: 600; }
-/* From a world since replaced: kept, but set back. */
-.try-result.stale { background: transparent; border-style: dashed; border-left-style: solid; }
+.try-result { margin-top: var(--space-4); padding-right: 0; }
+.try-result.unexpected { padding-right: 16px; }
+.try-result .facts { margin: 0 0 var(--space-2); }
+.try .circuit { background: var(--ground); }
+.try-result .why { margin: var(--space-3) 0 0; font-size: var(--step--1); line-height: var(--leading--1); color: var(--ink); }
+.try-result .who .tag { margin-left: 8px; }
+/* From a world since replaced: kept, but set back, and dashed. */
+.try-result.stale { border-top-style: dashed; --rule: var(--rib); }
+.try-result.stale::before { border-left-style: dashed; }
 .try-result.stale .say, .try-result.stale .why { color: var(--muted); }
-.try-result.stale .chip { background: transparent; box-shadow: inset 0 0 0 1px currentColor; }
-.spent-note { margin: 10px 0 0; color: var(--text-2); }
-button[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
-button[aria-disabled="true"]:hover { border-color: var(--line); }
+.try-result.stale .chip { color: var(--muted); }
+.try-result.stale .chip.ok { background: transparent; border-color: var(--edge); }
+.spent-note { margin: var(--space-3) 0 0; }
 
-/* ---- tables ---------------------------------------------------------------- */
-.table-wrap { overflow-x: auto; border: 1px solid var(--line-soft); border-radius: var(--radius); background: var(--surface); }
-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
-th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
-thead th { font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
-tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
-tbody th { font-weight: 600; }
-.num { text-align: right; font-variant-numeric: tabular-nums; }
-table.compact th, table.compact td { padding: 6px 10px; font-size: 0.85rem; }
-.verdict-line { margin: 14px 0 22px; font-size: 1.05rem; }
+/* ---- demo: motion. Only three moments, and a veto -----------------------------------------------------
+   1 The stamp: a step (or a result) wipes in from the top as it rises 6px (320ms; a batch of up to six
+     40ms apart, none apart in a batch of more than eight: Demo.jsx sets lag-1…5). Then its seal: an
+     accepted one presses in on the ignite spring; a refused one draws its open ring to 300° and stops.
+   2 The clock roll: 480ms, once the step that waits has arrived. The ring's fill is a transition.
+   3 The lock: 900ms after the stamp, Ember spreads from the seal across the chip, the seal fills and
+     the rule turns Ember.
+   And the veto strikes its recovery's hash (300ms). A beat's title rises into place from under its own
+   lower edge. Everything is finite; reduced motion gets the end states, at once. */
+.step.lag-1 { --lag: 40ms; }
+.step.lag-2 { --lag: 80ms; }
+.step.lag-3 { --lag: 120ms; }
+.step.lag-4 { --lag: 160ms; }
+.step.lag-5 { --lag: 200ms; }
+@media (prefers-reduced-motion: no-preference) {
+  .step, .try-result { animation: stamp-card var(--dur-card) var(--ease-settle) var(--lag) backwards; }
+  .step .chip.ok::before, .try-result .chip.ok::before {
+    transform-origin: 50% 50%;
+    animation: stamp-seal var(--dur-stamp) linear calc(var(--lag) + 200ms) backwards;
+  }
+  .step .chip.no::before, .try-result .chip.no::before {
+    animation: stamp-ring var(--dur-stamp) var(--ease-settle) calc(var(--lag) + 200ms) backwards;
+  }
+  .step.accepted[data-circuit="finalizeRecovery"]:not(.unexpected)::before,
+  .try-result.accepted[data-circuit="finalizeRecovery"]:not(.unexpected):not(.stale)::before {
+    animation: lock-rule var(--dur-lock) var(--ease-settle) calc(var(--lag) + 440ms) backwards;
+  }
+  .step.accepted[data-circuit="finalizeRecovery"]:not(.unexpected) .chip.ok,
+  .try-result.accepted[data-circuit="finalizeRecovery"]:not(.unexpected):not(.stale) .chip.ok {
+    animation: lock-chip var(--dur-lock) var(--ease-settle) calc(var(--lag) + 440ms) backwards;
+  }
+  .step.accepted[data-circuit="finalizeRecovery"]:not(.unexpected) .chip.ok::before,
+  .try-result.accepted[data-circuit="finalizeRecovery"]:not(.unexpected):not(.stale) .chip.ok::before {
+    animation: stamp-seal var(--dur-stamp) linear calc(var(--lag) + 200ms) backwards,
+      lock-seal var(--dur-lock) var(--ease-settle) calc(var(--lag) + 440ms) backwards;
+  }
+  .clock .time.rolled { animation: clock-in var(--dur-route) var(--ease-settle) var(--dur-stamp) backwards; }
+  .clock .time-was { display: block; animation: clock-out var(--dur-route) var(--ease-settle) var(--dur-stamp) forwards; }
+  .clock-arc .arc-fill { transition: stroke-dashoffset var(--dur-route) var(--ease-settle) var(--dur-stamp); }
+  .values li[data-vetoed="true"] code::after { animation: veto-strike 300ms var(--ease-settle) backwards; }
+  .beat-head h1 { animation: head-rise var(--dur-reveal) var(--ease-settle) backwards; }
+  .beat-head .caption { animation: head-rise var(--dur-reveal) var(--ease-settle) var(--stagger-line) backwards; }
+}
+@keyframes stamp-card { from { clip-path: inset(0 0 100% 0); transform: translateY(6px); } }
+@keyframes stamp-seal {
+  0% { opacity: 0; transform: scale(1.25) rotate(-8deg); }
+  1% { opacity: 1; transform: scale(1.25) rotate(-8deg); animation-timing-function: var(--ease-ignite); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes stamp-ring { from { --seal-sweep: 0deg; } }
+@keyframes lock-chip { from { --lock-r: 0px; border-color: var(--hanji); } }
+@keyframes lock-seal { from { box-shadow: inset 0 0 0 0 var(--night); } }
+@keyframes lock-rule { from { border-left-color: var(--ink); } }
+@keyframes clock-in { from { transform: translateY(100%); } }
+@keyframes clock-out { to { transform: translateY(-100%); } }
+@keyframes veto-strike { from { transform: scaleX(0); } }
+@keyframes head-rise { from { clip-path: inset(-0.3em -0.3em 100% -0.3em); transform: translateY(100%); } to { clip-path: inset(-0.3em); transform: none; } }
 
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
-.card { background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 16px; border-top: 3px solid var(--no); }
-.card.held { border-top-color: var(--ok); }
-.card h2 { font-size: 1.05rem; }
-.families { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 6px; font-size: 0.84rem; }
-.families li { display: grid; gap: 2px; }
-.families span { color: var(--muted); }
-.named { color: var(--no); font-size: 0.88rem; margin: 0; }
-
-.sev { font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
-.sev.high { background: var(--no-wash); color: var(--no); }
-.sev.med { background: var(--amber-wash); color: var(--amber-2); }
-.sev.low { background: var(--info-wash); color: var(--info); }
-.sev.benign { background: var(--ok-wash); color: var(--ok); }
-
-/* ---- about ------------------------------------------------------------------ */
-pre.code { background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 14px 16px; overflow-x: auto; color: var(--text-2); }
-ul.plain { padding-left: 1.2em; color: var(--text-2); }
-ul.plain li { margin-bottom: 0.5em; }
-
+/* Between 560px and the phone: the demo's counts one to a row, and its controls sharing it. */
 @media (max-width: 560px) {
-  body { font-size: 15px; }
   .counts { grid-template-columns: minmax(0, 1fr); }
   .controls button { flex: 1 1 auto; }
 }
-@media (prefers-reduced-motion: no-preference) {
-  .step, .try-result { animation: rise 0.25s ease-out; }
-  @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* ---- tables ------------------------------------------------------------------------------------------
+   Lacquer, 2px corners, no frame. Rib hairlines between the rows; the headers in the label style
+   (Instrument 560 at wdth 80, in capitals, Ash); every figure in tabular numerals, set right. A table
+   too wide for its column scrolls inside its own frame, never the page (the frame takes the focus, so
+   a keyboard can scroll it too); the /attacks and /about tables never need to: where their columns
+   would not fit, each row becomes a card that labels its own values (below, "tables as cards"). */
+.table-wrap {
+  position: relative;
+  overflow-x: auto;
+  background: var(--surface);
+  border-radius: var(--radius-surface);
+  scrollbar-width: thin;
+  scrollbar-color: var(--edge) transparent;
+}
+.table-wrap table {
+  width: 100%; border-collapse: collapse;
+  font-size: var(--step--1); line-height: var(--leading--1);
+}
+.table-wrap :is(th, td) {
+  padding: 14px 16px; text-align: left; vertical-align: baseline;
+  border-top: 1px solid var(--line);
+}
+.table-wrap :is(th, td):first-child { padding-left: 20px; }
+.table-wrap :is(th, td):last-child { padding-right: 20px; }
+.table-wrap thead th {
+  padding-block: 18px 12px; border-top: 0; vertical-align: bottom;
+  font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase;
+  color: var(--muted);
+}
+.table-wrap tbody th { font-weight: 560; color: var(--ink); }
+.table-wrap .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums lining-nums; }
+.table-wrap code { font-size: 0.9em; white-space: nowrap; overflow-wrap: normal; }
+/* The compact table, inside a /demo step. */
+.table-wrap table.compact :is(th, td) { padding: 9px 12px; }
+.table-wrap table.compact :is(th, td):first-child { padding-left: 16px; }
+.table-wrap table.compact :is(th, td):last-child { padding-right: 16px; }
+.table-wrap table.compact thead th { padding-top: 12px; }
+
+/* ---- the attack results: one row a design ------------------------------------------------------------
+   The verdict is a chip: broken is outlined, with the open ring of a refusal; held is filled, and its
+   seal holds a light, an Ember dot in a Night ring (Ember never touches Hanji). The one Ember on the
+   table is the design that held. */
+.targets:not(.compact) tbody th { white-space: nowrap; }
+.targets .leaf code { color: var(--ink); }
+.targets .verdict { width: 1%; white-space: nowrap; }
+.targets .chip { vertical-align: 1px; }
+.targets .chip.ok::before {
+  border-color: var(--night);
+  background: radial-gradient(circle, var(--ember) 0 0.16em, var(--night) 0.175em);
 }
 
-/* Wide tables scroll inside their frame on a phone rather than squeezing code into fragments. */
-table.targets:not(.compact) { min-width: 680px; }
-table.leaks { min-width: 620px; }
-table.real { min-width: 620px; }
-table code { white-space: nowrap; overflow-wrap: normal; }
+/* ---- /attacks ----------------------------------------------------------------------------------------
+   The head; the results; the verdict in Fraunces; the four designs, each under a rule (dashed Edge for
+   the three that broke, solid Hanji for the one that held) with its pictogram hanging from it; then
+   the lesson and the leaks, each an editorial spread from 1080px: its title in columns 1-4, its text
+   in 5-12. Four designs to a row from 1080px, two from 640px, one below. */
+.eyebrow code {
+  font-family: var(--font-mono); font-size: 1.04em; font-weight: 400; font-stretch: normal;
+  letter-spacing: 0; text-transform: none; color: var(--ink);
+}
+.attacks .page-head { margin-bottom: var(--space-7); }
+.attacks .page-head h1 { max-width: 18ch; }
+.verdict-line {
+  margin: var(--space-7) 0 var(--space-8); max-width: 20ch;
+  font-family: var(--font-display); font-size: var(--step-3); font-weight: 340;
+  line-height: var(--leading-3); letter-spacing: var(--tracking-3);
+  text-wrap: balance;
+}
+/* The one italic word: at the line's own size and weight, not the running-text emphasis. */
+.verdict-line em { font-weight: 340; font-size-adjust: none; line-height: inherit; }
 
-.recorded { margin-top: 1.8em; border-left: 3px solid var(--ok); }
-.recorded h2 { font-family: var(--serif); font-size: 1.25rem; }
+.cards {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-8) var(--gutter);
+  margin: 0;
+}
+@media (min-width: 640px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1080px) { .cards { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.card { min-width: 0; padding-top: var(--space-5); border-top: 1px dashed var(--edge); }
+.card.held { border-top: 1px solid var(--ink); }
+/* Where designs sit side by side, they share their rows (a subgrid): pictogram, name, leaf, what it is,
+   and what the attacker tried (with the names it found) each start level across the row, however each
+   design's words wrap. */
+@media (min-width: 640px) {
+  .cards { row-gap: 0; }
+  .card { display: grid; grid-row: span 5; grid-template-rows: subgrid; row-gap: 0; }
+  .card > * { align-self: start; }
+}
+/* Four to a row, one row: the names found start level too. The tries and the names take a row each,
+   and the held design's longer list runs on into the names' row, which takes (1fr) what it needs
+   beyond the others' tries. (One row of designs only: every 1fr in a grid is the same size.) */
+@media (min-width: 1080px) {
+  .cards { grid-auto-rows: auto auto auto auto auto 1fr; }
+  .card { grid-row: span 6; }
+  .card > .tries { display: contents; }
+  .card .tries > * { align-self: start; }
+  .card .tries > .families:last-child { grid-row: span 2; }
+}
+@media (min-width: 640px) and (max-width: 1079.98px) {
+  .card:nth-child(n + 3) { margin-top: var(--space-8); }
+}
+/* The pictogram: its ledger line starts 3 of its 48 units in, so it is pulled back onto the column's
+   edge. Decoration: its words are the card's. */
+.card-art {
+  --art: clamp(112px, 9vw, 128px);
+  display: block; width: var(--art); height: var(--art);
+  margin: 0 0 var(--space-4) calc(var(--art) * -3 / 48);
+}
+.card h2 { margin: 0 0 var(--space-2); font-size: var(--step-2); font-weight: 360; line-height: var(--leading-2); }
+.card .scheme { margin: 0 0 var(--space-3); line-height: 1.45; }
+.card .scheme code { font-size: var(--step--1); color: var(--ink); overflow-wrap: anywhere; }
+.card .meta { margin: 0 0 var(--space-5); }
+/* What the attacker tried: each family of guesses, and what it found. */
+.families { list-style: none; padding: 0; margin: 0 0 var(--space-5); border-bottom: 1px solid var(--line); }
+.families li { display: grid; gap: 2px; padding: 9px 0; border-top: 1px solid var(--line); }
+.families code { font-size: var(--step--2); line-height: 1.45; color: var(--ink); overflow-wrap: anywhere; }
+.families span { font-size: var(--step--2); line-height: 1.45; color: var(--muted); font-variant-numeric: tabular-nums; }
+.families span.hit { color: var(--ink); }
+/* Named: the guardians the attacker found, as paper tags, each with its punched hole. */
+.named { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }
+.named-head {
+  flex-basis: 100%; margin-bottom: 2px;
+  font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase;
+  color: var(--muted);
+}
+/* The tag's tied end is cut to a point, the hole punched just inside it. */
+.named-tag {
+  display: inline-flex; align-items: center; gap: 0.45em;
+  padding: 2px 0.65em 2px 0.75em;
+  background: var(--ink); color: var(--ground); border-radius: 0 var(--radius-surface) var(--radius-surface) 0;
+  clip-path: polygon(0.55em 0, 100% 0, 100% 100%, 0.55em 100%, 0 50%);
+  font-family: var(--font-mono); font-size: var(--step--2); line-height: 1.45; white-space: nowrap;
+}
+.named-tag::before { content: ""; flex: none; width: 5px; height: 5px; border-radius: 50%; background: var(--ground); }
 
-.recorded-chip {
-  margin: 8px 0 0; display: inline-block; font-size: 0.78rem; color: var(--text-2);
-  border: 1px dashed var(--line); border-radius: 999px; padding: 2px 10px; font-family: var(--mono);
+.page .spread { margin: var(--space-9) 0 var(--space-6); }
+.page .spread h2.section { margin: 0 0 var(--space-4); }
+.page .spread > :last-child { margin-bottom: 0; }
+@media (min-width: 1080px) {
+  .page .spread {
+    display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gutter);
+    align-items: baseline;
+  }
+  .page .spread > h2.section { grid-column: 1 / span 4; margin: 0; padding-right: var(--gutter); }
+  .page .spread > :not(h2) { grid-column: 5 / -1; min-width: 0; }
+}
+.attacks .lesson .lede { max-width: 40rem; margin: 0; }
+.attacks .reveals .meta { max-width: 40rem; margin: 0; }
+.attacks .reveals + .table-wrap { margin-top: var(--space-6); }
+.attacks .footnote { margin: var(--space-4) 0 0; }
+
+/* The leaks, as a ladder of severity: high a filled chip, medium outlined in Hanji, low outlined in
+   Ash, benign plain Ash. The word is always there. Each rung starts under an Edge rule. */
+.leaks .ledger-field code { color: var(--ink); }
+.leaks .measured code { color: var(--muted); white-space: normal; }
+.leaks tbody tr.rung:not(:first-child) > td { border-top-color: var(--edge); }
+.sev {
+  display: inline-flex; justify-content: center; min-width: 8.2ch; padding: 0.1em 0.6em;
+  border: 1px solid transparent; border-radius: var(--radius-chip);
+  font-family: var(--font-mono); font-size: var(--step--2); line-height: 1.45; letter-spacing: 0.04em;
+}
+.sev.high { background: var(--ink); border-color: var(--ink); color: var(--ground); }
+.sev.med { border-color: var(--ink); color: var(--ink); }
+.sev.low { border-color: var(--muted); color: var(--muted); }
+.sev.benign { color: var(--muted); }
+
+/* ---- /about ------------------------------------------------------------------------------------------
+   The 760px measure, on the app's frame: from 1080px the body runs in columns 5-12 (760px at 1440), the
+   h1 across the page and each section's title in the margin, columns 1-4, as on /brand. Below that, one
+   column, at most 760px. */
+.page.about { max-width: var(--max-app); }
+.about > * { max-width: var(--max-prose); }
+.about > .page-head { max-width: none; margin: 28px 0 var(--space-7); }
+.about .page-head .lede { max-width: 38rem; margin-bottom: 0; }
+.about .page-head h1 em { font-weight: 340; }
+@media (min-width: 1080px) {
+  .page.about { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gutter); align-content: start; }
+  .about > * { grid-column: 5 / -1; min-width: 0; max-width: none; }
+  .about > .page-head, .about > .spread { grid-column: 1 / -1; }
+  /* The h1 runs across the page; the lede starts the body's column, as a standfirst. */
+  .about > .page-head { display: grid; grid-template-columns: subgrid; }
+  .about .page-head > * { grid-column: 1 / -1; }
+  .about .page-head > .lede { grid-column: 5 / -1; margin-top: var(--space-3); }
+}
+
+/* What is real, and where: a "none" is set back, in Ash italic, like a step off the ledger; the row
+   where everything is real carries the accepted step's rule. */
+/* Columns sized to what they hold: the long header, zero-knowledge proofs, on two lines. */
+.real thead th:nth-child(1) { width: 17%; }
+.real thead th:nth-child(2) { width: 31%; }
+.real thead th:nth-child(3) { width: 19%; }
+.real thead th:nth-child(4) { width: 21%; }
+.real tbody th code { font-size: 0.9em; }
+.real td[data-label="Fees"] { white-space: nowrap; }
+.real td.none { font-family: var(--font-display); font-style: italic; font-size: var(--step-0); line-height: 1.3; color: var(--muted); }
+.real tr.chain > th { box-shadow: inset 2px 0 0 var(--ink); }
+
+/* Recorded on a local chain: a certificate. Lacquer, inside a double Hanji hairline set 8px in; a
+   closed seal pressed into its corner, the text running round it; its figures in mono. */
+.recorded {
+  position: relative; isolation: isolate; container-type: inline-size;
+  margin-top: var(--space-8);
+  padding: clamp(32px, 4.2vw, 56px);
+  background: var(--surface); border-radius: var(--radius-surface);
+}
+.recorded::before {
+  content: ""; position: absolute; inset: 8px; z-index: -1; pointer-events: none;
+  border: 1px solid var(--ink);
+  box-shadow: inset 0 0 0 2px var(--surface), inset 0 0 0 3px var(--ink);
+}
+.recorded-seal {
+  float: right; display: block; width: 80px; height: 80px;
+  margin: -8px -8px 12px 20px;
+  shape-outside: circle(50%); shape-margin: 12px;
+}
+.recorded .eyebrow { margin-bottom: var(--space-3); }
+.recorded h2 {
+  max-width: 9.5em; margin: 0 0 var(--space-5);
+  font-size: var(--step-3); font-weight: 340; line-height: var(--leading-3); letter-spacing: var(--tracking-3);
+}
+.recorded-body > p:first-child { max-width: 60ch; }
+.recorded-body[aria-busy] { min-height: 22rem; }
+.recorded .counts {
+  clear: both;
+  grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 0;
+  margin: var(--space-6) 0; border-bottom: 1px solid var(--line);
+}
+.recorded .counts div {
+  flex-direction: column-reverse; justify-content: flex-end; align-items: flex-start; gap: 6px;
+  padding: 16px 16px 16px 0; border-top: 1px solid var(--line);
+}
+.recorded .counts div:nth-child(even) { padding-left: 16px; border-left: 1px solid var(--line); }
+.recorded .counts dd { font-size: min(var(--step-2), 7cqi); line-height: 1.1; white-space: nowrap; }
+.recorded .counts dt {
+  font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase;
+}
+.recorded .meta { margin: 0; }
+@container (min-width: 600px) {
+  .recorded .counts { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .recorded .counts div + div { padding-left: 16px; border-left: 1px solid var(--line); }
+  .recorded .counts dd { font-size: min(var(--step-2), 3.5cqi); }
+}
+@media (max-width: 639.98px) {
+  .recorded { padding: 28px 24px; }
+  .recorded::before { inset: 6px; }
+  .recorded-seal { width: 64px; height: 64px; margin: -6px -6px 8px 12px; shape-margin: 8px; }
+}
+
+/* Run it yourself: the commands in Hanji, what each is for in Ash beside it, or under it where the two
+   do not fit side by side. */
+.about pre.code {
+  margin: 0; padding: 20px 24px;
+  background: var(--surface); border-radius: var(--radius-surface);
+  overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--edge) transparent;
+  font-size: var(--step--1); line-height: 1.75; color: var(--ink);
+}
+.about pre.code code {
+  display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: 3ch;
+  font-size: 1em; overflow-wrap: normal;
+}
+.about pre.code .command { white-space: pre; }
+.about pre.code .comment { white-space: pre-wrap; color: var(--muted); }
+@media (max-width: 759.98px) {
+  .about pre.code { padding: 16px 20px; }
+  .about pre.code code { grid-template-columns: minmax(0, 1fr); }
+  .about pre.code .command { white-space: pre-wrap; padding-left: 2ch; text-indent: -2ch; }
+  .about pre.code .comment { padding-left: 2ch; margin-bottom: 6px; line-height: 1.5; }
+}
+
+/* What it does not claim: bullets as small open rings. */
+.about ul.plain { list-style: none; margin: 0 0 var(--space-5); padding: 0; }
+.about ul.plain li { position: relative; margin: 0 0 0.7em; padding-left: 1.5em; }
+.about ul.plain li::before {
+  content: ""; position: absolute; left: 0.15em; top: 0.57em; width: 0.46em; height: 0.46em;
+  border: 1px solid var(--muted); border-radius: 50%;
+}
+.about .spread-body > p:last-child { margin-bottom: 0; }
+.about .onward { margin-top: var(--space-5); }
+
+/* ---- tables as cards --------------------------------------------------------------------------------
+   Where a table's columns would not fit its frame, it stops being a grid of columns rather than
+   scroll: each row becomes a card on the same Lacquer, between the same hairlines, that labels its
+   own values. The attack results do so below 1080px (two cards to a row from 640px), the leaks below
+   760px, the table on /about below 640px. The headers stay in the table for a screen reader (only
+   hidden from sight), and every cell keeps its header; a label drawn here is read as nothing ('/ ""'). */
+@media (max-width: 1079.98px) {
+  .table-wrap table.targets:not(.compact),
+  .table-wrap table.targets:not(.compact) tbody { display: block; }
+  .table-wrap table.targets:not(.compact) thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .table-wrap table.targets:not(.compact) tr {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 12px;
+    padding: 18px 20px; border-top: 1px solid var(--line);
+  }
+  .table-wrap table.targets:not(.compact) tr:first-child { border-top: 0; }
+  .table-wrap table.targets:not(.compact) :is(th, td) { display: block; width: auto; padding: 0; border: 0; text-align: left; }
+  /* A design: its name and verdict, what its leaf is, then its three figures side by side, each
+     label on top and the figures on one line whatever their labels wrap to. */
+  .table-wrap table.targets:not(.compact) tbody th { grid-column: 1 / 3; align-self: center; white-space: normal; font-size: var(--step-0); }
+  .table-wrap table.targets:not(.compact) td.verdict { grid-row: 1; grid-column: 3; justify-self: end; align-self: center; }
+  .table-wrap table.targets:not(.compact) td.leaf { grid-column: 1 / -1; }
+  .table-wrap table.targets:not(.compact) td.leaf code { white-space: normal; overflow-wrap: anywhere; }
+  .table-wrap table.targets:not(.compact) td.num {
+    display: flex; flex-direction: column; justify-content: space-between; font-size: var(--step-0);
+  }
+}
+@media (min-width: 640px) and (max-width: 1079.98px) {
+  .table-wrap table.targets:not(.compact) tbody { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .table-wrap table.targets:not(.compact) tr:nth-child(2) { border-top: 0; }
+  .table-wrap table.targets:not(.compact) tr:nth-child(even) { border-left: 1px solid var(--line); }
+}
+@media (max-width: 759.98px) {
+  .table-wrap table.leaks,
+  .table-wrap table.leaks tbody { display: block; }
+  .table-wrap table.leaks thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  /* A leak: its severity and field on one line, what it reveals, then what was measured. */
+  .table-wrap table.leaks tr {
+    display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; align-items: center;
+    padding: 18px 20px; border-top: 1px solid var(--line);
+  }
+  .table-wrap table.leaks tr:first-child { border-top: 0; }
+  .table-wrap table.leaks tbody tr.rung:not(:first-child) { border-top-color: var(--edge); }
+  .table-wrap table.leaks :is(th, td) { display: block; width: auto; padding: 0; border: 0; text-align: left; }
+  .table-wrap table.leaks :is(td.what, td.measured) { grid-column: 1 / -1; }
+  .table-wrap table.leaks td.measured { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+  .table-wrap table.leaks td.measured code { white-space: normal; overflow-wrap: anywhere; }
+}
+@media (max-width: 639.98px) {
+  .table-wrap table.real,
+  .table-wrap table.real tbody { display: block; }
+  .table-wrap table.real thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  /* A place it runs: the place, then each column's value against its label. */
+  .table-wrap table.real tr {
+    display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px;
+    padding: 18px 20px; border-top: 1px solid var(--line);
+  }
+  .table-wrap table.real tr:first-child { border-top: 0; }
+  .table-wrap table.real :is(th, td) { display: block; width: auto; padding: 0; border: 0; text-align: left; }
+  .table-wrap table.real tbody th { margin-bottom: 2px; font-size: var(--step-0); }
+  .table-wrap table.real td[data-label] {
+    display: grid; grid-template-columns: minmax(0, clamp(5.5rem, 36%, 7.5rem)) minmax(0, 1fr); gap: 12px; align-items: baseline;
+  }
+  .table-wrap table.real tr.chain > th { box-shadow: none; }
+  .table-wrap table.real tr.chain { box-shadow: inset 2px 0 0 var(--ink); }
+}
+/* The compact table, in a /demo step on a phone: each design a card too, its name and verdict, then
+   its two figures. */
+@media (max-width: 639.98px) {
+  .table-wrap table.targets.compact,
+  .table-wrap table.targets.compact tbody { display: block; }
+  .table-wrap table.targets.compact thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .table-wrap table.targets.compact tr {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 6.4em; gap: 10px 12px;
+    padding: 14px 16px; border-top: 1px solid var(--line);
+  }
+  .table-wrap table.targets.compact tr:first-child { border-top: 0; }
+  .table-wrap table.targets.compact :is(th, td) { display: block; width: auto; padding: 0; border: 0; text-align: left; }
+  .table-wrap table.targets.compact tbody th { grid-column: 1 / 3; align-self: center; white-space: normal; }
+  .table-wrap table.targets.compact td.verdict { grid-row: 1; grid-column: 3; justify-self: end; align-self: center; }
+  .table-wrap table.targets.compact td.num + td.num { grid-column: 2 / -1; }
+  .table-wrap table.targets.compact td.num::before {
+    content: attr(data-label); content: attr(data-label) / "";
+    display: block; margin-bottom: 2px; white-space: normal;
+    font-family: var(--font-sans); font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+    line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase; color: var(--muted);
+  }
+}
+/* The labels, where a table is cards. */
+@media (max-width: 1079.98px) {
+  .table-wrap table.targets:not(.compact) td[data-label]:not(.verdict)::before {
+    content: attr(data-label); content: attr(data-label) / "";
+    display: block; margin-bottom: 2px; white-space: normal;
+    font-family: var(--font-sans); font-style: normal; font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+    line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase; color: var(--muted);
+  }
+}
+@media (max-width: 759.98px) {
+  .table-wrap table.leaks td.measured::before {
+    content: attr(data-label); content: attr(data-label) / "";
+    font-family: var(--font-sans); font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+    line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase; color: var(--muted);
+  }
+}
+@media (max-width: 639.98px) {
+  .table-wrap table.real td[data-label]::before {
+    content: attr(data-label); content: attr(data-label) / "";
+    font-family: var(--font-sans); font-style: normal; font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+    line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase; color: var(--muted);
+  }
+}
+
+/* ---- /attacks and /about: motion ----------------------------------------------------------------------
+   One moment on each page, and nothing else moves. /attacks: once the attack has run, each verdict's
+   seal presses in, 40ms apart: the stamp, as on /demo (a held seal on the ignite spring, a broken one's
+   open ring drawn to 300°). /about: the certificate's seal, once it has arrived and the route change is
+   over, is pressed into its corner. Finite; with reduced motion both are simply there. */
+.attacks .targets tbody tr:nth-child(2) { --lag: 40ms; }
+.attacks .targets tbody tr:nth-child(3) { --lag: 80ms; }
+.attacks .targets tbody tr:nth-child(4) { --lag: 120ms; }
+@media (prefers-reduced-motion: no-preference) {
+  .attacks .targets .chip.ok::before {
+    transform-origin: 50% 50%;
+    animation: stamp-seal var(--dur-stamp) linear calc(var(--lag, 0ms) + 200ms) backwards;
+  }
+  .attacks .targets .chip.no::before {
+    animation: stamp-ring var(--dur-stamp) var(--ease-settle) calc(var(--lag, 0ms) + 200ms) backwards;
+  }
+  svg.recorded-seal {
+    transform-origin: 50% 50%;
+    animation: stamp-seal var(--dur-stamp) linear var(--dur-route) backwards;
+  }
 }

@@ -1,0 +1,278 @@
+{
+  "about": "Written by web/scripts/fonts.mjs from the pinned @fontsource packages. check-bundle.mjs fails the build unless dist/fonts matches these sha256s.",
+  "tools": {
+    "fonttools": "4.60.2",
+    "brotli": "1.2.0"
+  },
+  "latin": [
+    "U+0020-U+007E",
+    "U+00A0-U+00FF",
+    "U+2013-U+2014",
+    "U+2018-U+201D",
+    "U+2026",
+    "U+00B7",
+    "U+2192",
+    "U+2193",
+    "U+2212",
+    "U+00D7"
+  ],
+  "features": [
+    "kern",
+    "liga",
+    "calt",
+    "tnum",
+    "lnum",
+    "rvrn"
+  ],
+  "fonts": {
+    "fraunces-roman.v1.woff2": {
+      "family": "Lantern Display",
+      "style": "normal",
+      "bytes": 74116,
+      "sha256": "adb2f11a4dfa116ff320071ec43b7395312cee49e033c6eb81c06bd117bc79de",
+      "axes": {
+        "opsz": [
+          9,
+          9,
+          144
+        ],
+        "wght": [
+          300,
+          400,
+          600
+        ]
+      },
+      "pinned": {
+        "SOFT": 30,
+        "WONK": 0
+      },
+      "unicodeRange": "U+0020-007E, U+00A0-00FF, U+2013-2014, U+2018-201A, U+201C-201D, U+2026, U+2212",
+      "absent": [
+        "U+201B",
+        "U+2192",
+        "U+2193"
+      ],
+      "features": [
+        "kern",
+        "liga",
+        "rvrn"
+      ],
+      "glyphs": 231,
+      "licence": "OFL-Fraunces.txt",
+      "sources": [
+        {
+          "package": "@fontsource-variable/fraunces",
+          "version": "5.3.0",
+          "file": "files/fraunces-latin-full-normal.woff2",
+          "sha256": "7e744849028e2219e2aa1bc467dc4032980dc4487c9c3da3010081cd72d3b103"
+        }
+      ]
+    },
+    "fraunces-italic.v1.woff2": {
+      "family": "Lantern Display",
+      "style": "italic",
+      "bytes": 87152,
+      "sha256": "84370193825187f3a90c34c7136d5c809f919a27d9c3017ffb1c8004c46388df",
+      "axes": {
+        "opsz": [
+          9,
+          9,
+          144
+        ],
+        "wght": [
+          300,
+          400,
+          500
+        ]
+      },
+      "pinned": {
+        "SOFT": 30,
+        "WONK": 1
+      },
+      "unicodeRange": "U+0020-007E, U+00A0-00FF, U+2013-2014, U+2018-201A, U+201C-201D, U+2026, U+2212",
+      "absent": [
+        "U+201B",
+        "U+2192",
+        "U+2193"
+      ],
+      "features": [
+        "kern",
+        "liga",
+        "rvrn"
+      ],
+      "glyphs": 233,
+      "licence": "OFL-Fraunces.txt",
+      "sources": [
+        {
+          "package": "@fontsource-variable/fraunces",
+          "version": "5.3.0",
+          "file": "files/fraunces-latin-full-italic.woff2",
+          "sha256": "04a14ea380db53a35a3ec651934b21061234685bb604d30aac82663b5d9e539b"
+        }
+      ]
+    },
+    "instrument-sans.v1.woff2": {
+      "family": "Lantern Sans",
+      "style": "normal",
+      "bytes": 50136,
+      "sha256": "65715f4e4c7c2f3ab523a02db8301308e2fab8611f0f54e7c3a1524be830c275",
+      "axes": {
+        "wdth": [
+          80,
+          100,
+          100
+        ],
+        "wght": [
+          400,
+          400,
+          600
+        ]
+      },
+      "pinned": {},
+      "unicodeRange": "U+0020-007E, U+00A0-00A3, U+00A5, U+00A7-00AB, U+00AE-00B0, U+00B4, U+00B6-00B8, U+00BA-00BB, U+00BF-00FF, U+2013-2014, U+2018-201A, U+201C-201D, U+2026, U+2192-2193, U+2212",
+      "absent": [
+        "U+00A4",
+        "U+00A6",
+        "U+00AC",
+        "U+00AD",
+        "U+00B1",
+        "U+00B2",
+        "U+00B3",
+        "U+00B5",
+        "U+00B9",
+        "U+00BC",
+        "U+00BD",
+        "U+00BE",
+        "U+201B"
+      ],
+      "derived": [
+        {
+          "from": "U+2193",
+          "axis": "U+2212",
+          "to": "U+2192"
+        }
+      ],
+      "features": [
+        "kern",
+        "liga",
+        "tnum"
+      ],
+      "glyphs": 228,
+      "licence": "OFL-InstrumentSans.txt",
+      "sources": [
+        {
+          "package": "@fontsource-variable/instrument-sans",
+          "version": "5.3.0",
+          "file": "files/instrument-sans-latin-standard-normal.woff2",
+          "sha256": "8b74e9bc6e415d564a5ffd32125c92ffd50b1635043e77543cb871e0a3cfcaf2"
+        }
+      ]
+    },
+    "fragment-mono.v1.woff2": {
+      "family": "Lantern Mono",
+      "style": "normal",
+      "bytes": 21796,
+      "sha256": "78776a77da710d3271a376fec34dd44ff491f296bf18655d412a82dde8ef65cb",
+      "axes": {},
+      "pinned": {},
+      "unicodeRange": "U+0020-007E, U+00A0-00AC, U+00AE-00FF, U+2013-2014, U+2016, U+2018-201A, U+201C-201D, U+2026, U+2192-2193, U+2212",
+      "absent": [
+        "U+00AD",
+        "U+201B"
+      ],
+      "derived": [
+        {
+          "from": "U+2193",
+          "axis": "U+2212",
+          "cell": 618,
+          "to": "U+2192"
+        },
+        {
+          "from": "U+007C",
+          "doubled": true,
+          "gap": 120,
+          "cell": 618,
+          "to": "U+2016"
+        }
+      ],
+      "features": [
+        "calt"
+      ],
+      "glyphs": 301,
+      "licence": "OFL-FragmentMono.txt",
+      "sources": [
+        {
+          "package": "@fontsource/fragment-mono",
+          "version": "5.3.0",
+          "file": "files/fragment-mono-latin-400-normal.woff2",
+          "sha256": "44c4e39bff5e76652a24a872cbebabccbcfb20f62c4633b27c1f2745cba86b56"
+        }
+      ]
+    },
+    "gowun-batang-deungbul.v1.woff2": {
+      "family": "Lantern KR",
+      "style": "normal",
+      "bytes": 1264,
+      "sha256": "7bf21e8f09a4cfe319e3e1b54778ad00b26aed1c1e738e2d5825d0f7602c21fb",
+      "axes": {},
+      "pinned": {},
+      "unicodeRange": "U+B4F1, U+BD88",
+      "absent": [],
+      "features": [],
+      "glyphs": 4,
+      "licence": "OFL-GowunBatang.txt",
+      "sources": [
+        {
+          "package": "@fontsource/gowun-batang",
+          "version": "5.3.0",
+          "file": "files/gowun-batang-117-400-normal.woff2",
+          "sha256": "b6d0c4c3c59fee6321d1112bfb914d9a835177dc72938a5ef5c38352eba216b9"
+        },
+        {
+          "package": "@fontsource/gowun-batang",
+          "version": "5.3.0",
+          "file": "files/gowun-batang-116-400-normal.woff2",
+          "sha256": "b84b8d64adee528ca53df104f3b01046bb2c67c4316b3380e830d7e54e25c389"
+        }
+      ]
+    }
+  },
+  "licences": {
+    "OFL-Fraunces.txt": {
+      "sha256": "cd3384cafac6f2bddc3955273958a2e029f97027c8037ac539ef5744a77b579e",
+      "source": {
+        "package": "@fontsource-variable/fraunces",
+        "version": "5.3.0",
+        "file": "LICENSE",
+        "sha256": "cd3384cafac6f2bddc3955273958a2e029f97027c8037ac539ef5744a77b579e"
+      }
+    },
+    "OFL-InstrumentSans.txt": {
+      "sha256": "c27a3c53c3beed7f5c26853afa15991478ff7145d3754a36b0382f84e10c0d03",
+      "source": {
+        "package": "@fontsource-variable/instrument-sans",
+        "version": "5.3.0",
+        "file": "LICENSE",
+        "sha256": "c27a3c53c3beed7f5c26853afa15991478ff7145d3754a36b0382f84e10c0d03"
+      }
+    },
+    "OFL-FragmentMono.txt": {
+      "sha256": "d5e728d99896c101da6fe5bdffcdc8cf2618523643b99bd4e9190075f0a0c22e",
+      "source": {
+        "package": "@fontsource/fragment-mono",
+        "version": "5.3.0",
+        "file": "LICENSE",
+        "sha256": "d5e728d99896c101da6fe5bdffcdc8cf2618523643b99bd4e9190075f0a0c22e"
+      }
+    },
+    "OFL-GowunBatang.txt": {
+      "sha256": "ae9f51ce35e378ce4069b07167e40f1860025189ed1dae7117845aef1c323c39",
+      "source": {
+        "package": "@fontsource/gowun-batang",
+        "version": "5.3.0",
+        "file": "LICENSE",
+        "sha256": "ae9f51ce35e378ce4069b07167e40f1860025189ed1dae7117845aef1c323c39"
+      }
+    }
+  }
+}

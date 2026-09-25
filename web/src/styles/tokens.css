@@ -1,0 +1,252 @@
+/* Lantern, "Night watch": the design tokens. Every value here traces to the design spec; styles.css
+   and the page styles use these names and never a raw hex. Imported first by styles.css. */
+
+/* ---- faces -----------------------------------------------------------------------------------
+   Our own family names over the five committed files (web/scripts/fonts.mjs builds them; fonts.json
+   holds their sha256s and each unicode-range below, which is the file's real coverage). index.html
+   preloads the same five URLs and src/lib/fonts.js requests every face at boot, so no page fetches a
+   font later. No local() for the main faces: the site looks the same on every machine. */
+@font-face {
+  font-family: "Lantern Display";
+  src: url("/fonts/fraunces-roman.v1.woff2") format("woff2");
+  font-weight: 300 600;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0020-007E, U+00A0-00FF, U+2013-2014, U+2018-201A, U+201C-201D, U+2026, U+2212;
+}
+@font-face {
+  font-family: "Lantern Display";
+  src: url("/fonts/fraunces-italic.v1.woff2") format("woff2");
+  font-weight: 300 500;
+  font-style: italic;
+  font-display: swap;
+  unicode-range: U+0020-007E, U+00A0-00FF, U+2013-2014, U+2018-201A, U+201C-201D, U+2026, U+2212;
+}
+@font-face {
+  font-family: "Lantern Sans";
+  src: url("/fonts/instrument-sans.v1.woff2") format("woff2");
+  font-weight: 400 600;
+  font-stretch: 80% 100%;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0020-007E, U+00A0-00A3, U+00A5, U+00A7-00AB, U+00AE-00B0, U+00B4, U+00B6-00B8, U+00BA-00BB, U+00BF-00FF, U+2013-2014, U+2018-201A, U+201C-201D, U+2026, U+2192-2193, U+2212;
+}
+@font-face {
+  font-family: "Lantern Mono";
+  src: url("/fonts/fragment-mono.v1.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0020-007E, U+00A0-00AC, U+00AE-00FF, U+2013-2014, U+2016, U+2018-201A, U+201C-201D, U+2026, U+2192-2193, U+2212;
+}
+/* 등불 only. Block, not swap: two glyphs in a fallback Hangul face would jump when this arrives. */
+@font-face {
+  font-family: "Lantern KR";
+  src: url("/fonts/gowun-batang-deungbul.v1.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+  unicode-range: U+B4F1, U+BD88;
+}
+
+/* Metric-matched fallbacks, shown only until the files above arrive: each is scaled so a line of the
+   site's copy runs the same length and sits on the same baseline as in the real face. Measured once
+   by `node scripts/fonts.mjs --fallbacks` (Georgia, Georgia Italic, Arial and Courier New, macOS) and
+   hardcoded. Liberation Sans, Liberation Mono and Gelasio share those fonts' advance widths, so the
+   same numbers hold where they stand in.
+   Each covers exactly its web face's unicode-range (check-bundle.mjs holds them equal): a character
+   the web face lacks (± in the sans, → in the display) goes down the stack to the next family at its
+   own size, never to a Georgia or Arial scaled for other letters. */
+@font-face {
+  font-family: "Lantern Display Fallback";
+  src: local("Georgia"), local("Gelasio");
+  font-style: normal;
+  unicode-range: U+0020-007E, U+00A0-00FF, U+2013-2014, U+2018-201A, U+201C-201D, U+2026, U+2212;
+  size-adjust: 94.01%;
+  ascent-override: 104.03%;
+  descent-override: 27.12%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Lantern Display Fallback";
+  src: local("Georgia Italic"), local("Georgia-Italic"), local("Gelasio Italic");
+  font-style: italic;
+  unicode-range: U+0020-007E, U+00A0-00FF, U+2013-2014, U+2018-201A, U+201C-201D, U+2026, U+2212;
+  size-adjust: 85.15%;
+  ascent-override: 114.85%;
+  descent-override: 29.95%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Lantern Sans Fallback";
+  src: local("Arial"), local("ArialMT"), local("Liberation Sans"), local("LiberationSans");
+  unicode-range: U+0020-007E, U+00A0-00A3, U+00A5, U+00A7-00AB, U+00AE-00B0, U+00B4, U+00B6-00B8, U+00BA-00BB, U+00BF-00FF, U+2013-2014, U+2018-201A, U+201C-201D, U+2026, U+2192-2193, U+2212;
+  size-adjust: 102.37%;
+  ascent-override: 94.75%;
+  descent-override: 24.42%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Lantern Mono Fallback";
+  src: local("Courier New"), local("CourierNewPSMT"), local("Liberation Mono"), local("LiberationMono");
+  unicode-range: U+0020-007E, U+00A0-00AC, U+00AE-00FF, U+2013-2014, U+2016, U+2018-201A, U+201C-201D, U+2026, U+2192-2193, U+2212;
+  size-adjust: 102.98%;
+  ascent-override: 92.25%;
+  descent-override: 24.28%;
+  line-gap-override: 0%;
+}
+
+:root {
+  /* ---- colour: six tokens ------------------------------------------------------------------ */
+  --night: #090A0F;    /* page background */
+  --hanji: #ECE4D2;    /* ink, primary button fill, accepted chips */
+  --ash: #948E83;      /* muted text, eyebrows, meta. Never over the scene. */
+  --ember: #FF8A3D;    /* the flame, and only where the secret or its light is */
+  --lacquer: #14151B;  /* raised surfaces: panels, cards, tables, code */
+  --rib: #2C2D35;      /* decorative hairlines; never the only boundary of a control */
+
+  /* derived */
+  --edge: #686661;           /* color-mix(in srgb, var(--hanji) 42%, var(--night)): control outlines, 3.45:1 on Night */
+  --muted-on-paper: #5C574E; /* muted text inside an inverted (Hanji) scope: 5.67:1 */
+  --ember-deep: #B84A16;     /* brand kit only: the flame on paper */
+  --hanji-hover: #F6EFE0;    /* primary button hover */
+  --scrim: rgb(9 10 15 / 0.72);       /* Night at 72%: the header over the page */
+  /* The ground under the grain (body::before, grain.png). Hanji specks can only lift Night, so the
+     page is laid a shade darker and the grain brings it back: averaged the way the eye averages a fine
+     texture (in linear light), grain over this ground is exactly Night, per channel. Half the texels
+     sit below Night and half above, and anything drawn in solid Night (the 3D stage, the poster, the
+     landing's header) meets the page with no step in tone. Computed with the grain; change them
+     together. Never text's background in a contrast check: that is Night. */
+  --grain-ground: #020308;
+
+  /* scene-only shader colours: never UI text */
+  --scene-flame-core: #FFE2B8;
+  --scene-lit-paper: #F6D9A6;
+  --scene-warm: #3A2616;
+  --scene-wood: #1E1712;
+
+  /* semantic aliases: an inverted scope (.paper) swaps these, and everything drawn with them follows.
+     --ground is what ink sits on: Night here, Hanji on paper (the primary button's label, selection). */
+  --ink: var(--hanji);
+  --ink-hover: var(--hanji-hover);
+  --muted: var(--ash);
+  --surface: var(--lacquer);
+  --line: var(--rib);
+  --ground: var(--night);
+
+  /* ---- type ------------------------------------------------------------------------------------- */
+  /* Fraunces has no arrows, and Georgia (the display fallback) neither: an arrow in display type
+     comes from Lantern Sans, whose → is its own ↓ turned (fonts.py), so the site has one arrow. */
+  --font-display: "Lantern Display", "Lantern Display Fallback", "Lantern Sans", Georgia, serif;
+  --font-sans: "Lantern Sans", "Lantern Sans Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Lantern Mono", "Lantern Mono Fallback", ui-monospace, monospace;
+  --font-kr: "Lantern KR", "Nanum Myeongjo", "AppleMyungjo", serif;
+
+  /* fluid scale, 360 -> 1440 viewport */
+  --step--2: clamp(0.7813rem, 0.771rem + 0.046vw, 0.8125rem); /* eyebrows, labels */
+  --step--1: clamp(0.875rem, 0.865rem + 0.046vw, 0.9063rem);  /* meta, nav, chips */
+  --step-0: clamp(1rem, 0.979rem + 0.093vw, 1.0625rem);       /* body */
+  --step-1: clamp(1.125rem, 1.042rem + 0.370vw, 1.375rem);    /* lede, captions */
+  --step-2: clamp(1.25rem, 1.125rem + 0.556vw, 1.625rem);     /* panel titles, clock digits */
+  --step-3: clamp(1.75rem, 1.333rem + 1.852vw, 3rem);         /* section h2 */
+  --step-4: clamp(2.25rem, 1.5rem + 3.333vw, 4.5rem);         /* page h1 */
+  --step-5: clamp(2.5rem, 1.333rem + 5.185vw, 6rem);          /* scene segment h2 */
+  --step-6: clamp(2.5rem, 0.333rem + 9.63vw, 9rem);           /* hero h1 */
+
+  /* line height / tracking per step */
+  --leading--2: 1.3;   --tracking--2: 0.14em;
+  --leading--1: 1.5;
+  --leading-0: 1.6;
+  --leading-1: 1.45;   --tracking-1: -0.005em;
+  --leading-2: 1.25;
+  --leading-3: 1.08;   --tracking-3: -0.015em;
+  --leading-4: 1.02;   --tracking-4: -0.02em;
+  --leading-5: 1;      --tracking-5: -0.02em;
+  --leading-6: 0.98;   --tracking-6: -0.025em;
+
+  /* ---- motion: every CSS animation and transition is finite ------------------------------------ */
+  --ease-settle: cubic-bezier(0.16, 1, 0.3, 1);   /* arrivals, reveals */
+  --ease-carry: cubic-bezier(0.65, 0, 0.35, 1);   /* things that travel */
+  --ease-snuff: cubic-bezier(0.55, 0, 1, 0.45);   /* exits, dimming */
+  --ease-ignite: linear(0, 0.35 12%, 0.8 25%, 1.06 40%, 1.02 55%, 0.995 70%, 1); /* press-release, stamp, lock only */
+  --ease-press: cubic-bezier(0.2, 0, 0, 1);       /* pointer down */
+
+  --dur-press: 90ms;
+  --dur-hover: 160ms;
+  --dur-stamp: 240ms;
+  --dur-release: 260ms;
+  --dur-card: 320ms;
+  --dur-route: 480ms;
+  --dur-reveal: 640ms;
+  --dur-lock: 900ms;
+
+  --stagger-line: 70ms; /* at most 5 lines */
+  --stagger-card: 40ms; /* at most 6 cards; none when a batch has more than 8 */
+
+  /* ---- space, grid, radii ------------------------------------------------------------------------ */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --space-10: 128px;
+  --space-11: 192px;
+  --section: clamp(96px, 12vw, 192px);
+
+  --columns: 4;
+  --margin: clamp(20px, 5vw, 80px);
+  --gutter: clamp(16px, 1.8vw, 28px);
+  --max-landing: 1440px;
+  --max-app: 1320px;   /* /demo, /attacks */
+  --max-prose: 760px;  /* /about, /brand */
+  --frame: var(--max-app); /* the width .frame centres, margins included; a page or route sets its own */
+
+  --header-min: 52px;  /* the rendered height is measured into --header-h by App.jsx */
+
+  --radius-surface: 2px;   /* paper corners */
+  --radius-pill: 999px;    /* buttons: the capsule echoes the lantern body */
+  --radius-chip: 0.9em;    /* chips wrap at 375px, so not a pill */
+
+  color-scheme: dark;
+}
+@media (min-width: 640px) {
+  :root { --columns: 8; --header-min: 60px; }
+}
+@media (min-width: 1080px) {
+  :root { --columns: 12; }
+}
+
+/* An inverted scope: Hanji paper, Night ink. The /brand paper specimens (class="paper"), and on /demo
+   an outcome the story did not expect, which is drawn inverted without a class of its own. A custom
+   property that names another is resolved where it is declared, so any alias built on these would
+   have to be declared again on this same selector list (there are none: every rule reads these). */
+.paper,
+.step.unexpected,
+.try-result.unexpected {
+  --ink: var(--night);
+  --ink-hover: #1A1B21; /* a primary button on paper, hovered: Night lifted a step (Hanji on it 13.6:1) */
+  --muted: var(--muted-on-paper);
+  --surface: var(--hanji);
+  --line: var(--edge);
+  --ground: var(--hanji);
+  background: var(--ground);
+  color: var(--ink);
+}
+
+/* ---- the frame and the grid ------------------------------------------------------------------------
+   .frame centres content in var(--frame) (a max width, margins included) with at least the margin on
+   each side, as padding, so a full-bleed background can sit on the same element. The header, the
+   footer and every page use it, so their left edges meet on one line at every width. .grid lays a
+   frame's content on the spec's columns: 12 from 1080px, 8 from 640px, 4 below. */
+.frame {
+  padding-inline: max(var(--margin), calc((100% - var(--frame)) / 2 + var(--margin)));
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  column-gap: var(--gutter);
+}

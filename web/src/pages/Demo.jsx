@@ -23,6 +23,13 @@ export default function Demo() {
   const controlsRef = useRef(null);
   const inPanel = useRef(false);  // whether the visitor last clicked, tapped or moved focus inside "Try to break it"
   const deepLinked = useRef(false);
+  const landed = useRef(new Set()); // the steps on screen at the last commit: those not in it are arriving now
+
+  // For the stamp's stagger only (class names): after each commit, remember which steps are on screen.
+  useEffect(() => {
+    const beatShown = review ?? (records.length ? records.at(-1).beat : 0);
+    landed.current = new Set(records.filter((r) => r.beat === beatShown).map((r) => r.id));
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -130,6 +137,13 @@ export default function Demo() {
   const shownRecords = records.filter((r) => r.beat === shown);
   const beatDone = (n) => records.some((r) => r.beat > n) || (session.runner.done && records.some((r) => r.beat === n));
   const done = session.runner.done;
+  // Steps that arrive together are stamped 40ms apart, at most six apart, and all at once in a batch
+  // of more than eight.
+  const arriving = shownRecords.filter((r) => !landed.current.has(r.id)).map((r) => r.id);
+  const lag = (id) => {
+    const i = arriving.indexOf(id);
+    return i > 0 && arriving.length <= 8 ? `lag-${Math.min(i, 5)}` : '';
+  };
 
   return (
     <section className="page demo" data-ready="true">
@@ -156,7 +170,8 @@ export default function Demo() {
 
       <div className="demo-grid">
         <div className="story-col">
-          <header className="beat-head">
+          {/* Keyed by beat, so a new beat's title rises into place. */}
+          <header className="beat-head" key={shown}>
             <p className="eyebrow">{shown === 10 ? 'Epilogue' : `Beat ${shown} of 9`}</p>
             <h1>{beat.title}</h1>
             <p className="caption">{beat.caption}</p>
@@ -164,7 +179,7 @@ export default function Demo() {
 
           <ol className="steps" aria-live="polite">
             {shownRecords.map((r) => (
-              <Step key={r.id} r={r} enumeration={r.id === '5.1' ? enumeration : null} />
+              <Step key={r.id} r={r} enumeration={r.id === '5.1' ? enumeration : null} lag={lag(r.id)} />
             ))}
           </ol>
 
@@ -211,11 +226,11 @@ export default function Demo() {
   );
 }
 
-function Step({ r, enumeration }) {
+function Step({ r, enumeration, lag = '' }) {
   const scanFields = r.scan?.fields ?? [];
   return (
-    <li className={`step ${r.kind} ${r.outcome ?? ''} ${r.ok ? '' : 'unexpected'}`} data-step={r.id}
-      data-outcome={r.outcome ?? r.kind} data-ok={String(r.ok)}>
+    <li className={`step ${r.kind} ${r.outcome ?? ''} ${r.ok ? '' : 'unexpected'} ${lag}`} data-step={r.id}
+      data-outcome={r.outcome ?? r.kind} data-ok={String(r.ok)} data-circuit={r.circuit}>
       <p className="who">{r.actor}</p>
       <p className="say">{r.say}</p>
       {r.kind === 'call' && (
@@ -285,12 +300,46 @@ function Summary({ records }) {
 
 function Clock({ now, start, duration }) {
   const elapsed = now - start;
+  // The roll, decoration only: the time shown before slides up and out as the new one slides in.
+  const [roll, setRoll] = useState({ now, was: null });
+  if (roll.now !== now) setRoll({ now, was: roll.now });
   return (
     <section className="panel clock" aria-label="Simulated clock">
       <h2>Simulated clock</h2>
-      <p className="time" data-now={now}>{clockText(now)}</p>
+      <div className="clock-face">
+        <ClockRing hours={Math.max(0, Math.min(72, Math.floor(elapsed / 3600)))} />
+        <div className="clock-digits">
+          <p className={`time ${roll.was === null ? '' : 'rolled'}`} data-now={now} key={now}>{clockText(now)}</p>
+          {roll.was !== null && (
+            <p className="time-was" aria-hidden="true"
+              onAnimationEnd={() => setRoll((r) => (r.now === now ? { now, was: null } : r))}>{clockText(roll.was)}</p>
+          )}
+        </div>
+      </div>
       <p className="meta">{elapsed > 0 ? `${duration(elapsed)} after the story began` : 'Not advanced yet: it moves only when the story waits out the timelock'}. The in-memory ledger's block time: the timelock checks it exactly as a node would.</p>
     </section>
+  );
+}
+
+// A ring of 72 ticks, one for each hour of the timelock, filled as the simulated clock passes them.
+// Decoration: the time and the line under it say the same in words. Three strokes of one circle: the
+// track, the filled arc (its dash offset is the fill, which CSS eases), and the gaps between ticks
+// drawn over both in the panel's own colour.
+const RING_R = 26;
+const RING_C = 2 * Math.PI * RING_R;
+const RING_PITCH = RING_C / 72;
+const RING_TICK = RING_PITCH * 0.42;
+function ClockRing({ hours }) {
+  return (
+    <svg className="clock-arc" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+      <g transform="rotate(-90 32 32)" fill="none">
+        <circle className="arc-track" cx="32" cy="32" r={RING_R} strokeWidth="7" />
+        <circle className="arc-fill" cx="32" cy="32" r={RING_R} strokeWidth="7"
+          strokeDasharray={`${RING_C} ${RING_C}`} strokeDashoffset={RING_C * (1 - hours / 72)} />
+        <circle className="arc-gaps" cx="32" cy="32" r={RING_R} strokeWidth="8"
+          strokeDasharray={`${RING_PITCH - RING_TICK} ${RING_TICK}`} strokeDashoffset={-RING_TICK} />
+      </g>
+    </svg>
   );
 }
 
@@ -405,8 +454,8 @@ function holdings(ps) {
   for (const [f, label] of Object.entries(FIELD_LABEL)) {
     if (ps[f] !== undefined && ps[f] !== null) out.push({ label, fp: toHex(ps[f]).slice(0, 8) });
   }
-  if (ps.share) out.push({ label: `share #${ps.share.x}`, fp: ps.share.y.toString(16).padStart(64, '0').slice(0, 8) });
-  if (ps.shares?.length) out.push({ label: `${ps.shares.length} shares`, fp: null });
+  if (ps.share) out.push({ label: `share #${ps.share.x}`, fp: ps.share.y.toString(16).padStart(64, '0').slice(0, 8), shares: 1 });
+  if (ps.shares?.length) out.push({ label: `${ps.shares.length} shares`, fp: null, shares: ps.shares.length });
   return out;
 }
 
@@ -426,7 +475,11 @@ function People({ personas, records }) {
             <li key={k} className={`person ${status === 'destroyed' ? 'gone' : ''} ${k === 'jihoon' && personas.rogue ? 'turned' : ''}`} data-persona={k}>
               <p className="name">{name}{status && <span className="tag">{status}</span>}</p>
               {items.length
-                ? <ul className="holds">{items.map((h) => <li key={h.label}><span>{h.label}</span>{h.fp && <code>{h.fp}</code>}</li>)}</ul>
+                ? <ul className="holds">{items.map((h) => (
+                  <li key={h.label} className={h.shares ? `is-share shares-${Math.min(h.shares, 3)}` : undefined}>
+                    <span>{h.label}</span>{h.fp && <code>{h.fp}</code>}
+                  </li>
+                ))}</ul>
                 : <p className="meta">nothing</p>}
             </li>
           );

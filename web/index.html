@@ -5,8 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Lantern lets hidden guardians restore a lost Midnight identity secret, and proves it is the right one." />
     <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#0b0f17" />
+    <meta name="theme-color" content="#090A0F" />
+    <!-- Every font file the stylesheet names, preloaded; crossorigin, or each is fetched twice. -->
+    <link rel="preload" href="/fonts/fraunces-roman.v1.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/fraunces-italic.v1.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/instrument-sans.v1.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/fragment-mono.v1.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/gowun-batang-deungbul.v1.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- Icons, from the brand kit (web/scripts/brand.mjs): the ico first, for browsers that take the
+         first they can read; the SVG, which the rest prefer; the home-screen icon. No manifest: a
+         browser would fetch it later, and /demo makes no request once it has loaded. -->
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- The social card. Absolute URLs: a card is read from somewhere else. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Lantern" />
+    <meta property="og:title" content="Lantern · Lose the device. Keep the identity." />
+    <meta property="og:description" content="Lantern lets hidden guardians restore a lost Midnight identity secret, and proves it is the right one." />
+    <meta property="og:url" content="https://lantern-midnight.vercel.app/" />
+    <meta property="og:image" content="https://lantern-midnight.vercel.app/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A paper lantern glowing in the dark beside the words: Lose the device. Keep the identity." />
+    <meta name="twitter:card" content="summary_large_image" />
     <title>Lantern · recovery for Midnight private state</title>
   </head>
   <body>

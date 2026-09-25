@@ -60,6 +60,7 @@ const paint = () => new Promise((resolve) => {
 export function BreakIt({ engine }) {
   const worlds = useRef({});             // kind -> world, each built on first use
   const running = useRef(false);
+  const runs = useRef(0);                // numbers each result, so a new verdict on a card is stamped afresh
   const [facts, setFacts] = useState(null);   // what the panel shows of the main world
   const [prints, setPrints] = useState(null); // the fingerprints of the two shares the phone holds, and no more of them
   const [results, setResults] = useState({});
@@ -125,7 +126,8 @@ export function BreakIt({ engine }) {
       await paint();
       try {
         const rec = await engine.runAttack(w, key, opts);
-        setResults((r) => ({ ...r, [key]: rec }));
+        const seq = ++runs.current;
+        setResults((r) => ({ ...r, [key]: { ...rec, seq } }));
         setSaid({ key, text: verdict(rec) });
       } finally {
         if (kind === 'main') setFacts(w.facts());
@@ -204,7 +206,7 @@ export function BreakIt({ engine }) {
             <p className="try-progress">{busy?.key === t.key ? busy.text : ''}</p>
             <p className="try-status sr-only" role="status">{said?.key === t.key ? said.text : ''}</p>
             {error?.key === t.key && <p className="meta warn" role="alert">{error.message}</p>}
-            {results[t.key] && <TryResult r={results[t.key]} />}
+            {results[t.key] && <TryResult key={results[t.key].seq} r={results[t.key]} />}
             {t.key === 'honest' && results.honest?.spent && !results.honest.stale && (
               <p className="meta spent-note">This world is now spent: Hana’s old commitment is retired. Your next attack on it builds a new world with new secrets.</p>
             )}
