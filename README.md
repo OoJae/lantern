@@ -16,6 +16,8 @@ This project is built on the Midnight Network.
 | **Threat model** | [SECURITY.md](SECURITY.md) |
 | **On Midnight's public test network** | [the shipped contract on Preprod](https://preprod.midnightexplorer.com/contracts/bfd4fa7780902551422b932e7acf8b61fc077dba21afb1be3df1090a25b352c9) · [check it yourself](#on-midnights-public-test-network) |
 | **Local-chain records** | [`deployments/`](deployments/) · [`docs/spikes.md`](docs/spikes.md) |
+| **Prior art, posted upstream** | [a note on Passport's total-loss recovery, issue #20](https://github.com/midnightntwrk/passport/issues/20#issuecomment-5821240645) · [the note](docs/upstream/passport-c14-prior-art.md) |
+| **Brand** | [lantern-midnight.vercel.app/brand](https://lantern-midnight.vercel.app/brand) · [`brand/README.md`](brand/README.md) |
 
 ## In one minute
 
@@ -43,7 +45,7 @@ The official criteria and their weights, and where each is evidenced:
 | Criterion | Weight | Where to look |
 |---|---:|---|
 | Engineering & Implementation | 40% | [`contracts/src/lantern.compact`](contracts/src/lantern.compact) and [`host.compact`](contracts/src/host.compact); [How Lantern uses Midnight](#how-lantern-uses-midnight): the dual ledger, private state and each primitive by file; `npm run compile:check` |
-| Quality Assurance & Reliability | 15% | 196 tests in [`test/`](test/), including a leak scanner with a positive control and tests of the committed chain records; 25 browser tests, run in Chromium in CI and in WebKit and Firefox before release; CI on Node 20, 22 and 24; [21 defects found and fixed](#found-and-fixed-in-review) |
+| Quality Assurance & Reliability | 15% | 196 tests in [`test/`](test/), including a leak scanner with a positive control and tests of the committed chain records; 74 browser tests, run in Chromium in CI and in WebKit and Firefox before release; CI on Node 20, 22 and 24; [21 defects found and fixed](#found-and-fixed-in-review) |
 | Product & Vision | 15% | [Who it is for](#who-it-is-for-and-why-now), [Roadmap](#roadmap), [Limitations](#limitations) |
 | User Experience & Design | 15% | [The hosted demo](https://lantern-midnight.vercel.app/demo): every accept and refusal comes from the compiled contract, and each contract call shows how the same step went in the local-chain run. Below the story, [try to break it](https://lantern-midnight.vercel.app/demo#break): pick an attack, such as flipping a byte of a share, and the contract refuses it in its own words. Deep links (`/demo?beat=7`), a phone layout and automated accessibility checks |
 | Communication | 10% | This README and [SECURITY.md](SECURITY.md) |
@@ -79,8 +81,8 @@ npm run web:install
 npm run web                                 # the dev server, http://localhost:5173 (Node 22.12 or later); runs until Ctrl-C
 npm run web:build && npm run web:preview    # or the production build with the hosted site's headers, http://localhost:4319
 npx --prefix web playwright install chromium   # once, before the first browser-test run; on Linux or WSL add --with-deps
-npm run web:e2e                             # the 25 browser tests in Chromium, at desktop size and as an emulated Pixel 7
-npx --prefix web playwright install webkit firefox && npm run e2e:cross --prefix web   # the same 25 in WebKit, as an emulated iPhone 15, and in Firefox
+npm run web:e2e                             # the 74 browser tests in Chromium, at desktop size and as an emulated Pixel 7
+npx --prefix web playwright install webkit firefox && npm run e2e:cross --prefix web   # the same 74 in WebKit, as an emulated iPhone 15, and in Firefox
 ```
 
 **Real proofs on a local chain** (Docker, Node 24 or later, compact 0.31.1):
@@ -374,7 +376,7 @@ All 21 are in [SECURITY.md §7](SECURITY.md#7-found-and-fixed-in-review).
 
 **Korea.** South Korea's amended Personal Information Protection Act was promulgated on 10 March 2026 and took effect on 11 September 2026. The [IAPP](https://iapp.org/news/a/south-korea-overhauls-pipa-and-ties-fines-to-ceo-accountability) reports that it "introduces a penalty ceiling of 10% of total turnover" and "places personal supervisory liability on the CEO"; [Hunton](https://www.hunton.com/privacy-and-cybersecurity-law-blog/south-korea-amends-privacy-law-to-authorize-fines-of-up-to-10-of-total-revenue) describes fines "of up to 10% of a company's total revenue in certain high-severity data breach cases", subject to transition rules. *Our reading, not legal advice:* a public list of who can recover whose identity is personal information about named people and their relationships. A guardian design that stores it in the clear publishes it to everyone, permanently. Lantern keeps it off the public record by construction, and `npm run attack` checks that it does.
 
-**Midnight's own direction.** Midnight's Passport project decided in 2026/07 to use BUSS (ANARKey) stateless guardians with paper keys for total-loss recovery ([component C14](https://github.com/midnightntwrk/passport/blob/main/docs/plans/components/C14-total-loss-recovery-flow.md)). Lantern is a different point in the same space: an on-chain guardian set that stays hidden, a recovery that proves its own correctness in the circuit, and a veto credential that no guardian holds.
+**Midnight's own direction.** Midnight's Passport project decided in 2026/07 to use BUSS (ANARKey) stateless guardians with paper keys for total-loss recovery ([component C14](https://github.com/midnightntwrk/passport/blob/main/docs/plans/components/C14-total-loss-recovery-flow.md)). Lantern is a different point in the same space: an on-chain guardian set that stays hidden, a recovery that proves its own correctness in the circuit, and a veto credential that no guardian holds. We set out the comparison in [a comment on Passport issue #20](https://github.com/midnightntwrk/passport/issues/20#issuecomment-5821240645) ([the note](docs/upstream/passport-c14-prior-art.md)).
 
 ## Roadmap
 
@@ -413,7 +415,8 @@ src/attack/             the attack engine and the per-field leak classification
 src/demo/               the story: 74 steps, run unchanged by the simulator, the browser and the local chain
 src/host/               the canonical host snapshot the committee signs
 test/                   196 tests
-web/                    the browser demo (React and Vite) and its Playwright tests
+web/                    the site (React and Vite): the landing's three.js lantern, the browser demo, /brand, and the Playwright tests
+brand/                  the brand guide; the kit's files are in web/public/brand-kit/
 devnet/                 the chain runner, local and on Preprod: flavour, sponsor, verify, bench and the shipped run
 deployments/            the records of the local-chain runs, the Preprod run and the bench
 scripts/                compile, cost, attack, story and the README's generated facts
