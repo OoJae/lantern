@@ -7,7 +7,7 @@ import * as Lantern2 from '../contracts/managed-lantern2/contract/index.js';
 import { pureCircuits as V1 } from './simulator.js';
 import {
   DEFAULT_DELAY, MIN_DELAY, MAX_DELAY, PERIOD, COOLDOWNS,
-  checkConstants, checkDelay, cooldownOf, periodOf, periodBounds,
+  checkConstants, checkDelay, cooldownOf, periodOf, periodBounds, slotOf,
 } from '../src/v2/timeline.js';
 import { newIdentity, commitmentsOf, dealShares, recoverFromShares, idSaltOf } from '../src/v2/identity.js';
 import { newIdentity as v1NewIdentity } from '../src/identity.js';
@@ -99,6 +99,35 @@ describe('src/v2/sim.js: one v2 life, end to end, as its users would live it', (
     const nextId = commitmentsOf(P, next).idCommit;
     expect(() => L.gate(next, root, nextId, rand32())).not.toThrow();
     expect(() => L.gate(ident, root, root, rand32())).toThrow(/not the current owner/);
+  });
+
+  it('status, checkInCount and slotOf take the head as well as the root, and refuse an unknown commitment clearly', () => {
+    // After a recovery the owner holds the head: open, lock and rotate need it.
+    // The readers keyed by the root normalise it, as checkIn does (review F8).
+    const L = createLantern2Sim({ rt, mod: Lantern2 });
+    const owner = newIdentity();
+    const root = L.enrol(owner);
+    const gs = [0, 1].map(() => L.addGuardian(owner, root, { guardianSecret: rand32(), leafSalt: rand32() }));
+    const deviceSk = rand32();
+    const rid = L.open(gs[0], root, P.ephemeralPkOf(deviceSk));
+    for (const g of gs) L.approve(g, root, rid);
+    L.setTime(L.status(root).holder.unlockAt);
+    const next = newIdentity();
+    L.finalize({ ephemeralSk: deviceSk, identitySecret: owner.identitySecret, idSalt: owner.idSalt }, rid, commitmentsOf(P, next));
+    const head = commitmentsOf(P, next).idCommit;
+    L.checkIn(gs[1], head);
+    L.lock(next, head);
+
+    expect(L.status(head)).toEqual(L.status(root));
+    expect(L.status(head)).toMatchObject({ locked: true, checkIns: { count: 1n } });
+    expect(L.checkInCount(head)).toBe(1n);
+    expect(L.checkInCount(head)).toBe(L.checkInCount(root));
+    expect(slotOf(L.ledger, head, L.now)).toEqual(slotOf(L.ledger, root, L.now));
+    const stranger = rand32();
+    for (const read of [() => L.status(stranger), () => L.checkInCount(stranger), () => slotOf(L.ledger, stranger, L.now),
+      () => L.checkIn(gs[0], stranger)]) {
+      expect(read).toThrow(/not an enrolled identity commitment/);
+    }
   });
 
   it('refuses a delay outside the bounds before any transaction', () => {

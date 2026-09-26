@@ -14,7 +14,7 @@
 import { createContractSim } from '../contract-sim.js';
 import { lantern2Witnesses } from './witnesses.js';
 import { commitmentsOf, assertV2Card } from './identity.js';
-import { DEFAULT_DELAY, checkDelay, periodOf, slotOf, recoveryStatus, timelineOf, vetoAdvice } from './timeline.js';
+import { DEFAULT_DELAY, checkDelay, periodOf, rootOf, slotOf, recoveryStatus, timelineOf, vetoAdvice } from './timeline.js';
 
 const NO_RESERVATION = new Uint8Array(32);
 const randomSeed = () => globalThis.crypto.getRandomValues(new Uint8Array(32));
@@ -80,22 +80,28 @@ export function createLantern2Sim({ rt, mod, now }) {
       return call(owner, 'unlockIdentity', idCommit, pure.vetoCommitOf(card.vetoSecret, card.vetoSalt));
     },
     /** A check-in always names the identity ROOT, whatever the guardian passes (review F8). */
-    checkIn: (guardian, idCommit) => call(guardian, 'checkIn', sim.ledger.idRoots.lookup(idCommit), period()),
+    checkIn: (guardian, idCommit) => call(guardian, 'checkIn', rootOf(sim.ledger, idCommit), period()),
     /** The device finalizes to a successor it generated. */
     finalize: (device, rid, successor) => call(device, 'finalizeRecovery', rid, successor.idCommit, successor.vetoCommit),
     /** The reference host gate, as the owner of `idCommit` under `idRoot`. */
     gate: (owner, idRoot, idCommit, nonce) =>
       call({ ...owner, lineage: { root: idRoot, member: idCommit } }, 'hostGatedAction', idRoot, idCommit, nonce),
 
-    /** This period's check-in count for the root's CURRENT guardian set. */
-    checkInCount(idRoot, p = period()) {
+    /** This period's check-in count for the CURRENT guardian set. Takes the root or any commitment of its lineage. */
+    checkInCount(idCommit, p = period()) {
       const L = sim.ledger;
+      const idRoot = rootOf(L, idCommit);
       const key = pure.checkInKeyOf(idRoot, L.guardianCtx.lookup(idRoot), p);
       return L.checkIns.member(key) ? L.checkIns.lookup(key).read() : 0n;
     },
-    /** Everything a watcher shows for one identity root, from the public ledger alone. */
-    status(idRoot) {
+    /**
+     * Everything a watcher shows for one identity, from the public ledger alone.
+     * Takes the root or any commitment of its lineage (after a recovery, the
+     * owner holds the head); an unknown commitment is refused with a clear error.
+     */
+    status(idCommit) {
       const L = sim.ledger;
+      const idRoot = rootOf(L, idCommit);
       const slot = slotOf(L, idRoot, sim.now);
       return {
         delay: Number(L.recoveryDelays.lookup(idRoot)),

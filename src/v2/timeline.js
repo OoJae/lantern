@@ -93,13 +93,27 @@ const DEAD = new Set(['vetoed', 'superseded', 'rotated-out', 'expired', 'missed-
 export const isDead = (status) => DEAD.has(status);
 
 /**
- * The slot and cooldown of an identity root at time `now`: what a guardian's
- * client checks before spending its one open for the period. Mirrors the
- * contract's cooldown clause: no vetoes means no wait at all (lastVetoAt is
- * not even consulted, so a rotation's reset is immediate), and the recovery the
- * last counted veto reserved may open during the cooldown.
+ * The root of any enrolled commitment: a root maps to itself, a successor to the
+ * genesis root it inherited. The rate limit, the slot, the lock, the delay and
+ * the check-ins are all keyed by the root, and after a recovery a caller
+ * naturally holds the head, so every reader here normalises first. An unknown
+ * commitment gets this clear error, not a raw runtime one.
  */
-export function slotOf(ledger, idRoot, now) {
+export function rootOf(ledger, idCommit) {
+  if (!ledger.idRoots.member(idCommit)) throw new Error('not an enrolled identity commitment');
+  return ledger.idRoots.lookup(idCommit);
+}
+
+/**
+ * The slot and cooldown of an identity at time `now`: what a guardian's client
+ * checks before spending its one open for the period. Takes the root or any
+ * commitment of its lineage. Mirrors the contract's cooldown clause: no vetoes
+ * means no wait at all (lastVetoAt is not even consulted, so a rotation's reset
+ * is immediate), and the recovery the last counted veto reserved may open
+ * during the cooldown.
+ */
+export function slotOf(ledger, idCommit, now) {
+  const idRoot = rootOf(ledger, idCommit);
   const vetoes = ledger.vetoCounts.lookup(idRoot).read();
   const cooldownUntil = vetoes === 0n ? 0 : num(ledger.lastVetoAt.lookup(idRoot)) + cooldownOf(vetoes);
   const holder = ledger.liveRecovery.member(idRoot) ? ledger.liveRecovery.lookup(idRoot) : null;
