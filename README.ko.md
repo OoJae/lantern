@@ -45,7 +45,7 @@ Midnight에서 컨트랙트가 확인하는 비밀값은 한 기기의 비공개
 
 ```sh
 git clone https://github.com/OoJae/lantern && cd lantern
-npm ci && npm test        # 모든 단위 테스트, 약 10초. Compact 도구도 Docker도 필요 없습니다
+npm ci && npm test        # 모든 단위 테스트, 1분 이내. Compact 도구도 Docker도 필요 없습니다
 npm run attack            # 네 가지 가디언 설계를 공격합니다. 셋은 뚫리고 Lantern은 버팁니다
 npm run story             # 74단계 복구 전체를 실행하고, 각 결과가 예상과 같은지 확인합니다
 ```
@@ -75,9 +75,9 @@ LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify     # 수정 없이 �
 - *t*명의 가디언이 공모하면 신원을 가져갈 수 있습니다. 소유자가 얻는 것은 복구가 열린 순간부터의 공개 통지와 최소 72시간, 그리고 그들이 갖지 못한 거부권 카드입니다. 복구 요청에는 만료가 없으므로, 직접 시작하지 않은 복구는 오래되었거나 승인이 하나도 없더라도 거부권 카드로 취소하세요.
 - 가디언을 교체해도 그 가디언의 조각은 무효가 되지 않습니다. 교체(rotation)는 승인 자격만 없애고 신원 비밀값은 그대로 두므로, 다음 복구가 확정될 때까지는 같은 분배에서 나온 옛 조각 *t*개만 있으면 비밀값을 다시 만들어 소유자처럼 행동할 수 있습니다. 더는 믿을 수 없는 가디언을 끊어 내려면 새 비밀값으로 자신에게 복구한 뒤 새 키트를 나누어 주세요.
 - 임계값과 가디언 수는 공개됩니다. 숨겨지는 것은 가디언이 누구인가입니다.
-- 복구는 누구나 열 수 있습니다. 새 기기에는 인증에 쓸 비밀값이 없기 때문입니다. 요청 횟수 제한은 v2에서 설계했습니다.
+- 복구는 누구나 열 수 있습니다. 새 기기에는 인증에 쓸 비밀값이 없기 때문입니다. 요청 횟수 제한은 v2에서 구현하고 테스트했지만, 아직 배포하지 않았습니다.
 
-v2 설계(영어): [docs/v2.md](docs/v2.md). 요청 횟수 제한, 거부권 카드로 거는 긴급 잠금, 등록 때 고르는 대기 기간, 누구인지 드러내지 않는 가디언 점검을 다룹니다. v2는 설계이며, 이번 제출물에는 포함되지 않습니다. Preprod에 수정 없이 배포한 컨트랙트는 동결된 채 바뀌지 않습니다.
+v2 설계와 구현(영어): [docs/v2.md](docs/v2.md). 요청 횟수 제한, 거부권 카드로 거는 긴급 잠금, 등록 때 고르는 대기 기간, 누구인지 드러내지 않는 가디언 점검을 다룹니다. v2는 별도 컨트랙트([`contracts/v2/lantern2.compact`](contracts/v2/lantern2.compact))로 구현하고 테스트했지만(`npm run test:v2`), 어디에도 배포하지 않았습니다. Preprod에 수정 없이 배포한 컨트랙트는 동결된 채 바뀌지 않습니다.
 
 ## 링크
 
@@ -87,6 +87,6 @@ v2 설계(영어): [docs/v2.md](docs/v2.md). 요청 횟수 제한, 거부권 카
 | 저장소 | [github.com/OoJae/lantern](https://github.com/OoJae/lantern) |
 | 영어 README (기준 문서) | [README.md](README.md) |
 | 위협 모델 (영어) | [SECURITY.md](SECURITY.md) |
-| v2 설계 (영어) | [docs/v2.md](docs/v2.md) |
+| v2 설계와 구현 (영어) | [docs/v2.md](docs/v2.md) |
 | 브랜드 | [lantern-midnight.vercel.app/brand](https://lantern-midnight.vercel.app/brand) |
 | 라이선스 | [Apache-2.0](LICENSE) |

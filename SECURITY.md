@@ -106,6 +106,14 @@ approved each recovery. As evidence to a third party that
 *t* independent people agreed, it is worth nothing, and no on-chain construction
 in this design can change that.
 
+**v2, not shipped:** the same holds in [Lantern v2](docs/v2.md), and there it also
+undoes the privacy of guardian check-ins toward the owner. A device that kept the
+dealt secrets can recompute every guardian's check-in, open and approval
+nullifiers, name who checked in, opened and approved, and forge check-ins. The
+owner's client must erase each guardian's secret and salt once the kit is dealt
+([docs/v2.md §6.2](docs/v2.md#62-what-becomes-public-and-what-does-not)); a
+credential the owner never sees is designed there but not built.
+
 **That the identity was actually lost.** `openRecovery` is permissionless by
 necessity: the new device holds no secret yet, so there is nothing for it to
 authenticate with. Anyone can assert, on chain, that any enrolled identity's owner
@@ -323,6 +331,13 @@ claiming to police conversations.
 They can also **grind**: `openRecovery` is permissionless, so each fee buys
 another recovery the owner must individually veto. §6.
 
+**v2, not shipped:** never enrol one identity secret in both Lantern and
+[Lantern v2](docs/v2.md#2-names-and-domain-separation). The derived salts
+keep the two commitments unlinkable to observers, but the secret is the whole
+opening in both, so *t* shares from **either** guardian set act as you in both
+contracts: in v2 at the gate, until you lock, with no recovery, delay or veto.
+Make the v2 identity fresh, with `newIdentity()` in `src/v2/identity.js`.
+
 **Cannot.**
 - Act **silently** — every approval is a permanent public nullifier. The open is the
   notice that counts: a recovery never expires, so once its lock is over its last
@@ -475,10 +490,10 @@ identity secret is exactly what a lost device leaks.
 `hostGatedAction` and `proveHeadOwnership` accept the secret, because until then it
 *is* the current owner's secret. That window is the honest cost of any recovery
 scheme, and it closes the moment `finalizeRecovery` retires the commitment. Open
-recoveries (anyone can, §5). v2 designs an emergency lock that lets the veto card
-close the window sooner at every DApp that reads Lantern's ledger; an independently
-deployed DApp would also need a snapshot that leaves locked identities out, which is
-not built ([`docs/v2.md` §2](docs/v2.md#2-an-emergency-lock-with-the-veto-card)). The
+recoveries (anyone can, §5). Lantern v2, built and tested but not deployed, adds an
+emergency lock that lets the veto card close the window sooner at every DApp that
+reads Lantern's ledger; an independently deployed DApp would also need a snapshot
+that leaves locked identities out, which is not built ([`docs/v2.md` §4](docs/v2.md#4-emergency-lock)). The
 shipped contract has no lock.
 
 With guardian tokens the device kept after dealing (§2, §6.16), open, approve and
@@ -592,7 +607,7 @@ consequence.
 4. **`openRecovery` is an unrate-limited attrition surface.** No bond, no
    per-identity open counter, no escalating delay. One fee buys one more recovery
    the owner must veto within 72 hours; an owner offline for three days loses.
-   Designed, not shipped — this is the largest gap between this and a production system.
+   Not shipped in this contract — this is the largest gap between this and a production system.
    Opens can also be used to hide one: anyone can open a recovery against any enrolled
    identity, and none expires (§6.14), so twenty decoys at zero approvals could push the
    one that can finalize off a list cut to the newest. `/live`'s watch therefore ranks by
@@ -600,12 +615,19 @@ consequence.
    not draw; `npm run watch` lists every one. The answer to a flood is to rotate the
    guardian set, which cancels every open recovery at once, your own included, and needs
    the veto card; an attacker can then open again, one fee each.
-   The design is [`docs/v2.md` §1](docs/v2.md#1-rate-limited-opens): only a current
-   guardian can open, and each current guardian at most once per identity per quarter;
-   one recovery per identity at a time; and after each veto a cooldown that doubles from
-   1 day to at most 32, except for the owner's next device, which a veto can reserve.
-   v2 is not part of this submission; the shipped contract on Preprod is frozen and
-   unchanged.
+   **v2, not shipped:** [`contracts/v2/lantern2.compact`](contracts/v2/lantern2.compact)
+   closes it in a separate, undeployed contract ([`docs/v2.md` §3](docs/v2.md#3-rate-limited-opens)):
+   only a current guardian can open, each at most once per head per quarter; one
+   recovery may be in flight per identity; and after each veto the wait before the
+   next open doubles, from 1 day to at most 32, except for the owner's next device,
+   which a veto can reserve. It also adds an emergency lock, a delay chosen at
+   enrolment (24 h to 90 days) and private guardian check-ins. Its design, its own
+   limits and its measured cost are in [docs/v2.md](docs/v2.md); `npm run test:v2`
+   runs its tests. The shipped contract on Preprod is frozen and unchanged. Apart
+   from one note in §2 (the dealt guardian secrets), one in §4.3 (never reuse an
+   identity secret across v1 and v2), one in §4.5 (the emergency lock), the ends of
+   item 7 and of items 12 to 17 below, and two in §9 (the v1 tests' unnamed refusals,
+   and the closing paragraph), nothing in this document's other sections describes v2.
 
 5. **A reconstructed secret cannot be zeroised.** `reconstruct()` returns a
    JavaScript `BigInt`, which is immutable. The secret stays in the recovering
@@ -626,9 +648,9 @@ consequence.
    on a retired identity, the one recovery that reached quorum is the one that finalized,
    whatever `killed` says. Whoever can influence ordering in the final block can favour
    either side — though the real boundary is the 72-hour window, not the block. The
-   shipped contract cannot change. v2's `vetoRecovery` refuses a retired identity; a
-   record of which recovery each finalize took is designed, not built
-   ([`docs/v2.md`](docs/v2.md#not-in-v2-yet)).
+   shipped contract cannot change. Lantern v2's `vetoRecovery` refuses a retired identity;
+   a record of which recovery each finalize took is designed, not built
+   ([docs/v2.md §14.3](docs/v2.md#143-designed-only-no-code-exists)).
 
 8. **Rotating the guardian set, adding a guardian and vetoing all need the veto card.**
    This is what stops anyone holding a stolen identity secret from evicting your
@@ -705,9 +727,9 @@ consequence.
    notice. Veto every recovery you did not start, including one with no approvals; its
    count is not a warning. Veto your own abandoned recoveries too: one that reached quorum
    stays finalizable by whoever holds its device key and the identity secret, until a
-   rotation or another finalize kills it. The shipped contract cannot change; v2 gives
-   each recovery an approval deadline and an expiry
-   ([`docs/v2.md` §1](docs/v2.md#1-rate-limited-opens)).
+   rotation or another finalize kills it. The shipped contract cannot change. **v2, not
+   shipped:** Lantern v2 gives each recovery an approval deadline and an expiry
+   ([docs/v2.md §3.3](docs/v2.md#33-the-timeline-of-one-recovery)).
 
 15. **A finalize can take a pending commitment.** `finalizeRecovery`'s successor,
    `newIdCommit`, is an argument the circuit never opens (`contracts/src/lantern.compact`,
@@ -720,9 +742,9 @@ consequence.
    commitment it cannot open. Each attempt retires one attacker identity, with its own
    guardians and a recovery staged at least 72 hours earlier, though they can be staged in
    parallel. The victim retries with a fresh salt or a fresh successor, and the recovery
-   itself stays finalizable. The shipped contract cannot change; v2's `finalizeRecovery`
-   proves the successor's opening
-   ([`docs/v2.md`](docs/v2.md#what-the-adversarial-review-changed)).
+   itself stays finalizable. The shipped contract cannot change. **v2, not
+   shipped:** Lantern v2's `finalizeRecovery` proves the successor's opening, so this is
+   refused there ([docs/v2.md §3.10](docs/v2.md#310-hardening-after-the-adversarial-review)).
 
 16. **The dealing device briefly holds a full quorum.** `addGuardian` computes each leaf
    inside the owner's circuit from the guardian's secret and leaf salt, so the device that
@@ -731,8 +753,10 @@ consequence.
    (§4.5; `test/succession.test.js › a thief holding the identity secret AND the veto card
    mints a quorum`), and with them anyone can tell which guardian approved each recovery (§2). No
    circuit can check that the device erased them; §8 says to. The shipped contract cannot
-   change; the v2 design has the guardian make its own credential and hand the owner only
-   a commitment to it ([`docs/v2.md`](docs/v2.md#not-in-v2-yet)).
+   change. **v2, not shipped:** Lantern v2 keeps the same dealing
+   ([docs/v2.md §6.2](docs/v2.md#62-what-becomes-public-and-what-does-not)); a design that has
+   the guardian make its own credential and hand the owner only a commitment to it is in
+   [docs/v2.md §14.3](docs/v2.md#143-designed-only-no-code-exists), not built.
 
 17. **Replacing the guardians does not replace the secret.** `rotateGuardianSet` changes
    the guardian context, not the identity secret, and no circuit but `finalizeRecovery`
@@ -750,11 +774,12 @@ consequence.
    then, as after any recovery, deal kits of the new secret (§8). A guardian replaced only
    because they are unreachable needs no recovery, as long as their kit cannot reach
    anyone else. After any rotation without a recovery, every old kit must still be
-   destroyed. The shipped contract cannot change. v2's emergency lock would stop the
-   secret at every DApp that reads Lantern's ledger sooner
-   ([`docs/v2.md` §2](docs/v2.md#2-an-emergency-lock-with-the-veto-card)), and a rekey that
-   retires the secret without a recovery is future work
-   ([`docs/v2.md`](docs/v2.md#not-in-v2-yet)).
+   destroyed. The shipped contract cannot change. **v2, not shipped:** a rotation in
+   Lantern v2 does not revoke a share either. Its emergency lock stops the secret at every
+   DApp that reads Lantern's ledger while the owner recovers, and old shares cannot lift it
+   ([docs/v2.md §4](docs/v2.md#4-emergency-lock), [§11](docs/v2.md#11-limits-and-follow-ups));
+   a rekey that retires the secret without a recovery is designed only
+   ([docs/v2.md §14.3](docs/v2.md#143-designed-only-no-code-exists)).
 
 ---
 
@@ -924,6 +949,15 @@ after reading §4.4. The contract checks none of the following, so check it your
   same); across machines and operating systems it is not proven.
 - Every role in the recorded runs, local and on Preprod, shares one local proof server,
   whose image `devnet/compose.yml` pins by digest, and which sees each prover's witnesses. That is a demo convenience, not the deployment model (§4.2b).
+- Three of `contracts/src/lantern.compact`'s refusals have no v1 test that expects them
+  by name: `guardian not in tree` (the tree-root check in `approveRecovery`); `not a
+  known lineage root` and the gate's `descends` (no v1 test uses a forged lineage path);
+  and `successor already enrolled`, which `test/lantern.test.js` accepts as an
+  alternative to `already retired`, the refusal that test actually reaches. The checks
+  are in the shipped contract, but v1's suite would still pass with any of them removed;
+  tests that name them are future work. **v2, not shipped:** each equivalent check in
+  `contracts/v2/lantern2.compact` has a test that fails when the check is disabled (the
+  second review of v2, [docs/v2.md §14.2](docs/v2.md#142-built-tested-not-deployed)).
 - The site's checks of Preprod, in the browser on `/live` and in the terminal, read the
   chain through Preprod's public indexer and trust its answers. We have not run either
   against a node and indexer of our own. The site's `connect-src` allows that indexer on
@@ -934,11 +968,11 @@ after reading §4.4. The contract checks none of the following, so check it your
 size a constructor parameter, and let the members who can still vote replace a slot
 that cannot (§8).
 
-The fixes that need a new contract are designed in [`docs/v2.md`](docs/v2.md):
-rate-limited opens (§6.4), an emergency lock that lets the veto card stop a stolen
-identity secret acting as the owner at every DApp that reads Lantern's ledger (§4.5), a
-recovery delay chosen at enrolment, and private guardian check-ins; it also answers
-§6.12, §6.13, §6.14 and §6.15. v2 is not part of this submission: the shipped contract on Preprod is
+The fixes that need a new contract are built and tested, not deployed, in Lantern v2
+([`docs/v2.md`](docs/v2.md)): rate-limited opens (§6.4), an emergency lock that lets the
+veto card stop a stolen identity secret acting as the owner at every DApp that reads
+Lantern's ledger (§4.5), a recovery delay chosen at enrolment, and private guardian
+check-ins; it also answers §6.12, §6.13, §6.14 and §6.15. The shipped contract on Preprod is
 frozen and unchanged, and nothing in this document claims v2's properties for it.
 
 ---

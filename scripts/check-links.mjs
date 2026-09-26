@@ -26,10 +26,13 @@ const DOCS = tracked
 
 const isTracked = (p) => (tracked ? tracked.has(p) || [...tracked].some((f) => f.startsWith(`${p}/`)) : existsSync(join(root, p)));
 
-/** GitHub's heading anchors: lower case, punctuation dropped, spaces to hyphens, repeats numbered. */
+/** GitHub's heading anchors: lower case, punctuation dropped, spaces to hyphens, repeats numbered.
+ *  Plus explicit HTML anchors, `<a name="x"></a>` or `<a id="x"></a>`, which GitHub keeps too
+ *  (docs/v2.md uses them so that links to its earlier section names still land). */
 function anchors(md) {
   const seen = new Map();
   const out = new Set();
+  for (const [, a] of strip(md).matchAll(/<a\s+(?:name|id)="([^"]+)"\s*>/g)) out.add(a.toLowerCase());
   for (const line of strip(md).split('\n')) {
     const m = line.match(/^#{1,6}\s+(.*?)\s*#*\s*$/);
     if (!m) continue;
