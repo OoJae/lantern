@@ -13,7 +13,9 @@ import {
   snapshot, proveAgainst, replay, land,
   EPH_A, EPH_B, EPH_C, EPH_D, DAY, VETO_SLACK, NO_RESERVATION,
 } from './v2-fixtures.js';
-import { slotOf, periodBounds, checkInAt, vetoAdvice, cooldownOf, PERIOD } from '../src/v2/timeline.js';
+import {
+  slotOf, periodBounds, checkInAt, checkInSlot, cryptoUniform, vetoAdvice, cooldownOf, PERIOD, CHECKIN_MARGIN,
+} from '../src/v2/timeline.js';
 import { newIdentity, commitmentsOf } from '../src/v2/identity.js';
 import { createLantern2Sim } from '../src/v2/sim.js';
 
@@ -582,26 +584,86 @@ describe('F6: slotOf agrees with the contract', () => {
 // ---------------------------------------------------------------------------
 // F7 / F8 (low, privacy): check-in timing, and the check-in's argument.
 // ---------------------------------------------------------------------------
-describe('F7: a guardian\'s client sends the check-in at a random moment, never at once', () => {
+describe('F7: a guardian checks in at its own secret slot, which no reminder moves, and never at once', () => {
   const now = 1_700_000_000;
-  it('stays inside [now + 1, now + window) and inside the period', () => {
-    const { end } = periodBounds(periodOf(now));
-    for (const r of [0, 0.25, 0.5, 0.999999]) {
-      const t = checkInAt(now, { rng: () => r });
-      expect(t).toBeGreaterThan(now);
-      expect(t).toBeLessThan(now + 7 * DAY);
-      expect(t).toBeLessThan(end);
-      expect(periodOf(t)).toBe(periodOf(now));
+  const p = periodOf(now);
+  const { start, end } = periodBounds(p);
+  const ctx = bytes32(4747);
+  const slotFor = (i, c = ctx, q = p) => checkInSlot(bytes32(100 + i), c, q);
+
+  it('the slot is fixed by the guardian\'s secret, the set and the period, and lies inside the period before its last hour', () => {
+    const slots = Array.from({ length: 12 }, (_, i) => slotFor(i));
+    for (const s of slots) {
+      expect(Number.isInteger(s)).toBe(true);
+      expect(s).toBeGreaterThanOrEqual(start);
+      expect(s).toBeLessThan(end - CHECKIN_MARGIN);
     }
-    expect(checkInAt(now, { rng: () => 0 })).toBe(now + 1);
+    expect(slots.map((_, i) => slotFor(i))).toEqual(slots);        // no storage needed: the same slot every time
+    expect(new Set(slots).size).toBe(slots.length);                  // each guardian its own
+    expect(slotFor(0, bytes32(4748))).not.toBe(slots[0]);            // a rotation draws a new one
+    const next = slotFor(0, ctx, p + 1n);
+    expect(periodOf(next)).toBe(p + 1n);
+    expect(next - periodBounds(p + 1n).start).not.toBe(slots[0] - start);   // and so does each period
+    expect(() => checkInSlot(bytes32(100).slice(1), ctx, p)).toThrow(/32 bytes/);
   });
 
-  it('near the end of a period it waits only until the margin, and at the margin it sends at once', () => {
-    const { end } = periodBounds(periodOf(now));
-    const late = end - 2 * 3_600;
-    expect(checkInAt(late, { rng: () => 0.999999 })).toBeLessThan(end - 3_600);
-    expect(checkInAt(end - 60, { rng: () => 0.5 })).toBe(end - 60);
+  it('second review: reminders 8 days apart, or at any time before the slot, give the same moment, so the count names nobody', () => {
+    // The first build drew the moment from the 7 days after the reminder: an owner
+    // who reminded guardian i on day 7i and watched the counter named all twelve,
+    // every time. A slot is fixed before any reminder.
+    for (let i = 0; i < 12; i++) {
+      const slot = slotFor(i);
+      const reminders = [start, start + 8 * DAY, start + 16 * DAY, start + 7 * DAY * i + 3_600, slot - 1].filter((r) => r < slot);
+      for (const r of reminders) expect(checkInAt(r, slot, { rng: () => 0.5 })).toEqual({ at: slot, late: false });
+    }
+    // The owner's rule "an increment in [r_i, r_i + 7 days) is guardian i", run against
+    // these twelve slots (a guardian whose slot already passed sends late, at random):
+    let named = 0;
+    for (let i = 0; i < 12; i++) {
+      const r = start + 7 * DAY * i + 3_600;
+      const { at } = checkInAt(r, slotFor(i), { rng: () => 0.5 });
+      if (at !== null && at >= r && at < r + 7 * DAY) named += 1;
+    }
+    // It was 12 of 12. Now the rule is right only when a slot, or a late draw,
+    // happens to fall in that guardian's week: 3 of these 12, and about 18% over
+    // random secrets (adv-v2 fix-2 probe, 240,000 trials).
+    expect(named).toBeLessThanOrEqual(3);
+  });
+
+  it('after its slot, a client sends late at a random moment in the rest of the period, and says it is late', () => {
+    const slot = slotFor(0);
+    const r = slot + 5;
+    for (const u of [0, 0.25, 0.5, 0.999999]) {
+      const { at, late } = checkInAt(r, slot, { rng: () => u });
+      expect(late).toBe(true);
+      expect(at).toBeGreaterThan(r);
+      expect(at).toBeLessThan(end - CHECKIN_MARGIN);
+    }
+    expect(checkInAt(r, slot, { rng: () => 0 }).at).toBe(r + 1);
+    // The default draw is the platform's CSPRNG, not Math.random.
+    const u = cryptoUniform();
+    expect(u).toBeGreaterThanOrEqual(0);
+    expect(u).toBeLessThan(1);
+    const { at } = checkInAt(r, slot);
+    expect(at).toBeGreaterThan(r);
+    expect(at).toBeLessThan(end - CHECKIN_MARGIN);
+  });
+
+  it('in the period\'s last hour it never sends at once: it waits for the next period\'s slot', () => {
+    const slot = slotFor(0);
+    for (const t of [end - CHECKIN_MARGIN - 1, end - CHECKIN_MARGIN, end - 60, end - 1]) {
+      expect(checkInAt(t, slot, { rng: () => 0.5 })).toEqual({ at: null, late: true });
+    }
+    expect(checkInAt(end - CHECKIN_MARGIN - 2, slot, { rng: () => 0.999999 })).toEqual({ at: end - CHECKIN_MARGIN - 1, late: true });
+    expect(CHECKIN_MARGIN).toBe(3_600);
     expect(PERIOD).toBe(7_862_400);
+  });
+
+  it('refuses a missing slot, or a slot from another period', () => {
+    expect(() => checkInAt(now)).toThrow(/needs the guardian's slot/);
+    expect(() => checkInAt(now, null)).toThrow(/needs the guardian's slot/);
+    expect(() => checkInAt(now, slotFor(0, ctx, p + 1n))).toThrow(/another period/);
+    expect(() => checkInAt(now, slotFor(0, ctx, p - 1n))).toThrow(/another period/);
   });
 });
 

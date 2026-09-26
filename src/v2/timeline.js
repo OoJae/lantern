@@ -6,6 +6,9 @@
 // mirrors exist so a page can render a timeline without loading the contract.
 //
 // Portable and runtime-free: the ledger view and the pure circuits are passed in.
+import { hmac } from '@noble/hashes/hmac.js';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { concatBytes, utf8ToBytes } from '@noble/hashes/utils.js';
 
 export const DEFAULT_DELAY = 259_200;        // 72 h: the client's default, v1's fixed delay
 export const MIN_DELAY = 86_400;             // minRecoveryDelaySeconds(): 24 h
@@ -149,18 +152,68 @@ export function vetoAdvice(ledger, rid, now) {
   return { ok: true, status, reason: null };
 }
 
+// ---------------------------------------------------------------------------
+// When a guardian checks in (review F7, and the second review's correction).
+//
+// The count is public and the owner can watch it. A check-in whose moment
+// depends on the owner's reminder tells a reminding owner who sent it: the
+// first build drew the moment from the 7 days AFTER the reminder, so an owner
+// who reminded one guardian a week named every guardian, every time. No delay
+// counted from the reminder can fix that. What hides a guardian is a moment
+// fixed before any reminder: the guardian's SLOT, derived from its own secret.
+// A reminder that comes before the slot changes nothing; one that comes after
+// it can only produce a late check-in, and a late check-in follows the prompt,
+// so checkInAt says so.
+// ---------------------------------------------------------------------------
+
+export const CHECKIN_SLOT_DOMAIN = 'lantern2:checkin-slot:v1';
+export const CHECKIN_MARGIN = 3_600;   // no slot in a period's last hour: the send must land in its period
+
+const u64be = (x) => { const b = new Uint8Array(8); new DataView(b.buffer).setBigUint64(0, BigInt(x)); return b; };
+
+/** A uniform float in [0, 1) from the platform's CSPRNG (53 bits). */
+export function cryptoUniform() {
+  const [hi, lo] = globalThis.crypto.getRandomValues(new Uint32Array(2));
+  return ((hi >>> 5) * 67_108_864 + (lo >>> 6)) / 9_007_199_254_740_992;
+}
+
 /**
- * When a guardian's client should send this period's check-in (review F7): a
- * uniformly random moment in [now, min(now + window, end of period - margin)),
- * never at once. A check-in sent straight after an owner's one-to-one reminder
- * tells the owner, watching the counter, who it was; a random delay, with the
- * fee paid from a fresh source, keeps the count naming nobody.
- * `rng()` returns a float in [0, 1).
+ * The guardian's check-in moment in period `p`: HMAC-SHA256, keyed by the
+ * guardian's secret, of (domain, the set's context, p), reduced to a second in
+ * [start of p, end of p - margin). Fixed before any reminder is sent and moved
+ * by none; unpredictable without the guardian's secret; new each period and
+ * with each rotation; and it needs no storage.
  */
-export function checkInAt(now, { window = 7 * 86_400, margin = 3_600, rng = Math.random } = {}) {
+export function checkInSlot(guardianSecret, ctx, p, { margin = CHECKIN_MARGIN } = {}) {
+  if (!(guardianSecret instanceof Uint8Array) || guardianSecret.length !== 32) throw new Error('the guardian secret is 32 bytes');
+  if (!(ctx instanceof Uint8Array) || ctx.length !== 32) throw new Error("the set's context is 32 bytes");
+  const mac = hmac(sha256, guardianSecret, concatBytes(utf8ToBytes(CHECKIN_SLOT_DOMAIN), ctx, u64be(p)));
+  const x = new DataView(mac.buffer, mac.byteOffset, 8).getBigUint64(0);
+  return periodBounds(p).start + Number(x % BigInt(PERIOD - margin));
+}
+
+/**
+ * When a guardian's client, running at `now`, sends this period's check-in,
+ * given its `slot` for the period (checkInSlot). Returns { at, late }:
+ *   - before the slot: { at: slot, late: false }. Whatever woke the client, a
+ *     reminder included, the moment is the slot, so the count names nobody;
+ *   - after it (the client was not running at its slot): a uniformly random
+ *     moment in [now + 1, end - margin), late: true. It still FOLLOWS whatever
+ *     woke the client: an owner who reminds one guardian at a time and waits
+ *     for the counter learns whether that guardian checked in. The random draw
+ *     hides it only among the other late check-ins;
+ *   - in the period's last `margin` seconds: { at: null, late: true }. No
+ *     moment is left that is not straight after the prompt; the client checks
+ *     in at its next period's slot instead. It never sends at once.
+ * `rng()` returns a float in [0, 1); the default is the platform's CSPRNG.
+ */
+export function checkInAt(now, slot, { margin = CHECKIN_MARGIN, rng = cryptoUniform } = {}) {
   const n = num(now);
-  const { end } = periodBounds(periodOf(n));
-  const last = Math.min(n + window, end - margin);
-  if (last <= n) return n;   // too near the period's end to wait: send now
-  return n + 1 + Math.floor(rng() * (last - n - 1));
+  if (slot === undefined || slot === null || !Number.isInteger(num(slot))) throw new Error('checkInAt needs the guardian\'s slot for this period (checkInSlot)');
+  const p = periodOf(n);
+  if (periodOf(slot) !== p) throw new Error('the slot is for another period');
+  if (n < num(slot)) return { at: num(slot), late: false };
+  const last = periodBounds(p).end - margin;
+  if (n + 1 >= last) return { at: null, late: true };
+  return { at: n + 1 + Math.floor(rng() * (last - n - 1)), late: true };
 }
