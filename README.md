@@ -45,7 +45,7 @@ The official criteria and their weights, and where each is evidenced:
 | Criterion | Weight | Where to look |
 |---|---:|---|
 | Engineering & Implementation | 40% | [`contracts/src/lantern.compact`](contracts/src/lantern.compact) and [`host.compact`](contracts/src/host.compact); [How Lantern uses Midnight](#how-lantern-uses-midnight): the dual ledger, private state and each primitive by file; `npm run compile:check` |
-| Quality Assurance & Reliability | 15% | 444 tests in [`test/`](test/) (210 for shipped Lantern, 234 for [Lantern v2](docs/v2-spec.md)), including a leak scanner with a positive control and tests of the committed chain records; 97 browser tests, run in Chromium in CI and in WebKit and Firefox before release; CI on Node 20, 22 and 24; [21 defects found and fixed](#found-and-fixed-in-review) |
+| Quality Assurance & Reliability | 15% | 446 tests in [`test/`](test/) (210 for shipped Lantern, 236 for [Lantern v2](docs/v2-spec.md)), including a leak scanner with a positive control and tests of the committed chain records; 97 browser tests, run in Chromium in CI and in WebKit and Firefox before release; CI on Node 20, 22 and 24; [21 defects found and fixed](#found-and-fixed-in-review) |
 | Product & Vision | 15% | [Who it is for](#who-it-is-for-and-why-now), [Roadmap](#roadmap), [Limitations](#limitations) |
 | User Experience & Design | 15% | [The hosted demo](https://lantern-midnight.vercel.app/demo): every accept and refusal comes from the compiled contract, and each contract call shows how the same step went in the local-chain run. Below the story, [try to break it](https://lantern-midnight.vercel.app/demo#break): pick an attack, such as flipping a byte of a share, and the contract refuses it in its own words. Deep links (`/demo?beat=7`), a phone layout and automated accessibility checks |
 | Communication | 10% | This README and [SECURITY.md](SECURITY.md) |
@@ -55,7 +55,7 @@ The official criteria and their weights, and where each is evidenced:
 
 ```sh
 git clone https://github.com/OoJae/lantern && cd lantern
-npm ci && npm test        # 444 tests (v1's 210, v2's 234) in under a minute; no Compact toolchain, no Docker
+npm ci && npm test        # 446 tests (v1's 210, v2's 236) in under a minute; no Compact toolchain, no Docker
 npm run attack            # four guardian designs, one attacker: three broken, Lantern holds
 npm run story             # the whole recovery, 74 steps, each outcome asserted
 ```
@@ -190,7 +190,7 @@ Every private-to-public crossing is a `disclose()`. What the public fields still
 
 ## Measured
 
-**Tests.** 444 Vitest tests in 27 files. Shipped Lantern's 210 are in 14: lantern 33, record 32, succession 31, adversarial 27, host 22, identity 10, devnet 9, shamir 9, leakscan 8, story 8, concurrency 6, portable 6, authentication 5, host-snapshot 4. Lantern v2's 234 are in 13 ([docs/v2-spec.md §13](docs/v2-spec.md#13-implementation)). Three node:test tests of the sponsor's policy. Ninety-seven Playwright tests, twelve of them for the "Try to break it" panel, run in CI in Chromium at desktop size and as an emulated Pixel 7 (194 runs), and before release in WebKit, as an emulated iPhone 15, and in Firefox (291 runs).
+**Tests.** 446 Vitest tests in 27 files. Shipped Lantern's 210 are in 14: lantern 33, record 32, succession 31, adversarial 27, host 22, identity 10, devnet 9, shamir 9, leakscan 8, story 8, concurrency 6, portable 6, authentication 5, host-snapshot 4. Lantern v2's 236 are in 13 ([docs/v2-spec.md §13](docs/v2-spec.md#13-implementation)). Three node:test tests of the sponsor's policy. Ninety-seven Playwright tests, twelve of them for the "Try to break it" panel, run in CI in Chromium at desktop size and as an emulated Pixel 7 (194 runs), and before release in WebKit, as an emulated iPhone 15, and in Firefox (291 runs).
 
 **Circuits.** All 17 are ZKIR v2, the deployable ledger-8 path. `npm run cost:check` measures them, and fails if any exceeds k = 14 or if this table differs from the measurement.
 
@@ -473,7 +473,7 @@ src/attack/             the attack engine and the per-field leak classification
 src/demo/               the story: 74 steps, run unchanged by the simulator, the browser, the local chain and Preprod
 src/host/               the canonical host snapshot the committee signs
 src/v2/                 Lantern v2's client helpers: timeline and watcher logic, identity, witnesses, a simulator client, leak classes
-test/                   444 tests, 234 of them for Lantern v2
+test/                   446 tests, 236 of them for Lantern v2
 web/                    the site (React and Vite): the landing's three.js lantern, the browser demo, /brand, and the Playwright tests
 brand/                  the brand guide; the kit's files are in web/public/brand-kit/
 devnet/                 the chain runner, local and on Preprod: flavour, sponsor, verify, bench and the shipped run

@@ -715,7 +715,7 @@ Each step is one or two commits on `v2`, and each leaves `npm test` green:
 | Contract | [`contracts/v2/lantern2.compact`](../contracts/v2/lantern2.compact), compiled to `contracts/managed-lantern2/` (`npm run compile:v2`; `npm run compile:check` covers it, and `npm run compile:check:v2` checks it alone) |
 | Cost | `npm run cost:v2` prints the table; `npm run cost:check:v2` fails unless all 13 circuits are at k ≤ 14 **and** §8 above equals the measurement (`--write-doc` rewrites it) |
 | Client helpers | `src/v2/`: `timeline.js` (the constants and the live/dead rule, mirrored for a watcher and checked against the pure circuits; `vetoAdvice` and `checkInAt` from §3.10), `identity.js` (salts under `lantern2:idsalt:v1` and `lantern2:vetosalt:v1`), `witnesses.js`, `sim.js` (the contract spoken to as owner, guardians and device), `leaks.mjs` (§9), `attack.mjs` and `target.mjs` (the naming attack against v2). All take the runtime and the module by injection. |
-| Tests | `npm run test:v2`: 13 files, 234 tests. `npm test` runs them with v1's 210, which are unchanged: 444 in all. |
+| Tests | `npm run test:v2`: 13 files, 236 tests. `npm test` runs them with v1's 210, which are unchanged: 446 in all. |
 
 | File | Tests | Covers |
 |---|---:|---|
@@ -731,7 +731,7 @@ Each step is one or two commits on `v2`, and each leaves `npm test` green:
 | `v2-delay.test.js` | 14 | every case of §5.5 |
 | `v2-checkin.test.js` | 15 | every case of §6.4 except 9 |
 | `v2-client.test.js` | 12 | `src/v2/` against the compiled contract; one whole v2 life through `sim.js`; the head accepted wherever the root is; a v1 identity or card refused before any transaction |
-| `v2-review.test.js` | 35 | every finding of §3.10 as the attack the review ran, now refused, and the owner's client paths for F0, F1 and F3; `claimedNow` at 2^64 − 1 in open and veto, and the cast's exact edge; the second review's regressions: a root ending in 0x00 (F8), a reservation the finalize clears (F6), and the finalize route to a pending `idCommit`, now refused (F1) |
+| `v2-review.test.js` | 37 | every finding of §3.10 as the attack the review ran, now refused, and the owner's client paths for F0, F1 and F3; `claimedNow` at 2^64 − 1 in open and veto, and the cast's exact edge; the second review's regressions: a root ending in 0x00 (F8), a reservation the finalize clears (F6), the finalize route to a pending `idCommit`, now refused (F1), and every tree depth this document shows (F5) |
 
 **Where the implementation differs from the design above:**
 
@@ -778,7 +778,7 @@ Thirteen circuits with proving keys, all at k ≤ 14. The derivations and consta
 | **A delay chosen at enrolment** (§5), 24 h to 90 days, inherited by every successor | `v2-delay` (14) |
 | **The inheritance profile** (§5.2), as a *configuration* of the above: a 90-day delay, guardians as heirs, the owner watching `recoveries` and the check-in count. The watcher's logic is built as `src/v2/timeline.js` (`recoveryStatus`, `slotOf`, `timelineOf`); the end-to-end case is §5.5 case 7 | `v2-delay`, `v2-client` |
 | **Private guardian check-ins** (§6): a count per root, guardian set and quarter, never who to the public (an owner's device that kept the dealt credentials can tell, §6.2) | `v2-checkin` (15), `v2-adversarial` |
-| **The review's hardening** (§3.10), F0 to F8 | `v2-review` (35) |
+| **The review's hardening** (§3.10), F0 to F8 | `v2-review` (37) |
 | **Every v1 property**, ported (§10) | `v2-lantern` (35), `v2-succession` (31), `v2-shamir`, `v2-domains`, `v2-authentication`, `v2-adversarial` |
 | **Build and CI**: `npm run compile:v2`, `compile:check:v2`, `cost:v2`, `cost:check:v2`, `test:v2`; `compile.yml` checks the module, the keys, purity and cost | `.github/workflows/compile.yml` |
 

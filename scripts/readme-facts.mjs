@@ -7,8 +7,14 @@
 //
 // The circuit-size table (<!-- facts:circuits -->) needs the Compact toolchain, so
 // scripts/check-cost.mjs maintains and checks that one.
+//
+// The test counts are prose, not a block, so they are only checked: every count the README
+// and docs/v2-spec.md state (the total, the v1/v2 split, the per-file counts) must equal
+// vitest's own list of the suite. --write does not touch them; the error says what to write.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { basename } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const root = new URL('..', import.meta.url);
 const load = (f) => JSON.parse(readFileSync(new URL(`deployments/${f}`, root), 'utf8'));
@@ -141,6 +147,63 @@ function preprodStory() {
   ].join('\n');
 }
 
+// What `npm test` runs, file by file, as vitest lists it (no test is executed).
+function suite() {
+  const vitest = fileURLToPath(new URL('node_modules/vitest/vitest.mjs', root));
+  const out = execFileSync(process.execPath, [vitest, 'list', '--json'],
+    { cwd: fileURLToPath(root), maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'pipe'] }).toString();
+  const perFile = new Map();
+  for (const t of JSON.parse(out)) {
+    const f = basename(t.file);
+    perFile.set(f, (perFile.get(f) ?? 0) + 1);
+  }
+  const files = [...perFile.keys()];
+  const v2Files = files.filter((f) => f.startsWith('v2-'));
+  const v1Files = files.filter((f) => !f.startsWith('v2-'));
+  const sum = (fs) => fs.reduce((n, f) => n + perFile.get(f), 0);
+  return { perFile, files, v1Files, v2Files, total: sum(files), v1: sum(v1Files), v2: sum(v2Files) };
+}
+
+function testCountProblems() {
+  const t = suite();
+  if (!t.total) return ['vitest listed no tests'];
+  const name = (f) => f.replace(/\.test\.js$/, '');
+  // v1's per-file list as the README gives it: by count, most first, then by name.
+  const v1List = [...t.v1Files].sort((a, b) => (t.perFile.get(b) - t.perFile.get(a)) || name(a).localeCompare(name(b)))
+    .map((f) => `${name(f)} ${t.perFile.get(f)}`).join(', ');
+  const docs = { 'README.md': readFileSync(new URL('README.md', root), 'utf8'),
+    'docs/v2-spec.md': readFileSync(new URL('docs/v2-spec.md', root), 'utf8') };
+  const claims = [
+    ['README.md', /(\d+) tests in \[`test\/`\]\(test\/\) \((\d+) for shipped Lantern, (\d+) for \[Lantern v2\]/, [t.total, t.v1, t.v2]],
+    ['README.md', /npm test +# (\d+) tests \(v1's (\d+), v2's (\d+)\)/, [t.total, t.v1, t.v2]],
+    ['README.md', /\*\*Tests\.\*\* (\d+) Vitest tests in (\d+) files\. Shipped Lantern's (\d+) are in (\d+): ([^.]+)\. Lantern v2's (\d+) are in (\d+) /,
+      [t.total, t.files.length, t.v1, t.v1Files.length, v1List, t.v2, t.v2Files.length]],
+    ['README.md', /^test\/ +(\d+) tests, (\d+) of them for Lantern v2$/m, [t.total, t.v2]],
+    ['docs/v2-spec.md', /`npm run test:v2`: (\d+) files, (\d+) tests\. `npm test` runs them with v1's (\d+), which are unchanged: (\d+) in all\./,
+      [t.v2Files.length, t.v2, t.v1, t.total]],
+  ];
+  const problems = [];
+  for (const [doc, re, want] of claims) {
+    const m = docs[doc].match(re);
+    if (!m) { problems.push(`${doc}: no sentence matches ${re}`); continue; }
+    const got = m.slice(1);
+    if (got.some((g, i) => g !== String(want[i]))) problems.push(`${doc}: "${m[0]}" should give ${want.join(' / ')}`);
+  }
+  // docs/v2-spec.md §13's table has one row per v2 file, and §14.2 cites files by count.
+  const spec = docs['docs/v2-spec.md'];
+  const rows = new Map([...spec.matchAll(/^\| `(v2-[a-z0-9-]+\.test\.js)` \| (\d+) \|/gm)].map((m) => [m[1], Number(m[2])]));
+  for (const f of t.v2Files) {
+    if (!rows.has(f)) problems.push(`docs/v2-spec.md §13: no row for ${f} (${t.perFile.get(f)} tests)`);
+    else if (rows.get(f) !== t.perFile.get(f)) problems.push(`docs/v2-spec.md §13: ${f} says ${rows.get(f)}, vitest lists ${t.perFile.get(f)}`);
+  }
+  for (const f of rows.keys()) if (!t.perFile.has(f)) problems.push(`docs/v2-spec.md §13: a row for ${f}, which has no tests`);
+  for (const [cite, file, n] of spec.matchAll(/`(v2-[a-z0-9-]+)` \((\d+)\)/g)) {
+    const have = t.perFile.get(`${file}.test.js`);
+    if (have !== Number(n)) problems.push(`docs/v2-spec.md: ${cite} should be (${have ?? 'no such file'})`);
+  }
+  return problems;
+}
+
 const BLOCKS = { chain, 'chain-circuits': chainCircuits, attack, ...(shipped ? { preprod } : {}), ...(story ? { 'preprod-story': preprodStory } : {}) };
 
 const file = new URL('README.md', root);
@@ -153,12 +216,17 @@ for (const [name, make] of Object.entries(BLOCKS)) {
   const body = make();
   if (m[2] !== body) { stale.push(name); readme = readme.replace(re, `$1${body}$3`); }
 }
+const counts = testCountProblems();
+for (const p of counts) console.error(`readme-facts: test count: ${p}`);
 if (process.argv.includes('--write')) {
   writeFileSync(file, readme);
   console.log(stale.length ? `readme-facts: rewrote ${stale.join(', ')}` : 'readme-facts: already current');
+  if (counts.length) process.exit(1);
 } else if (stale.length) {
   console.error(`readme-facts: README.md is out of date with the evidence: ${stale.join(', ')}. Run: node scripts/readme-facts.mjs --write`);
   process.exit(1);
+} else if (counts.length) {
+  process.exit(1);
 } else {
-  console.log(`readme-facts: all ${Object.keys(BLOCKS).length} generated blocks match their sources`);
+  console.log(`readme-facts: all ${Object.keys(BLOCKS).length} generated blocks match their sources, and every test count matches vitest's list`);
 }
