@@ -224,7 +224,7 @@ Every private-to-public crossing is a `disclose()`. What the public fields still
 ## Measured
 
 <!-- facts:tests:start -->
-**Tests.** 542 Vitest tests in 31 files. Shipped Lantern's 293 are in 18: kit 46, lantern 33, succession 33, record 32, adversarial 28, host 26, words 21, devnet 10, identity 10, shamir 9, leakscan 8, story 8, concurrency 6, portable 6, authentication 5, limits 5, host-snapshot 4, device 3. Lantern v2's 249 are in 13 ([docs/v2.md §13](docs/v2.md#13-implementation)). Three node:test tests of the sponsor's policy, and 85 of the other devnet scripts. 209 Playwright tests, twelve of them for the "Try to break it" panel and 97 for `/live`, `/rehearse` and `/kit`, run in CI in Chromium at desktop size and as an emulated Pixel 7, and before release in WebKit, as an emulated iPhone 15, and in Firefox.
+**Tests.** 542 Vitest tests in 31 files. Shipped Lantern's 293 are in 18: kit 46, lantern 33, succession 33, record 32, adversarial 28, host 26, words 21, devnet 10, identity 10, shamir 9, leakscan 8, story 8, concurrency 6, portable 6, authentication 5, limits 5, host-snapshot 4, device 3. Lantern v2's 249 are in 13 ([docs/v2.md §13](docs/v2.md#13-implementation)). Three node:test tests of the sponsor's policy, and 86 of the other devnet scripts. 209 Playwright tests, twelve of them for the "Try to break it" panel and 97 for `/live`, `/rehearse` and `/kit`, run in CI in Chromium at desktop size and as an emulated Pixel 7, and before release in WebKit, as an emulated iPhone 15, and in Firefox.
 <!-- facts:tests:end -->
 
 **Circuits.** All 17 are ZKIR v2, the deployable ledger-8 path. `npm run cost:check` measures them, and fails if any exceeds k = 14 or if this table differs from the measurement.

@@ -2,8 +2,8 @@
 // without a chain: a record built from the story run in memory, with made-up transactions, passes
 // its own consistency checks and fails them when altered; the deploy plan places every key once,
 // within budget; and each committed v2 record (deployments/local-v2.json, preprod-v2.json), when
-// there is one, is consistent, was compiled from the sources committed here, and is the story this
-// repo tells.
+// there is one, is consistent, was compiled from the sources committed here, is the story this repo
+// tells, and ends where that story ends in memory.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -122,6 +122,17 @@ for (const name of ['local-v2.json', 'preprod-v2.json']) {
       const story = inMemory('any').story;
       assert.deepEqual(rec.steps.map((s) => [s.id, s.circuit, s.expect]),
         story.steps.map((s) => [s.id, s.circuit, s.expect.accept ? 'accepted' : `refused: ${s.expect.refuse}`]));
+    });
+    it('ends where the story ends in memory, step for step', async () => {
+      const { sim, x, story } = inMemory('any');
+      const mem = await runV2Story(story, x);
+      assert.deepEqual(rec.steps.map((s) => s.publicChange ?? null), mem.map((r) => r.publicChange ?? null));
+      assert.deepEqual(rec.finalPublicRecord, v2Summary(sim.ledger));
+      const f = rec.finalIdentity;
+      assert.equal(f.idCommit, rec.steps[0].args[0]);
+      assert.deepEqual([f.locked, f.vetoCount, f.recoveries.length, f.checkIns.count, f.delaySeconds], [false, 1, 2, 1, V2_DELAY]);
+      assert.equal(f.liveRecovery, f.reservedRecovery);
+      assert.equal(f.liveRecovery, rec.steps.find((s) => s.id === '2.6').result);
     });
     it('ran on the network its name says, with the pinned compiler', () => {
       assert.match(rec.network, name.startsWith('preprod') ? /^preprod / : /^undeployed /);
