@@ -24,7 +24,9 @@
     "test:concurrent": "vitest run test/concurrency.test.js",
     "attack": "node scripts/enumerate.mjs",
     "test:adversarial": "vitest run test/adversarial.test.js",
+    "test:v2": "vitest run test/v2-",
     "compile:shipped": "bash scripts/compile.sh --shipped-only",
+    "compile:v2": "bash scripts/compile.sh --v2-only",
     "story": "node scripts/story.mjs",
     "web:install": "npm ci --prefix web --no-audit --no-fund",
     "web": "npm run dev --prefix web",
@@ -38,6 +40,8 @@
     "build": "bash scripts/compile.sh",
     "compile:check": "bash scripts/compile.sh --check",
     "cost:check": "node scripts/check-cost.mjs",
+    "cost:v2": "bash scripts/cost-v2.sh",
+    "cost:check:v2": "node scripts/check-cost-v2.mjs",
     "readme:check": "node scripts/readme-facts.mjs"
   },
   "dependencies": {

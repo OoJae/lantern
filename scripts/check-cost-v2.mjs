@@ -1,0 +1,73 @@
+#!/usr/bin/env node
+// Lantern v2's cost check (docs/v2.md §8), kept apart from scripts/check-cost.mjs, which
+// pins v1's 17 circuits and must not change. Fails unless every one of v2's 13 proving
+// circuits is at k <= 14, and just as loudly if it cannot tell: exactly 13 rows must
+// parse, each with a numeric k. It then checks the design's table in docs/v2.md §8
+// against this measurement, so the document can never drift from the build.
+//
+//   node scripts/check-cost-v2.mjs               check
+//   node scripts/check-cost-v2.mjs --write-doc   rewrite the v2 column of docs/v2.md §8
+import { spawnSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
+
+const EXPECTED = [
+  'addGuardian', 'approveRecovery', 'checkIn', 'enrollIdentity', 'finalizeRecovery', 'hostGatedAction',
+  'lockIdentity', 'openRecovery', 'proveHeadOwnership', 'proveSuccession', 'rotateGuardianSet',
+  'unlockIdentity', 'vetoRecovery',
+];
+const MAX_K = 14;
+
+const run = spawnSync('bash', ['scripts/cost-v2.sh'], { encoding: 'utf8' });
+if (run.status !== 0) {
+  console.error(run.stderr || run.stdout);
+  console.error(`check-cost-v2: scripts/cost-v2.sh failed (exit ${run.status})`);
+  process.exit(1);
+}
+process.stdout.write(run.stdout);
+
+const rows = run.stdout.split('\n')
+  .map((l) => l.match(/^\|\s*`([A-Za-z]+)`\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|/))
+  .filter(Boolean)
+  .map(([, name, k, n]) => ({ name, k: Number(k), rows: Number(n) }));
+
+const names = rows.map((r) => r.name).sort();
+const problems = [];
+if (JSON.stringify(names) !== JSON.stringify([...EXPECTED].sort())) {
+  problems.push(`expected exactly these ${EXPECTED.length} circuits, parsed ${rows.length}: ${names.join(', ')}`);
+}
+for (const r of rows) if (!(r.k >= 1 && r.k <= MAX_K)) problems.push(`${r.name}: k=${r.k} exceeds ${MAX_K}`);
+
+// docs/v2.md §8: | `name` | v1 rows (k) | v2 rows (k) | share |
+const docUrl = new URL('../docs/v2.md', import.meta.url);
+const whole = readFileSync(docUrl, 'utf8');
+// Only §8: other tables in the document name the same circuits.
+const at = whole.indexOf('\n## 8. Cost');
+const end = whole.indexOf('\n## 9.', at);
+if (at < 0 || end < 0) { console.error('check-cost-v2: docs/v2.md has no §8 Cost section'); process.exit(1); }
+let doc = whole.slice(at, end);
+const fmt = (r) => `${r.rows.toLocaleString('en')} (${r.k})`;
+const share = (r) => `${Math.round((100 * r.rows) / 2 ** r.k)}%`;
+const lineRe = (name) => new RegExp(`^(\\| \`${name}\` \\| [^|]+ \\| )([^|]+)( \\| )([^|]+)( \\|)$`, 'm');
+const stale = [];
+for (const r of rows) {
+  const m = doc.match(lineRe(r.name));
+  if (!m) { problems.push(`docs/v2.md §8 has no row for ${r.name}`); continue; }
+  if (m[2].trim() !== fmt(r) || m[4].trim() !== share(r)) {
+    stale.push(`${r.name}: doc says ${m[2].trim()}, measured ${fmt(r)}`);
+    doc = doc.replace(lineRe(r.name), `$1${fmt(r)}$3${share(r)}$5`);
+  }
+}
+if (stale.length && process.argv.includes('--write-doc')) {
+  writeFileSync(docUrl, whole.slice(0, at) + doc + whole.slice(end));
+  console.log(`check-cost-v2: docs/v2.md §8 rewritten (${stale.length} row(s))`);
+} else if (stale.length) {
+  for (const s of stale) problems.push(`docs/v2.md §8 is stale: ${s}. Run: node scripts/check-cost-v2.mjs --write-doc`);
+}
+if (problems.length) {
+  for (const p of problems) console.error(`check-cost-v2: ${p}`);
+  process.exit(1);
+}
+
+const tight = rows.reduce((a, b) => (b.rows / 2 ** b.k > a.rows / 2 ** a.k ? b : a));
+console.log(`check-cost-v2: all ${rows.length} v2 circuits at k <= ${MAX_K}, matching docs/v2.md §8; `
+  + `tightest ${tight.name}, ${tight.rows} of ${2 ** tight.k} rows`);

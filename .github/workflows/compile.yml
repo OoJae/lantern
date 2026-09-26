@@ -74,10 +74,28 @@ jobs:
           done
           echo "all derivations are pure and key-free"
 
+      - name: Assert Lantern v2 compiled, with every derivation pure
+        run: |
+          set -euo pipefail
+          for c in enrollIdentity addGuardian rotateGuardianSet openRecovery approveRecovery vetoRecovery \
+                   finalizeRecovery proveSuccession proveHeadOwnership hostGatedAction \
+                   lockIdentity unlockIdentity checkIn; do
+            test -s "contracts/managed-lantern2/keys/${c}.prover"   || { echo "missing v2 prover key: $c";   exit 1; }
+            test -s "contracts/managed-lantern2/keys/${c}.verifier" || { echo "missing v2 verifier key: $c"; exit 1; }
+          done
+          for p in idCommitOf vetoCommitOf guardianLeafOf recoveryIdOf approvalNullifierOf vetoNullifierOf \
+                   lineageLeafOf gateNullifierOf ephemeralPkOf openNullifierOf checkInNullifierOf checkInKeyOf \
+                   cooldownSecondsOf; do
+            if [ -e "contracts/managed-lantern2/zkir/${p}.zkir" ]; then
+              echo "::error::v2 ${p} is no longer a pure circuit"; exit 1
+            fi
+          done
+          echo "v2: 13 circuits with keys, every derivation pure and key-free"
+
       - name: Assert the committed contract modules match source
         run: |
           set -euo pipefail
-          dirs="contracts/managed/contract contracts/managed-host/contract \
+          dirs="contracts/managed/contract contracts/managed-host/contract contracts/managed-lantern2/contract \
                 contracts/managed-public-guardians/contract contracts/managed-lantern-v0/contract"
           # Modified AND untracked: a new file in a fresh compile is drift too.
           if ! git diff --quiet -- $dirs || [ -n "$(git status --porcelain -- $dirs)" ]; then
@@ -86,8 +104,12 @@ jobs:
             git diff --stat -- $dirs
             exit 1
           fi
-          echo "all four committed contract modules are byte-identical to a fresh compile"
+          echo "all five committed contract modules are byte-identical to a fresh compile"
 
       # Fails unless exactly 17 circuits parse, each at k <= 14.
       - name: Assert every circuit fits k <= 14
         run: node scripts/check-cost.mjs
+
+      # v2's 13 circuits, each at k <= 14 and equal to the table in docs/v2.md §8.
+      - name: Assert every v2 circuit fits k <= 14
+        run: node scripts/check-cost-v2.mjs
