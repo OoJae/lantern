@@ -8,7 +8,9 @@
 //   - the contract exists, and its maintenance authority is frozen, so its rules can never change;
 //   - every on-chain verifier key is byte-identical to a fresh compile of contracts/v2/lantern2.compact
 //     (devnet/build/lantern2: npm run devnet:verify:v2 builds it first, with compile.sh's stamp);
-//   - every recorded transaction is on the chain, at its recorded block;
+//   - every recorded transaction is on the chain, at its recorded block, and carries the recorded
+//     action on this contract (the deploy, each key insert and the freeze, and each step's circuit,
+//     by the indexer's entry point), so a record cannot name someone else's transactions;
 //   - the ledger ends where the record says: its public counts and the story's identity (lock,
 //     veto count, card, slot, reservation, recoveries, check-ins), read in the block of the
 //     record's last transaction (anyone can call a deployed contract, so its state today may have
@@ -38,6 +40,18 @@ const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
 const keyFile = (op) => path.join(LANTERN2_ZK, 'keys', `${op}.verifier`);
 const sha256 = (file) => createHash('sha256').update(readFileSync(path.join(repoRoot, file))).digest('hex');
 const counts = (s) => Object.entries(s).map(([k, v]) => `${k} ${v}`).join(', ');
+
+/** A transaction, found by one of its identifiers, as the indexer's GraphQL API shows it: its hash, block and contract actions. */
+const TX_FIELDS = 'hash block { height } contractActions { __typename address ... on ContractCall { entryPoint } }';
+const txOnChain = async (txId) => {
+  const res = await fetch(network.indexer, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(30_000),
+    body: JSON.stringify({ query: `query ($o: TransactionOffset!) { transactions(offset: $o) { ${TX_FIELDS} } }`, variables: { o: { identifier: txId } } }),
+  });
+  const body = await res.json();
+  if (body.errors?.length) throw new Error(`indexer: ${body.errors.map((e) => e.message).join('; ')}`);
+  return body.data.transactions?.[0] ?? null;
+};
 
 const RECORD_PATH = path.join(repoRoot, 'deployments', v2RecordName({ networkId: network.networkId, isPublic }));
 if (!existsSync(RECORD_PATH)) { console.error(`devnet:verify:v2: no record at ${RECORD_PATH}; run npm run devnet:v2 first`); process.exit(1); }
@@ -90,13 +104,26 @@ const txs = recordedTxs(record);
 let found = 0;
 for (const tx of txs) {
   try {
-    const d = await withTimeout(pdp.watchForTxData(tx.txId), 20_000);
+    const d = await withTimeout(pdp.watchForTxData(tx.txId), 30_000);
     if (d.blockHeight === tx.blockHeight && d.status === 'SucceedEntirely') found++;
   } catch { /* counted as missing */ }
 }
 const unidentified = unidentifiedSteps(record);
 check('every recorded transaction is on the chain, at its recorded block', found === txs.length,
   `${found} of ${txs.length}${unidentified.length ? `; step ${unidentified.map((s) => s.id).join(', ')} recorded without a transaction id (finalization timed out), so not looked up` : ''}`);
+const actions = [
+  { tx: meta, action: 'ContractDeploy' },
+  ...(meta.verifierKeysInsertedBy ?? []).map((u) => ({ tx: u, action: 'ContractUpdate' })),
+  { tx: meta.maintenanceAuthority.frozenBy, action: 'ContractUpdate' },
+  ...record.steps.filter((s) => s.tx?.txId).map((s) => ({ tx: s.tx, action: 'ContractCall', circuit: s.circuit })),
+];
+let carries = 0;
+for (const a of actions) {
+  const t = await txOnChain(a.tx.txId).catch(() => null);
+  if (t?.hash === a.tx.txHash && t.contractActions.some((x) => x.address === meta.address && x.__typename === a.action && (!a.circuit || x.entryPoint === a.circuit))) carries++;
+}
+check('each carries the recorded action on this contract: the deploy, each key insert, the freeze, and each step\'s circuit, by the indexer\'s entry point',
+  carries === actions.length, `${carries} of ${actions.length}`);
 
 console.log();
 const ok = results.every(Boolean);
