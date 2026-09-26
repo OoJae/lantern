@@ -143,7 +143,7 @@ function preprodStory() {
     '|---|---|---|---|---|',
     ...STORY_STEPS.map(step),
     '',
-    `Paid by a sponsor: ${sp.length} transactions, from a device that holds no wallet; the device's intents spent ${spent('userIntentDustSpends')} DUST outputs, the sponsor's ${spent('sponsorDustSpends')}. Proof time: ${p.min} / ${p.median} / ${p.max} s (min / median / max). Call to finalized: median ${s(f.median)}, ${f.min}–${f.max} s. The story took ${x.wallClockMinutes} min. Machine: ${m.cpuModel} (${m.cpus} cores), Node ${m.node}; ${r.images.map((i) => i.replace('midnightntwrk/', '')).join(', ')}, with Preprod's public node and indexer.`,
+    `The operator wallet is the run's own funded wallet: it deployed ${contracts.length === 2 ? 'both' : `all ${contracts.length}`} contracts and paid for every step not marked otherwise${r.steps.filter((y) => y.circuit === 'approveRecovery' && y.tx).every((y) => y.payer === 'the operator wallet') ? ', the guardians\' approvals included' : ''}. Paid by a sponsor: ${sp.length} transactions, from a device that holds no wallet; the device's intents spent ${spent('userIntentDustSpends')} DUST outputs, the sponsor's ${spent('sponsorDustSpends')}. Proof time: ${p.min} / ${p.median} / ${p.max} s (min / median / max). Call to finalized: median ${s(f.median)}, ${f.min}–${f.max} s. The story took ${x.wallClockMinutes} min. Machine: ${m.cpuModel} (${m.cpus} cores), Node ${m.node}; ${r.images.map((i) => i.replace('midnightntwrk/', '')).join(', ')}, with Preprod's public node and indexer.`,
     '',
     `\`LANTERN_NETWORK=preprod npm run devnet:verify\` checks this record against Preprod at any time: both contracts exist with their maintenance authorities frozen; every verifier key is byte-identical to a fresh compile, and the flavour differs from the shipped build in \`finalizeRecovery\` alone; both ledgers end where the record says; and all ${x.transactions} transactions are on the chain at their recorded blocks. It also re-reads the record's own entries for the ${sp.length} sponsored transactions: each came from a device with no wallet, and only the sponsor spent DUST.`,
   ].join('\n');
@@ -163,7 +163,9 @@ function unitTests() {
 }
 
 /** Each Playwright spec (by name, without .spec.js) and how many tests it holds in one project, or null
- *  when web/ is not installed. Every project runs the same list (a test that skips itself is listed). */
+ *  when web/ is not installed. Every project runs the same list (a test that skips itself is listed).
+ *  `browserRuns` counts the tests of every project: one run each. */
+let browserRuns = 0;
 function browserTests() {
   if (!existsSync(new URL('web/node_modules/@playwright/test/cli.js', root))) return null;
   const list = JSON.parse(run(['node_modules/@playwright/test/cli.js', 'test', '--list', '--reporter=json'], 'web/'));
@@ -171,6 +173,7 @@ function browserTests() {
   const walk = (suite) => {
     for (const spec of suite.specs ?? []) {
       for (const t of spec.tests) {
+        browserRuns += 1;
         if (t.projectName !== list.config.projects[0].name) continue;
         const f = spec.file.replace(/\.spec\.js$/, '');
         byFile.set(f, (byFile.get(f) ?? 0) + 1);
@@ -220,8 +223,10 @@ const COUNTS = [
   ['README.md', 'unit tests, For reviewers', /all (\d+) unit tests pass, (\d+) for shipped Lantern and (\d+) for Lantern v2,/g, [unitTotal, v1Total, v2Total]],
   ['README.md', 'unit tests, the Quality row', /(\d+) unit tests \((\d+) for shipped Lantern, (\d+) for \[Lantern v2\]/g, [unitTotal, v1Total, v2Total]],
   ['README.md', 'unit tests, Quickstart', /npm test +# (\d+) tests \(v1's (\d+), v2's (\d+)\)/g, [unitTotal, v1Total, v2Total]],
-  ['README.md', 'browser tests, the Quality row', /(\d+) browser tests in Chromium, WebKit and Firefox/g, [browserTotal]],
+  ['README.md', 'unit and browser tests, In one minute', /(\d+) unit tests and (\d+) browser tests/g, [unitTotal, browserTotal]],
+  ['README.md', 'browser tests, the Quality row', /(\d+) browser tests, run in CI in Chromium/g, [browserTotal]],
   ['README.md', 'browser tests, Quickstart', /# the (\d+) browser tests in Chromium/g, [browserTotal]],
+  ['README.md', 'browser test runs, Quickstart', /as an emulated Pixel 7: (\d+) runs/g, [BROWSER && browserRuns]],
   ['README.md', 'browser tests, Quickstart (cross)', /# the same (\d+) in WebKit/g, [browserTotal]],
   ['docs/v2.md', 'unit tests, docs/v2.md §13', /`npm run test:v2`: (\d+) files, (\d+) tests\. `npm test` runs them with shipped Lantern's (\d+), which are unchanged: (\d+) in all\./g,
     [V2.length, v2Total, v1Total, unitTotal]],
