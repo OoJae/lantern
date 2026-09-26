@@ -10,7 +10,10 @@
 //   node scripts/check-cost-v2.mjs               check
 //   node scripts/check-cost-v2.mjs --write-doc   rewrite the v2 columns of §8 and §14.1
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
+import { basename, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const EXPECTED = [
   'addGuardian', 'approveRecovery', 'checkIn', 'enrollIdentity', 'finalizeRecovery', 'hostGatedAction',
@@ -19,18 +22,35 @@ const EXPECTED = [
 ];
 const MAX_K = 14;
 
-const run = spawnSync('bash', ['scripts/cost-v2.sh'], { encoding: 'utf8' });
-if (run.status !== 0) {
-  console.error(run.stderr || run.stdout);
-  console.error(`check-cost-v2: scripts/cost-v2.sh failed (exit ${run.status})`);
-  process.exit(1);
-}
-process.stdout.write(run.stdout);
+// Measure here, reading all of zkir's output. Piping zkir into `head -1`, as
+// scripts/cost-v2.sh does for the printed table, can close the pipe before zkir's last write
+// (a lone "\r" on stderr); under load zkir then exits 1 on EPIPE and the table aborts.
+const fail = (msg, out = '') => { if (out) console.error(out); console.error(`check-cost-v2: ${msg}`); process.exit(1); };
+const versions = join(homedir(), '.compact', 'versions', '0.31.1');
+const zkir = existsSync(versions)
+  ? readdirSync(versions, { recursive: true }).map((p) => join(versions, p))
+    .find((p) => basename(p) === 'zkir' && statSync(p).isFile())
+  : undefined;
+if (!zkir) fail("zkir not found under ~/.compact/versions/0.31.1; run 'npm run compile:v2' first");
+const zkirDir = fileURLToPath(new URL('../contracts/managed-lantern2/zkir/', import.meta.url));
+const files = existsSync(zkirDir) ? readdirSync(zkirDir).filter((f) => f.endsWith('.zkir')).sort() : [];
+if (!files.length) fail("no v2 zkir; run 'npm run compile:v2' first");
 
-const rows = run.stdout.split('\n')
-  .map((l) => l.match(/^\|\s*`([A-Za-z]+)`\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|/))
-  .filter(Boolean)
-  .map(([, name, k, n]) => ({ name, k: Number(k), rows: Number(n) }));
+const tmp = mkdtempSync(join(tmpdir(), 'cost-v2-'));
+process.on('exit', () => rmSync(tmp, { recursive: true, force: true }));
+const rows = [];
+console.log('| circuit | k | rows |\n|---|---|---|');
+for (const f of files) {
+  const name = basename(f, '.zkir');
+  const run = spawnSync(zkir, ['compile', '-v', join(zkirDir, f), join(tmp, 'p'), join(tmp, 'v')],
+    { encoding: 'utf8', maxBuffer: 1 << 24 });
+  const out = `${run.stdout ?? ''}${run.stderr ?? ''}`;
+  if (run.status !== 0) fail(`zkir failed on ${name} (exit ${run.status ?? run.signal})`, out || String(run.error ?? ''));
+  const m = out.match(/k=(\d+), rows=(\d+)/);
+  if (!m) fail(`no k and rows in zkir's output for ${name}`, out);
+  rows.push({ name, k: Number(m[1]), rows: Number(m[2]) });
+  console.log(`| \`${name}\` | ${m[1]} | ${m[2]} |`);
+}
 
 const names = rows.map((r) => r.name).sort();
 const problems = [];
