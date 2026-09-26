@@ -5,10 +5,10 @@ import { checkPolicy, SPONSORED_CIRCUITS } from '../src/policy.mjs';
 
 const LANTERN = 'aa'.repeat(32);
 const call = (entryPoint, address = LANTERN) => ({ address, entryPoint: new TextEncoder().encode(entryPoint), communicationCommitment: 'c' });
-const txOf = ({ actions = [call('finalizeRecovery')], intents = 1, dust = undefined, offer = undefined, unshielded = undefined } = {}) => ({
+const txOf = ({ actions = [call('finalizeRecovery')], intents = 1, dust = undefined, offer = undefined, unshielded = undefined, fallibleUnshielded = undefined } = {}) => ({
   rewards: undefined, guaranteedOffer: offer, fallibleOffer: undefined,
   intents: new Map(Array.from({ length: intents }, (_, i) => [i + 1,
-    { actions, dustActions: dust, guaranteedUnshieldedOffer: unshielded, fallibleUnshieldedOffer: undefined }])),
+    { actions, dustActions: dust, guaranteedUnshieldedOffer: unshielded, fallibleUnshieldedOffer: fallibleUnshielded }])),
 });
 const opts = { addresses: [LANTERN], fee: 10n, maxFee: 100n };
 
@@ -35,11 +35,19 @@ test('refuses anything but exactly one call, to a served contract, within the fe
     [txOf({ dust: { spends: [1], registrations: [] } }), /already moves DUST/],
     [txOf({ offer: {} }), /shielded offer/],
     [txOf({ unshielded: {} }), /unshielded offer/],
+    [{ ...txOf(), rewards: {} }, /claims rewards/],
+    [{ ...txOf(), fallibleOffer: new Map([[1, {}]]) }, /shielded offer/],
+    [txOf({ dust: { spends: [], registrations: [{}] } }), /already moves DUST/],
+    [txOf({ fallibleUnshielded: {} }), /unshielded offer/],
+    // No call at all: nothing to check the address or circuit of, so the count alone must refuse it.
+    [txOf({ intents: 0 }), /0 intents/],
+    [txOf({ actions: [] }), /0 actions/],
   ];
   for (const [tx, why] of cases) {
     const v = checkPolicy(tx, opts);
     assert.equal(v.ok, false);
     assert.match(v.reasons.join('; '), why);
   }
+  assert.equal(checkPolicy(txOf(), { ...opts, fee: 100n }).ok, true, 'the cap itself is paid');
   assert.match(checkPolicy(txOf(), { ...opts, fee: 101n }).reasons.join(), /exceeds the cap/);
 });

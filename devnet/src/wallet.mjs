@@ -17,6 +17,7 @@ import {
   PublicKey as UnshieldedPublicKey,
 } from '@midnight-ntwrk/wallet-sdk';
 import { network, isPublic } from './config.mjs';
+import { ownerOnlyDir } from './owner-only.mjs';
 import { persistentSubmissionService } from './submission.mjs';
 
 // The indexer client uses the global WebSocket. Node >= 22 ships a native one; OnePledge
@@ -109,6 +110,7 @@ export const unshieldedAddress = (ctx) => ctx.unshieldedKeystore.getBech32Addres
 export async function saveSnapshot(ctx, file) {
   const [shielded, unshielded, dust] = await Promise.all([
     ctx.wallet.shielded.serializeState(), ctx.wallet.unshielded.serializeState(), ctx.wallet.dust.serializeState()]);
+  ownerOnlyDir(path.dirname(file));
   const tmp = `${file}.tmp`;
   writeFileSync(tmp, JSON.stringify({ savedAt: new Date().toISOString(), addressSha256: addressHashOf(ctx), shielded, unshielded, dust }), { mode: 0o600 });
   renameSync(tmp, file);

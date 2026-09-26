@@ -6,6 +6,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { jsonRpc } from './rpc.mjs';
 
 // fileURLToPath decodes %20; URL.pathname would not.
 export const devnetRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -47,14 +48,5 @@ export const isPublic = network.networkId !== 'undeployed';
 
 setNetworkId(network.networkId);
 
-/** JSON-RPC to the node, for the few facts midnight-js does not expose (block time). */
-export async function nodeRpc(method, params = []) {
-  const res = await fetch(network.node, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
-  });
-  const body = await res.json();
-  if (body.error) throw new Error(`${method}: ${JSON.stringify(body.error)}`);
-  return body.result;
-}
+/** JSON-RPC to the node, for the few facts midnight-js does not expose (block time); 30 s timeout. */
+export const nodeRpc = (method, params = []) => jsonRpc(network.node, method, params);

@@ -8,7 +8,7 @@
 // every recorded transaction is on the chain at its recorded block; and both ledgers end
 // where the record says, read in the block of the record's last transaction on each (anyone
 // can call a deployed contract, so its state today may have moved on: that is reported, and
-// is not the record's).
+// is not the record's; if that block was not recorded, today's state is read, and it says so).
 //
 // The chain is local and one-shot: this checks the chain that produced the record, so run it
 // before `npm run devnet:down`.
@@ -19,6 +19,7 @@ import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-p
 import { network } from './config.mjs';
 import { recordPath } from './record.mjs';
 import { loadBindings, LANTERN_ZK, HOST_ZK, SHIPPED_ZK } from './bindings.mjs';
+import { lastBlock, unidentifiedSteps, unrecordedLastStep } from './verify-plan.mjs';
 import { publicRecord, hostRecord } from '../../src/demo/story.mjs';
 
 const color = process.stdout.isTTY;
@@ -44,10 +45,6 @@ console.log(`  verifying ${path.relative(process.cwd(), RECORD_PATH)} (${record.
 console.log();
 check('every recorded step went as the story expected', record.steps.every((s) => s.ok), `${record.steps.length} steps`);
 
-/** The block of the record's last transaction on a contract: its deploy, its freeze or a step. */
-const lastBlock = (key, meta) => Math.max(meta.blockHeight, meta.maintenanceAuthority.frozenBy.blockHeight,
-  ...record.steps.filter((s) => (s.contract ?? 'lantern') === key && s.tx?.blockHeight).map((s) => s.tx.blockHeight));
-
 const SPEC = {
   lantern: { zk: LANTERN_ZK, circuits: 10, mod: Lantern, summary: publicRecord, final: record.finalPublicRecord },
   host: { zk: HOST_ZK, circuits: 7, mod: Host, summary: hostRecord, final: record.finalHostRecord },
@@ -70,14 +67,18 @@ for (const [key, meta] of Object.entries(record.contracts)) {
       `differs: ${differs.join(', ') || 'none'}`);
   }
   if (spec.final) {
-    // The indexer answers a block with the state after this contract's action in that block.
-    const at = lastBlock(key, meta);
-    const then = await pdp.queryContractState(meta.address, { type: 'blockHeight', blockHeight: at });
+    // The indexer answers only a block in which this contract has an action (null otherwise), with
+    // the state after it. If the block of the contract's last step was not recorded (its
+    // finalization timed out: a note only), the read falls back to today's state (verify-plan.mjs).
+    const at = lastBlock(record, key, meta);
+    const blind = unrecordedLastStep(record, key);
+    const then = blind ? state : await pdp.queryContractState(meta.address, { type: 'blockHeight', blockHeight: at });
     const was = then ? spec.summary(spec.mod.ledger(then.data)) : null;
     check(`${meta.name}: the ledger ends where the record says`, JSON.stringify(was) === JSON.stringify(spec.final),
-      was ? `${counts(was)}; in block ${at}` : `no state in block ${at}`);
+      blind ? `${counts(was)}; step ${blind.id}'s block was not recorded, so compared with today's state`
+        : was ? `${counts(was)}; in block ${at}` : `no state in block ${at}`);
     const now = spec.summary(spec.mod.ledger(state.data));
-    if (was && JSON.stringify(now) !== JSON.stringify(was)) console.log(c('2', `    called since the record: now ${counts(now)}`));
+    if (!blind && was && JSON.stringify(now) !== JSON.stringify(was)) console.log(c('2', `    called since the record: now ${counts(now)}`));
   }
 }
 
@@ -97,7 +98,9 @@ for (const tx of txs) {
     if (d.blockHeight === tx.blockHeight && d.status === 'SucceedEntirely') found++;
   } catch { /* counted as missing */ }
 }
-check('every recorded transaction is on the chain, at its recorded block', found === txs.length, `${found} of ${txs.length}`);
+const unidentified = unidentifiedSteps(record);
+check('every recorded transaction is on the chain, at its recorded block', found === txs.length,
+  `${found} of ${txs.length}${unidentified.length ? `; step ${unidentified.map((s) => s.id).join(', ')} recorded without a transaction id (finalization timed out), so not looked up` : ''}`);
 
 console.log();
 const ok = results.every(Boolean);

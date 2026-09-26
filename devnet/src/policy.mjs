@@ -6,6 +6,11 @@
 // circuit that requires an owner secret -- the recovering phone's finalize, the veto card's
 // veto, a host action, a rotation -- and never for an open: a hosted sponsor that paid for
 // opens would give anyone free use of the liveness oracle.
+// "Requires an owner secret" limits WHICH circuits it pays for, not how often: enrolment is
+// permissionless, so anyone can hold both secrets of an identity of their own and ask again and
+// again. This policy checks shape, circuit and fee, nothing per identity; it serves only the
+// recorded runs' own device. A hosted sponsor also needs a quota per identity root for the
+// repeatable circuits (SECURITY.md §4.2b, rule 4).
 export const SPONSORED_CIRCUITS = Object.freeze([
   'finalizeRecovery', 'vetoRecovery', 'hostGatedAction', 'proveHeadOwnership', 'rotateGuardianSet', 'addGuardian',
   'requireCurrentOwnerAttested',

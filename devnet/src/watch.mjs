@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// LANTERN_NETWORK=preprod npm run watch -- --id <identity commitment> [--webhook <url>] [--once]
+// LANTERN_NETWORK=preprod npm run watch -- --id <identity commitment> [--webhook-file <file>] [--once]
 //                                           [--state <file>] [--every <seconds>] [--contract <address>]...
 //
 // The owner's watcher: every recovery opened against one Lantern identity, and an alert whenever
@@ -11,23 +11,39 @@
 // the network's public indexer (midnight-js's indexer provider, whose GraphQL passes values as
 // variables), read with the shipped build's own generated ledger() (devnet/build/shipped; every
 // Lantern build shares the ledger's layout). It needs no wallet, no proof server and no private
-// state, and it writes nothing anywhere but standard output, the webhook you name and the --state
-// file, if you name one.
+// state, and it writes nothing anywhere but standard output and error, the webhook you name and the
+// --state file, if you name one.
 //
 //   --id <hex>        the identity commitment to watch (64 hex characters; 0x allowed). Recoveries
-//                     are matched on it, or on it as the identity root, so a commitment that has
-//                     since been succeeded by a recovery is still followed.
-//   --webhook <url>   POST each alert there as JSON ({ type, text, content, ... }: `text` suits a
-//                     Slack incoming webhook, `content` a Discord one). https only, or http to
-//                     localhost. At start, each recovery that is still open is sent too.
-//   --once            read once, print, alert, and exit. Exit 0 when every contract was read; 2 when
-//                     any could not be (what could be read is still printed and alerted). With no
-//                     --state, each run starts afresh, so it alerts every recovery still open, on
-//                     every run.
+//                     are matched on the identity's whole lineage (its root), whichever of its
+//                     commitments you give: a commitment since succeeded by a recovery still sees the
+//                     recoveries of the current one, and the printout names it ("current: <hex>").
+//   --webhook-file <file>
+//                     POST each alert to the URL on this file's first line, as JSON ({ type, text,
+//                     content, ... }: `text` suits a Slack incoming webhook, `content` a Discord one).
+//                     https only, or http to localhost; redirects are not followed, so name the final
+//                     URL. At start, each recovery that is still open is sent too. An alert the webhook
+//                     does not take (no answer, or not 2xx) is not marked as seen: it is sent again on
+//                     the next read (every --every seconds, or the next cron run with --state).
+//                     A Slack or Discord webhook URL is a secret: anyone who has it can post into your
+//                     channel. Keep the file owner-only (chmod 600), or pass the URL in the
+//                     LANTERN_WEBHOOK environment variable, which only you and root can read.
+//   --webhook <url>   the same URL on the command line, where every user of this machine can read it
+//                     (ps, /proc) while the watcher runs: only for a URL that is not a secret. It wins
+//                     over --webhook-file, which wins over LANTERN_WEBHOOK.
+//   --once            read once, print, alert, and exit. Exit 0 when every contract was read, every
+//                     alert delivered and the --state file, if named, written. Exit 2 when any contract
+//                     could not be read (a failed read, or a contract the indexer does not know), when
+//                     any alert could not be delivered, when the --state file could not be written, or
+//                     when every contract was read and the identity is on none of them (not enrolled,
+//                     not the root of an enrolled commitment, no recovery: check --id and --contract).
+//                     What could be read is still printed and alerted. With no --state, each run starts
+//                     afresh, so it alerts every recovery still open, on every run.
 //   --state <file>    remember what was seen in this file (JSON: recoveries, approvals, states), and
 //                     start from it: alerts are then only for what changed since the last run. For
-//                     cron, use it with --once. A file for another identity or network is ignored.
-//   --every <s>       seconds between reads (default 30, at least 10).
+//                     cron, use it with --once (and --webhook-file). A file for another identity or
+//                     network is ignored.
+//   --every <s>       seconds between reads (default 30, from 10 to 86400: a day).
 //   --contract <hex>  a Lantern deployment to watch instead of the recorded ones (repeatable).
 //
 // By default it watches the Lantern contracts this repository records for the network:
@@ -45,6 +61,7 @@ import { network, repoRoot } from './config.mjs';
 import { SHIPPED_ZK } from './bindings.mjs';
 import { fingerprintWords } from '../../src/words.js';
 import { parseIdCommit, recoveriesFor, recoveryState, shortHex, spanWords, STATE_WORDS } from '../../web/src/live/status.js';
+import { alertsFor, classify, everyProblem, nextSeen, OPEN, outcome, pickWebhook, postAlert, readSaved, standing, standingLine } from './watch-alerts.mjs';
 const hex = (u) => Buffer.from(u).toString('hex');
 const iso = (ms) => new Date(ms).toISOString().replace('.000Z', 'Z');
 const stamp = () => new Date().toISOString().slice(11, 19);
@@ -53,12 +70,13 @@ const fail = (m) => { console.error(`watch: ${m}`); process.exit(1); };
 
 // ---- arguments -----------------------------------------------------------------------------------
 const args = process.argv.slice(2);
-const opts = { id: null, webhook: null, once: false, every: 30, contracts: [], state: null };
+const opts = { id: null, webhook: null, webhookFile: null, once: false, every: 30, contracts: [], state: null };
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   const next = () => { if (i + 1 >= args.length) fail(`${a} needs a value`); return args[++i]; };
   if (a === '--id') opts.id = next();
   else if (a === '--webhook') opts.webhook = next();
+  else if (a === '--webhook-file') opts.webhookFile = path.resolve(next());
   else if (a === '--once') opts.once = true;
   else if (a === '--state') opts.state = path.resolve(next());
   else if (a === '--every') opts.every = Number(next());
@@ -70,12 +88,14 @@ const parsed = parseIdCommit(opts.id);
 if (!opts.id) fail('which identity? --id <identity commitment>');
 if (!parsed.ok) fail(parsed.why);
 const ID = parsed.id;
-if (!Number.isFinite(opts.every) || opts.every < 10) fail('--every takes a number of seconds, at least 10');
-if (opts.webhook) {
-  let u;
-  try { u = new URL(opts.webhook); } catch { fail('--webhook is not a URL'); }
-  const local = ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname);
-  if (!(u.protocol === 'https:' || (u.protocol === 'http:' && local))) fail('--webhook must be https (or http to localhost)');
+if (everyProblem(opts.every)) fail(everyProblem(opts.every));
+// The webhook: --webhook, else --webhook-file, else LANTERN_WEBHOOK, each checked the same way.
+const hook = pickWebhook({ flag: opts.webhook, file: opts.webhookFile, env: process.env.LANTERN_WEBHOOK });
+if (hook.problem) fail(hook.problem);
+opts.webhook = hook.url;
+if (hook.warning) console.error(`watch: ${hook.warning}`);
+if (hook.from === '--webhook' && new URL(hook.url).protocol === 'https:') {
+  console.error('watch: --webhook is on the command line, where other users of this machine can read it (ps): for a Slack or Discord URL, which is a secret, use --webhook-file or LANTERN_WEBHOOK');
 }
 
 // ---- which contracts -----------------------------------------------------------------------------
@@ -151,22 +171,14 @@ async function read(c) {
 }
 
 // ---- telling -------------------------------------------------------------------------------------
-const OPEN = new Set(['waiting', 'short', 'ready']);
-
+/** Print an alert, and POST it to the webhook if one is named. True when it was delivered (or there is no webhook). */
 async function alert(event) {
   const text = `Lantern: ${event.title}. ${event.body}`;
   say(`[${stamp()}] ALERT ${event.title}. ${event.body}`);
-  if (!opts.webhook) return;
-  try {
-    const res = await fetch(opts.webhook, {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...event.data, type: event.type, text, content: text, network: network.networkId, identity: ID, at: new Date().toISOString() }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!res.ok) say(`[${stamp()}]   the webhook answered HTTP ${res.status}`);
-  } catch (e) {
-    say(`[${stamp()}]   the webhook could not be reached: ${e.message}`);
-  }
+  if (!opts.webhook) return true;
+  const sent = await postAlert(opts.webhook, { ...event.data, type: event.type, text, content: text, network: network.networkId, identity: ID, at: new Date().toISOString() });
+  if (!sent.delivered) say(`[${stamp()}]   ${sent.why}: it is sent again on the next read`);
+  return sent.delivered;
 }
 
 function describe(c, r, st, assumed) {
@@ -184,71 +196,68 @@ function describe(c, r, st, assumed) {
 
 function print(c, got, now) {
   const head = `  ${c.name} ${shortHex(c.address)}`;
-  if (!got) { say(`${head}: no such contract on ${network.networkId}`); return; }
-  const mine = got.identities[ID];
-  const heirs = Object.values(got.identities).filter((i) => i.idRoot === ID && i.idCommit !== ID);
+  if (!got) { say(`${head}: no such contract on ${network.networkId}, as far as its indexer knows: counted as not read, and alerts for it are paused until it answers`); return; }
+  // Matched on the identity's whole lineage (its root), whichever of its commitments --id names.
+  const where = standing(ID, got);
   const recs = recoveriesFor(ID, got);
-  say(`${head}: ${mine ? `enrolled, ${mine.threshold} approvals needed, ${mine.retired ? 'since retired by a recovery' : 'current'}` : heirs.length ? `the root of ${heirs.length} enrolled commitment(s)` : 'not enrolled here'}`);
-  if (!recs.length && (mine || heirs.length)) say('    no recovery opened');
+  say(`${head}: ${standingLine(where)}`);
+  if (!recs.length && (where.mine || where.lineage.length)) say('    no recovery opened');
   for (const r of recs) {
     const st = recoveryState(r, got, now, got.delay);
     const d = describe(c, r, st, got.assumed);
     say(`    recovery ${shortHex(r.rid)}  ${STATE_WORDS[st.state].toLowerCase()}`);
     say(`      new device's fingerprint: ${d.words}`);
     say(`      approvals ${r.approvals} of ${st.threshold ?? '?'} · can finalize from ${d.when}${st.state === 'waiting' ? ` (in ${spanWords(st.canFinalizeAt - now)})` : ''}`);
-    if (OPEN.has(st.state)) say('      not your new device? veto it with your veto card before then: no guardian can stop a veto');
+    if (OPEN.has(st.state)) say('      not your new device? veto it now with your veto card: a recovery never expires, and no guardian can stop a veto');
   }
 }
 
 // ---- the loop ------------------------------------------------------------------------------------
 // Each contract keeps its own baseline. Its first successful read sets it (and, as at start, sends
 // what is open); only after that is anything on it "new". A contract that cannot be read keeps its last
-// baseline, so a failed read never turns old recoveries into new alerts once it answers again.
+// baseline, so a failed read never turns old recoveries into new alerts once it answers again. A
+// contract the indexer does not know counts as not read (classify, in watch-alerts.mjs): an answer of
+// "no such contract" is never taken for "no recoveries".
 let seen = new Map(); // `${address}:${rid}` -> { approvals, state }
 const baselined = new Set(); // contracts read at least once
 let first = true;
+let warnedUnknown = false;
 let timer = null;
 let stopping = false;
 
 // ---- the --state file: the baselines, kept between runs -------------------------------------------
-const STATES = new Set(Object.keys(STATE_WORDS));
 function loadState() {
   if (!opts.state || !existsSync(opts.state)) return;
   let s;
   try { s = JSON.parse(readFileSync(opts.state, 'utf8')); } catch { say(`  ${opts.state} could not be read as JSON: starting afresh`); return; }
-  if (s?.identity !== ID || s?.network !== network.networkId) { say(`  ${opts.state} is for another identity or network: starting afresh`); return; }
-  const watched = new Set(CONTRACTS.map((c) => c.address));
-  const HEX64 = /^[0-9a-f]{64}$/;
-  for (const [k, v] of Object.entries(s.seen ?? {})) {
-    const [address, rid] = k.split(':');
-    if (watched.has(address) && HEX64.test(rid ?? '') && Number.isSafeInteger(v?.approvals) && STATES.has(v?.state)) seen.set(k, { approvals: v.approvals, state: v.state });
-  }
-  for (const a of Array.isArray(s.baselined) ? s.baselined : []) if (watched.has(a)) baselined.add(a);
+  const saved = readSaved(s, { id: ID, networkId: network.networkId, watched: CONTRACTS.map((c) => c.address) });
+  if (!saved.ok) { say(`  ${opts.state} ${saved.why}: starting afresh`); return; }
+  seen = saved.seen;
+  for (const a of saved.baselined) baselined.add(a);
   say(`  from ${opts.state}: ${seen.size} recover${seen.size === 1 ? 'y' : 'ies'} already seen, last written ${String(s.at ?? 'at an unknown time')}`);
 }
+/** True when the file was written (or none is named): a run that cannot remember is not a success. */
 function saveState() {
-  if (!opts.state) return;
+  if (!opts.state) return true;
   const out = { identity: ID, network: network.networkId, at: new Date().toISOString(), seen: Object.fromEntries(seen), baselined: [...baselined] };
   const tmp = `${opts.state}.${process.pid}.tmp`;
   try {
-    writeFileSync(tmp, `${JSON.stringify(out, null, 2)}\n`);
+    writeFileSync(tmp, `${JSON.stringify(out, null, 2)}\n`, { mode: 0o600 }); // it names the identity watched: owner-only
     renameSync(tmp, opts.state); // whole or not at all
+    return true;
   } catch (e) {
-    say(`[${stamp()}]   ${opts.state} could not be written: ${e.message}`);
+    console.error(`[${stamp()}] watch: ${opts.state} could not be written (${e.message}): the next run will not know what this one saw`);
+    return false;
   }
 }
 
 async function tick() {
   const now = Date.now();
   const results = await Promise.all(CONTRACTS.map((c) => read(c).then((got) => ({ c, got }), (e) => ({ c, error: e }))));
-  const errors = results.filter((x) => x.error);
-  const current = new Map();
-  for (const { c, got } of results) {
-    if (!got) continue;
-    for (const r of recoveriesFor(ID, got)) current.set(`${c.address}:${r.rid}`, { c, r, st: recoveryState(r, got, now, got.delay), assumed: got.assumed });
-  }
+  // A contract the indexer does not know (got null) is unreadable too, never "no recoveries".
+  const { current, read: answered, unreadable, unknown } = classify(results, ID, now);
   // The whole picture on the first read and whenever anything moved; otherwise one line.
-  const moved = first || errors.length || current.size !== seen.size
+  const moved = first || unreadable.length || current.size !== seen.size
     || [...current].some(([k, v]) => { const w = seen.get(k); return !w || w.approvals !== v.r.approvals || w.state !== v.st.state; });
   first = false;
   if (moved) {
@@ -260,26 +269,23 @@ async function tick() {
   } else {
     say(`[${stamp()}] read again: no change`);
   }
+  // Every alert a recovery's change calls for (an approval and the end it allowed can share a read).
+  // One the webhook does not take leaves its part of the memory as it was, so the next read sends it again.
+  const undelivered = new Map(); // key -> Set of what its failed alerts covered
   for (const [k, { c, r, st, assumed }] of current) {
-    const was = seen.get(k);
     const d = describe(c, r, st, assumed);
-    if (!baselined.has(c.address)) {
-      if (OPEN.has(st.state)) await alert({ type: 'recovery-open', title: 'an open recovery for the identity you watch', body: `On ${c.name}: ${STATE_WORDS[st.state].toLowerCase()}, approvals ${r.approvals} of ${st.threshold ?? '?'}, can finalize from ${d.when}. New device: ${d.words}.`, data: d.data });
-    } else if (!was) {
-      await alert({ type: 'recovery-opened', title: 'a recovery was opened for the identity you watch', body: `On ${c.name}. New device: ${d.words}. It can finalize from ${d.when} unless you veto it.`, data: d.data });
-    } else if (r.approvals > was.approvals) {
-      await alert({ type: 'approval', title: 'a recovery for the identity you watch gained an approval', body: `Now ${r.approvals} of ${st.threshold ?? '?'} on ${c.name}. It can finalize from ${d.when}.`, data: d.data });
-    } else if (st.state !== was.state && !OPEN.has(st.state)) {
-      await alert({ type: `recovery-${st.state}`, title: `a recovery for the identity you watch: ${STATE_WORDS[st.state].toLowerCase()}`, body: `On ${c.name}, recovery ${shortHex(r.rid)}.`, data: d.data });
+    for (const e of alertsFor({ baselined: baselined.has(c.address), was: seen.get(k), name: c.name, r, st, d })) {
+      if (!(await alert(e))) undelivered.set(k, (undelivered.get(k) ?? new Set()).add(e.covers));
     }
   }
-  // Keep what an unreadable contract showed last, so its recoveries are not "new" when it answers again.
-  const next = new Map(current);
-  for (const { c, error } of results) if (error) for (const [k, v] of seen) if (k.startsWith(`${c.address}:`)) next.set(k, v);
-  seen = new Map([...next].map(([k, v]) => [k, v.st ? { approvals: v.r.approvals, state: v.st.state } : v]));
-  for (const { c, error } of results) if (!error) baselined.add(c.address);
-  saveState();
-  return !errors.length ? 'ok' : errors.length === results.length ? 'unreadable' : 'partial';
+  // An unreadable contract keeps what it showed last, so its recoveries are not "new" when it answers again.
+  seen = nextSeen(seen, current, { unreadable, undelivered });
+  for (const { c } of answered) baselined.add(c.address);
+  // Said once, and again only after it changed (a loop with --every would say it every read).
+  if (unknown && !warnedUnknown) console.error(`[${stamp()}] watch: ${ID} is not enrolled on any watched contract, nor the root of one, nor the identity of any recovery there: check --id and --contract`);
+  warnedUnknown = unknown;
+  const saved = saveState();
+  return outcome({ unreadable: unreadable.length, contracts: results.length, undelivered: undelivered.size, unsaved: !saved, unknown });
 }
 
 const stop = () => {

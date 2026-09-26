@@ -18,13 +18,15 @@ export const FLAVOUR_DELAY_SECONDS = 60;
 
 /** The flavoured source, and proof that exactly one line changed. */
 export function flavour(source) {
-  const before = source.split('\n');
+  // A checkout with CRLF line ends (Windows, core.autocrlf) keeps them: split and join on the file's own.
+  const eol = source.includes('\r\n') ? '\r\n' : '\n';
+  const before = source.split(eol);
   const hits = before.filter((l) => l === SHIPPED_LINE).length;
   if (hits !== 1) throw new Error(`expected the shipped timelock line exactly once, found it ${hits} times`);
   const after = before.map((l) => (l === SHIPPED_LINE ? FLAVOUR_LINE : l));
   const changed = after.flatMap((l, i) => (l === before[i] ? [] : [i + 1]));
   if (changed.length !== 1 || after.length !== before.length) throw new Error('the flavour must change exactly one line');
-  return { text: after.join('\n'), changedLine: changed[0] };
+  return { text: after.join(eol), changedLine: changed[0] };
 }
 
 // CLI: write the flavoured lantern.compact, beside copies of the modules it imports.

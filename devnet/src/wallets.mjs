@@ -13,11 +13,12 @@
 //   --role <r>   only that wallet
 import './ws.mjs'; // before anything that loads the wallet SDK: see ws.mjs
 import { randomBytes } from 'node:crypto';
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { network, stateDir, isPublic } from './config.mjs';
 import { deriveKeys } from './wallet.mjs';
+import { ownerOnlyDir } from './owner-only.mjs';
 
 // The funded wallet that deploys and pays by default; Seo-yeon's own wallet, which pays for
 // the open; and the sponsor, which pays for the walletless phone.
@@ -27,8 +28,9 @@ export const snapshotOf = (role) => path.join(stateDir, `${network.networkId}-${
 
 export function loadSeeds() {
   if (!isPublic) throw new Error('wallets.mjs is for a public network: set LANTERN_NETWORK=preprod');
+  // Before the early return, so a directory an older run left 0755 is tightened on the next run.
+  ownerOnlyDir(stateDir);
   if (existsSync(file)) return JSON.parse(readFileSync(file, 'utf8'));
-  mkdirSync(stateDir, { recursive: true });
   const seeds = Object.fromEntries(ROLES.map((r) => [r, randomBytes(32).toString('hex')]));
   writeFileSync(file, JSON.stringify(seeds, null, 2), { mode: 0o600 });
   chmodSync(file, 0o600);

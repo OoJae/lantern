@@ -21,7 +21,7 @@
 // network. Only finalize reads it. The public evidence is deployments/preprod-shipped.json.
 import './ws.mjs'; // before anything that loads the wallet SDK: see ws.mjs
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deployContract, findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
@@ -35,6 +35,7 @@ import { freezeMaintenanceAuthority, txOf } from './freeze.mjs';
 import { tipTime, waitForChainTime } from './chain.mjs';
 import { createSponsor } from './sponsor.mjs';
 import { walletlessDevice } from './device.mjs';
+import { writeOwnerOnly } from './owner-only.mjs';
 import { lanternWitnesses } from '../../src/witnesses.js';
 import { newIdentity, commitmentsOf, dealShares, recoverFromShares, idSaltOf, vetoSaltOf } from '../../src/identity.js';
 import { duration } from '../../src/demo/story.mjs';
@@ -61,12 +62,6 @@ const rel = (f) => path.relative(repoRoot, f);
 const log = (m) => console.log(`[${new Date().toISOString().slice(11, 19)}] ${m}`);
 /** The circuit's own assert, as midnight-js rethrows it ("failed assert: <message>"); null for any other error. */
 const assertMessageOf = (e) => { const m = String(e?.message ?? ''); const i = m.indexOf('failed assert: '); return i >= 0 ? m.slice(i + 15) : null; };
-/** Owner-only, and atomic: a temporary file, then a rename, so an interrupted write never leaves half a file. */
-const writeOwnerOnly = (file, data) => {
-  mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
-  writeFileSync(`${file}.tmp`, data, { mode: 0o600 });
-  renameSync(`${file}.tmp`, file);
-};
 const readRecord = () => JSON.parse(readFileSync(RECORD, 'utf8'));
 const writeRecord = (r) => writeFileSync(RECORD, `${JSON.stringify(r, null, 2)}\n`);
 
@@ -410,6 +405,9 @@ const seeds = loadSeeds();
 log(`syncing the ${payerRole}'s wallet…`);
 const payerCtx = await startWallet(seeds[payerRole], { snapshotFile: snapshotOf(payerRole) });
 await readyToPay(payerCtx, log);
+// Keep this sync at once: if anything later stops the run (the wait for the timelock can be
+// long), the next run resumes from here, not from an older snapshot.
+await saveSnapshot(payerCtx, snapshotOf(payerRole)).catch((e) => log(`the ${payerRole}'s snapshot was not saved: ${e.message}`));
 let evidence = null;
 const device = operatorPays ? {}
   : walletlessDevice(createSponsor({ wallet: payerCtx, addresses: [address], log }), (e) => { evidence = e; });

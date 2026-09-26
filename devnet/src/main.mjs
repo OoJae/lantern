@@ -99,7 +99,9 @@ const records = await runStory({ ...story, steps }, x, {
           ? `sponsor balance ${sp.sponsorBalanceSeconds} s · sponsor submit and inclusion ${sp.sponsorSubmitSeconds} s`
           : `balance ${t.balance} s · submit and inclusion ${t.submit} s`;
         log(dim(`    block ${r.tx.blockHeight} · tx ${r.tx.txId.slice(0, 16)}… · prove ${t.prove} s${t.cold ? ' (cold)' : ''} · ${pay} · finalized ${t.finalize} s after · total ${t.total} s`));
-      } else if (r.tx?.note) log(dim(`    ${r.tx.note}`));
+      }
+      // A call whose finalization was not reported in time: said even when its transaction was found.
+      if (r.tx?.note) log(dim(`    ${r.tx.note}`));
     } else {
       log(`${mark} ${r.actor}: ${r.detail ?? ''}`);
     }

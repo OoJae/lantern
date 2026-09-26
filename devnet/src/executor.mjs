@@ -16,6 +16,7 @@ import { createSponsor } from './sponsor.mjs';
 import { walletlessDevice } from './device.mjs';
 import { tipTime, waitForChainTime } from './chain.mjs';
 import { freezeMaintenanceAuthority, txOf } from './freeze.mjs';
+import { recordCall } from './call-record.mjs';
 
 const CALL_TIMEOUT_MS = 180_000;
 const ACTOR = 'actor';
@@ -34,7 +35,8 @@ function timedProviders(base, current) {
     ...base,
     proofProvider: { proveTx: around('proveStart', 'proveEnd', (tx, cfg) => base.proofProvider.proveTx(tx, cfg)) },
     walletProvider,
-    midnightProvider: { submitTx: around('submitStart', 'submitEnd', (tx) => base.midnightProvider.submitTx(tx)) },
+    // Keep the submitted transaction's id: if finalization is not reported in time, it is looked up.
+    midnightProvider: { submitTx: around('submitStart', 'submitEnd', async (tx) => { const id = await base.midnightProvider.submitTx(tx); const t = current(); if (t) t.txId = id; return id; }) },
   };
 }
 
@@ -54,6 +56,8 @@ function phases(t) {
  * @param sponsorship  optional { sponsorWallet, guardianWallet }. With it, a persona holding
  *                     no wallet (`wallet: 'none'`, the recovering phone) is paid for by the
  *                     sponsor, and Seo-yeon's open is paid for by her own wallet.
+ * @param hostTag      the LanternHost's tag. 4242 is the story's fixed demo value, which the records
+ *                     share; a real host needs its own fresh random 31-byte tag (SECURITY.md §8).
  */
 export async function devnetExecutor({ bindings, zk, wallet, log = () => {}, sponsorship = null, hostTag = 4242n, walletName = 'the genesis wallet', name = 'local chain' }) {
   const { rt, schnorr, Lantern, Host } = bindings;
@@ -153,18 +157,19 @@ export async function devnetExecutor({ bindings, zk, wallet, log = () => {}, spo
         // midnight-js waits indefinitely for finalization. After 180 s, ask the ledger itself.
         const changed = JSON.stringify(summary(await ledgerOf(contract))) !== JSON.stringify(before);
         if (!changed) throw new Error(`no finalization after ${CALL_TIMEOUT_MS / 1000} s and the ledger did not change`);
-        rec.tx = { note: `finalization not reported within ${CALL_TIMEOUT_MS / 1000} s; the ledger shows the change` };
-        rec.timings = phases(timing);
+        const note = `finalization not reported within ${CALL_TIMEOUT_MS / 1000} s; the ledger shows the change`;
+        // Look the submitted transaction up, so the record still has its block and id for devnet:verify.
+        let found = null;
+        if (timing.txId) {
+          let t2;
+          const giveUp = new Promise((resolve) => { t2 = setTimeout(() => resolve(null), 30_000); });
+          found = await Promise.race([pdp.watchForTxData(timing.txId), giveUp]).catch(() => null).finally(() => clearTimeout(t2));
+        }
+        // Recorded as a reported one is (payer, sponsorship, timings), so the record still passes its tests.
+        recordCall(rec, { tx: found ? txOf(found) : null, note, payer, evidence, timings: phases(timing), circuit, proved });
         return null;
       }
-      rec.tx = txOf(r.public);
-      rec.payer = payer;
-      if (evidence) rec.sponsorship = evidence;
-      rec.timings = phases(timing);
-      rec.timings.cold = proved.size === 0;
-      rec.timings.firstOfCircuit = !proved.has(circuit);
-      proved.add(circuit);
-      if (r.public.status !== 'SucceedEntirely') throw new Error(`transaction ${r.public.txId} ended ${r.public.status}`);
+      recordCall(rec, { tx: txOf(r.public), payer, evidence, timings: phases(timing), circuit, proved });
       return r.private?.result;
     },
     async advance(seconds, until) {
