@@ -17,6 +17,7 @@
 // cannot rewrite.
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { RULES } from '../devnet/src/v2-story.mjs';
 
 const root = new URL('..', import.meta.url);
 const load = (f) => JSON.parse(readFileSync(new URL(`deployments/${f}`, root), 'utf8'));
@@ -26,6 +27,9 @@ const bench = load('bench-shipped-finalize.json');
 // Midnight's public test network, once each has run: the shipped contract, and the whole story.
 const shipped = existsSync(new URL('deployments/preprod-shipped.json', root)) ? load('preprod-shipped.json') : null;
 const story = existsSync(new URL('deployments/preprod.json', root)) ? load('preprod.json') : null;
+// Lantern v2, a separate contract, deployed on Preprod beside the shipped one, and its run on a local chain.
+const v2 = existsSync(new URL('deployments/preprod-v2.json', root)) ? load('preprod-v2.json') : null;
+const v2Local = existsSync(new URL('deployments/local-v2.json', root)) ? load('local-v2.json') : null;
 
 const HOST = new Set(['attestVote', 'openEpoch', 'openRotation', 'requireCurrentOwnerAttested', 'rotateVote', 'sealEpoch', 'sealRotation']);
 const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
@@ -149,6 +153,59 @@ function preprodStory() {
   ].join('\n');
 }
 
+// Lantern v2 on Preprod: a separate contract, deployed beside the shipped one (never in its place),
+// in parts because its verifier keys exceed one block's write limit, then frozen; then each v2 rule
+// run once. Every step is shown, with its transaction or its refusal.
+function preprodV2() {
+  const r = v2;
+  const x = r.summary;
+  const c = r.contracts.lantern2;
+  const tx = (t) => `[block ${t.blockHeight}](${r.explorer}/transactions/${t.txHash})`;
+  const inserts = c.verifierKeysInsertedBy ?? [];
+  const keys = c.operationsAtDeploy.length + inserts.reduce((n, u) => n + u.operations.length, 0);
+  const code = (ops) => ops.map((o) => `\`${o}\``);
+  const list = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
+  const seen = new Set();
+  const row = (st) => {
+    const rule = seen.has(st.rule) ? '' : `${st.rule}. ${RULES[st.rule]}`;
+    seen.add(st.rule);
+    return st.outcome === 'accepted'
+      ? `| ${rule} | ${st.id} | ${st.actor} | \`${st.circuit}\` | accepted · ${tx(st.tx)} |`
+      : `| ${rule} | ${st.id} | ${st.actor} | \`${st.circuit}\` | refused: "${st.message}", before any transaction |`;
+  };
+  const payers = new Set(r.steps.filter((st) => st.tx).map((st) => st.payer));
+  if (payers.size !== 1 || !payers.has('the operator wallet')) throw new Error('deployments/preprod-v2.json: a step was not paid by the operator wallet; say who paid');
+  const p = x.proveSeconds;
+  const f = x.callToFinalizedSeconds;
+  const m = r.machine;
+  const hours = r.delay.chosenSeconds / 3600;
+  if (r.steps.some((st) => st.circuit === 'finalizeRecovery')) throw new Error('deployments/preprod-v2.json finalizes a recovery: say so');
+  const outcomes = (rec) => JSON.stringify(rec.steps.map((st) => [st.id, st.circuit, st.outcome, st.message ?? null]));
+  let local = '';
+  if (v2Local) {
+    const l = v2Local.summary;
+    if (outcomes(v2Local) !== outcomes(r)) throw new Error('deployments/local-v2.json and preprod-v2.json differ in their steps: say how');
+    local = ` It also ran on a local chain on ${v2Local.recordedAt.slice(0, 10)} ([\`local-v2.json\`](deployments/local-v2.json), \`npm run devnet:v2\`): the same ${l.steps} steps with the same outcomes, in ${l.transactions} transactions.`;
+  }
+  return [
+    `Lantern v2 is a separate contract, [\`contracts/v2/lantern2.compact\`](contracts/v2/lantern2.compact) as compiled, deployed on Preprod beside the shipped contract and not in its place: [\`${c.address.slice(0, 16)}…\`](${r.explorer}/contracts/${c.address}). Recorded on ${r.recordedAt.slice(0, 10)} ([\`preprod-v2.json\`](deployments/preprod-v2.json)): each v2 rule run once, ${x.steps} steps, ${x.accepted} accepted and ${x.refused} refused by the circuit's own asserts, in ${x.transactions} transactions (the deploy, ${inWords(inserts.length)} key insert${inserts.length === 1 ? '' : 's'} and the freeze, then ${x.accepted} steps).`,
+    '',
+    `Its ${keys} verifier keys exceed what one block can write, so the deploy carried ${c.operationsAtDeploy.length} and ${inserts.length === 1 ? 'one maintenance update' : `${inserts.length} maintenance updates`} added the other ${keys - c.operationsAtDeploy.length} before the freeze:`,
+    '',
+    '| Deploy | Verifier keys added | Maintenance authority frozen |',
+    '|---|---|---|',
+    `| ${tx(c)}, with ${c.operationsAtDeploy.length} of the ${keys} verifier keys: ${list(code(c.operationsAtDeploy))} | ${inserts.map((u) => `${tx(u)}: ${list(code(u.operations))}`).join('; ')} | ${tx(c.maintenanceAuthority.frozenBy)}, committee ${c.maintenanceAuthority.committee}, threshold ${c.maintenanceAuthority.threshold} |`,
+    '',
+    '| Rule | Step | Who | Circuit | Outcome |',
+    '|---|---|---|---|---|',
+    ...r.steps.map(row),
+    '',
+    `The owner chose v2's minimum delay at enrolment, ${hours} hours; nothing in the run waits it out, so no v2 recovery is finalized. The operator wallet, the run's own funded wallet, paid for every transaction. Proof time: ${p.min} / ${p.median} / ${p.max} s (min / median / max). Call to finalized: median ${s(f.median)}, ${f.min}–${f.max} s. The run took ${x.wallClockMinutes} min. Machine: ${m.cpuModel} (${m.cpus} cores), Node ${m.node}; ${r.images.map((i) => i.replace('midnightntwrk/', '')).join(', ')}, with Preprod's public node and indexer.${local}`,
+    '',
+    `\`LANTERN_NETWORK=preprod npm run devnet:verify:v2\` checks this record against Preprod at any time, with no wallet: the record is consistent and was compiled from the sources committed here; the contract exists, with its maintenance authority frozen; all ${keys} verifier keys are byte-identical to a fresh compile of \`contracts/v2/lantern2.compact\`; the ledger and the story's identity end where the record says, read in the block of its last transaction; and all ${x.transactions} transactions are on the chain at their recorded blocks, each carrying the recorded action on this contract. Offline, [\`test/v2-record.test.js\`](test/v2-record.test.js) checks both v2 records on every \`npm test\`.`,
+  ].join('\n');
+}
+
 // ---- the test suites, as their runners list them -------------------------------------------------
 const run = (args, cwd) => execFileSync(process.execPath, args, { cwd: new URL(cwd, root), stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 << 20 }).toString();
 
@@ -256,7 +313,7 @@ function v2FileCounts(text) {
   return { problems, out };
 }
 
-const BLOCKS = { chain, 'chain-circuits': chainCircuits, attack, ...(shipped ? { preprod } : {}), ...(story ? { 'preprod-story': preprodStory } : {}), tests };
+const BLOCKS = { chain, 'chain-circuits': chainCircuits, attack, ...(shipped ? { preprod } : {}), ...(story ? { 'preprod-story': preprodStory } : {}), ...(v2 ? { 'preprod-v2': preprodV2 } : {}), tests };
 
 const file = new URL('README.md', root);
 const v2doc = new URL('docs/v2.md', root);
