@@ -18,6 +18,16 @@ describe('the v2 chain story, in memory', () => {
     assert.deepEqual(records.filter((r) => r.outcome === 'refused').map((r) => [r.id, r.message]), Object.entries(REFUSALS));
   });
 
+  it('stops at the first step that does not go as the story expects, so nothing after it is paid for', async () => {
+    const { x, story } = inMemory();
+    const i = story.steps.findIndex((s) => s.id === '2.1'); // the stranger's open, which the circuit refuses
+    story.steps[i].expect = { accept: true };
+    const records = await runV2Story(story, x);
+    assert.equal(records.length, i + 1);
+    assert.deepEqual([records.at(-1).id, records.at(-1).ok, records.at(-1).outcome], ['2.1', false, 'refused']);
+    assert.ok(records.slice(0, -1).every((r) => r.ok));
+  });
+
   it('covers every rule, and every circuit a v2 owner, guardian or stranger needs short of a finalize', async () => {
     const { story } = inMemory();
     assert.deepEqual([...new Set(story.steps.map((s) => s.rule))], Object.keys(RULES).map(Number));

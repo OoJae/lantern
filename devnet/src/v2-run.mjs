@@ -84,8 +84,9 @@ if (isPublic) await saveSnapshot(wallet, snapshotOf('operator')); // keep the sy
 await wallet.wallet.stop();
 console.log();
 if (bad.length) {
-  console.log(red(`  ${bad.length} step(s) did not go as the story expects. No record written.`));
-  for (const r of bad) console.log(red(`    ${r.id}: expected ${r.expect}, got ${r.outcome ?? ''} ${r.message ?? ''}`));
+  const [r] = bad;
+  console.log(red(`  Step ${r.id} did not go as the story expects, so the story stopped there (${records.length} of ${story.steps.length} steps run). No record written.`));
+  console.log(red(`    ${r.id}: expected ${r.expect}, got ${r.outcome ?? ''} ${r.message ?? ''}`));
   process.exit(1);
 }
 const record = buildV2Record({ network, isPublic, contract: x.contract, records, finalLedger, finalIdentity, startedAt, compiler, sources,

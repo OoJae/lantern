@@ -270,6 +270,9 @@ export async function runV2Story(story, x, { onStep = () => {} } = {}) {
     const rec = await runV2Step(step, x);
     records.push(rec);
     await onStep(rec);
+    // A step that did not go as expected stops the story: the steps after it assume it did, and on
+    // Preprod each would still spend the paying wallet's DUST. No record is written either way.
+    if (!rec.ok) break;
   }
   return records;
 }
