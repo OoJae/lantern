@@ -337,6 +337,21 @@ describe('F3: unlocking replaces the card, so whoever copied it cannot lock agai
     expect(() => sim.call('lockIdentity', id)).not.toThrow();
   });
 
+  it("the copier's lock and veto, proved before the card was replaced, fail on replay after it", () => {
+    const { sim, id, idRoot, guardians } = world({ n: 3 });
+    const owner = ownerOf(sim);
+    const rid = openAs(sim, guardians[0], id, EPH_A);
+    asCopier(sim, { vetoSecret: owner.vetoSecret, vetoSalt: owner.vetoSalt });
+    const lock = proveAgainst(sim, snapshot(sim), 'lockIdentity', id);
+    const veto = proveAgainst(sim, snapshot(sim), 'vetoRecovery', rid, NO_RESERVATION);
+    Object.assign(sim.ps, owner);
+    sim.call('unlockIdentity', id, P.vetoCommitOf(fieldOf(6161), bytes32(6162)));
+    expect(() => replay(sim, snapshot(sim), lock)).toThrow(ANY_READ_MISMATCH);
+    expect(() => replay(sim, snapshot(sim), veto)).toThrow(ANY_READ_MISMATCH);
+    expect(sim.ledger.locked.lookup(idRoot)).toBe(false);
+    expect(sim.ledger.killed.member(rid)).toBe(false);
+  });
+
   it('src/v2/sim.js unlocks with a new card when given one, and keeps the card otherwise', () => {
     const L = createLantern2Sim({ rt, mod: Lantern2 });
     const owner = newIdentity();
