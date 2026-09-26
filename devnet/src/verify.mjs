@@ -16,7 +16,7 @@ import './ws.mjs'; // before anything that loads the wallet SDK: see ws.mjs
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { network } from './config.mjs';
+import { network, buildDir } from './config.mjs';
 import { recordPath } from './record.mjs';
 import { loadBindings, LANTERN_ZK, HOST_ZK, SHIPPED_ZK } from './bindings.mjs';
 import { lastBlock, unidentifiedSteps, unrecordedLastStep } from './verify-plan.mjs';
@@ -36,6 +36,11 @@ const keyFile = (dir, op) => path.join(dir, 'keys', `${op}.verifier`);
 
 const RECORD_PATH = recordPath({ quick: process.argv.includes('--quick'), selfPay: process.argv.includes('--self-pay') });
 if (!existsSync(RECORD_PATH)) { console.error(`devnet:verify: no record at ${RECORD_PATH}; run npm run devnet first`); process.exit(1); }
+// Before `bash devnet/compile.sh` there is no fresh compile to compare the chain with: say so in
+// one line, not as a stack trace. compile.sh writes its stamp only once all three builds succeed.
+const built = existsSync(path.join(buildDir, '.stamp'))
+  && [LANTERN_ZK, HOST_ZK, SHIPPED_ZK].every((d) => existsSync(path.join(d, 'contract', 'index.js')) && existsSync(path.join(d, 'keys')));
+if (!built) { console.error("devnet:verify: devnet/build is missing or incomplete; run 'bash devnet/compile.sh' first"); process.exit(1); }
 const record = JSON.parse(readFileSync(RECORD_PATH, 'utf8'));
 const { Lantern, Host } = await loadBindings();
 const pdp = indexerPublicDataProvider(network.indexer, network.indexerWS);

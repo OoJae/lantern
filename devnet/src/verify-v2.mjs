@@ -22,7 +22,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { network, isPublic, repoRoot } from './config.mjs';
+import { network, isPublic, repoRoot, buildDir } from './config.mjs';
 import { loadLantern2, LANTERN2_ZK } from './bindings.mjs';
 import { lastBlock, unidentifiedSteps, unrecordedLastStep } from './verify-plan.mjs';
 import { v2RecordName, problemsOf, recordedTxs, checkInPeriodOf, V2_CIRCUITS, V2_SOURCES } from './v2-record.mjs';
@@ -55,6 +55,11 @@ const txOnChain = async (txId) => {
 
 const RECORD_PATH = path.join(repoRoot, 'deployments', v2RecordName({ networkId: network.networkId, isPublic }));
 if (!existsSync(RECORD_PATH)) { console.error(`devnet:verify:v2: no record at ${RECORD_PATH}; run npm run devnet:v2 first`); process.exit(1); }
+// Run on its own before `bash devnet/compile.sh --v2`, there is no fresh compile to compare the
+// chain with: say so in one line, not as a stack trace. The stamp is written only once the build succeeds.
+const built = existsSync(path.join(buildDir, '.stamp-v2'))
+  && existsSync(path.join(LANTERN2_ZK, 'contract', 'index.js')) && existsSync(path.join(LANTERN2_ZK, 'keys'));
+if (!built) { console.error("devnet:verify:v2: devnet/build/lantern2 is missing or incomplete; run 'bash devnet/compile.sh --v2' first (npm run devnet:verify:v2 does)"); process.exit(1); }
 const record = JSON.parse(readFileSync(RECORD_PATH, 'utf8'));
 const Lantern2 = await loadLantern2();
 const pdp = indexerPublicDataProvider(network.indexer, network.indexerWS);
@@ -95,7 +100,7 @@ if (state) {
   const idNow = L && id ? identityState(L, Lantern2.pureCircuits, Buffer.from(id.idCommit, 'hex'), checkInPeriodOf(record.steps)) : null;
   check('the story\'s identity ends where the record says: its lock, veto count, card, slot, reservation, recoveries and check-ins',
     Boolean(idNow) && JSON.stringify(idNow) === JSON.stringify(id),
-    idNow ? `locked ${idNow.locked}, ${idNow.vetoCount} veto, ${idNow.recoveries.length} recoveries, live ${idNow.liveRecovery?.slice(0, 12)}…, ${idNow.checkIns.count} check-in in period ${idNow.checkIns.period}` : 'not readable');
+    idNow ? `locked ${idNow.locked}, ${idNow.vetoCount} veto, ${idNow.recoveries.length} recoveries, current recovery ${idNow.liveRecovery?.slice(0, 12)}…, ${idNow.checkIns.count} check-in in period ${idNow.checkIns.period}` : 'not readable');
   const now = v2Summary(Lantern2.ledger(state.data));
   if (!blind && was && JSON.stringify(now) !== JSON.stringify(was)) console.log(c('2', `    called since the record: now ${counts(now)}`));
 }

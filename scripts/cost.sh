@@ -4,6 +4,10 @@ set -euo pipefail
 ZKIR="${HOME}/.compact/versions/0.31.1/$(uname -m | sed 's/arm64/aarch64/')-darwin/zkir"
 [ -x "$ZKIR" ] || ZKIR="$(find "${HOME}/.compact/versions/0.31.1" -name zkir -type f | head -1)"
 [ -x "$ZKIR" ] || { echo "error: zkir not found; run 'npm run compile' first" >&2; exit 1; }
+# Before a compile the globs below match nothing, and zkir would fail on the literal pattern.
+for d in contracts/managed/zkir contracts/managed-host/zkir; do
+  ls "$d"/*.zkir >/dev/null 2>&1 || { echo "error: no .zkir files in $d/; run 'npm run compile' first" >&2; exit 1; }
+done
 
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 printf '| circuit | k | rows | prover key | zkir |\n|---|---|---|---|---|\n'

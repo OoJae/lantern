@@ -3,7 +3,9 @@
 // just as loudly if it cannot tell: exactly 17 rows must parse, each with a numeric k.
 // A check that passes when it measured nothing would be worse than no check.
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const EXPECTED = [
   'addGuardian', 'approveRecovery', 'enrollIdentity', 'finalizeRecovery', 'hostGatedAction', 'openRecovery',
@@ -12,7 +14,17 @@ const EXPECTED = [
 ];
 const MAX_K = 14;
 
-const run = spawnSync('bash', ['scripts/cost.sh'], { encoding: 'utf8' });
+// Before `npm run compile` there is nothing to measure: say so in one line, not as zkir's error
+// on a path that does not exist. The zkir directories are build output (gitignored).
+const root = fileURLToPath(new URL('..', import.meta.url));
+const ZKIR_DIRS = ['contracts/managed/zkir', 'contracts/managed-host/zkir'];
+const unbuilt = ZKIR_DIRS.filter((d) => !existsSync(join(root, d)) || !readdirSync(join(root, d)).some((f) => f.endsWith('.zkir')));
+if (unbuilt.length) {
+  console.error(`check-cost: nothing to measure: ${unbuilt.map((d) => `${d}/`).join(' and ')} ${unbuilt.length > 1 ? 'hold' : 'holds'} no .zkir files; run 'npm run compile' first`);
+  process.exit(1);
+}
+
+const run = spawnSync('bash', ['scripts/cost.sh'], { cwd: root, encoding: 'utf8' });
 if (run.status !== 0) {
   console.error(run.stderr || run.stdout);
   console.error(`check-cost: scripts/cost.sh failed (exit ${run.status})`);
