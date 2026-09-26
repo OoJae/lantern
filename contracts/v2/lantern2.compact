@@ -164,6 +164,8 @@ export pure circuit checkInKeyOf(idRoot: Bytes<32>, ctx: Bytes<32>, period: Uint
 // rotation by rotating a throwaway identity to the same context first, or block
 // an enrolment by rotating to the victim's pending idCommit: `usedGuardianCtx`
 // is global. Bound to the root, no other identity can ever produce this value.
+// That closes the CONTEXT route only: finalizeRecovery's successor is still an
+// unopened argument, which can take a pending idCommit too (see there).
 export pure circuit guardianCtxOf(idRoot: Bytes<32>, seed: Bytes<32>): Bytes<32> {
   return upgradeFromTransient(transientHash<CtxPreimage>(
     CtxPreimage { domain: pad(18, "lantern2:rotate:v1"), idRoot: idRoot, seed: seed }));
@@ -564,6 +566,15 @@ export circuit finalizeRecovery(
   retiredIdentities.insert(disclose(idCommit));
   lineage.insert(disclose(lineageLeafOf(rec.idRoot, newIdCommit)));
 
+  // KNOWN GAP (second review; inherited from v1, not closed in this build):
+  // newIdCommit is a bare argument, never opened. Anyone who holds a finalizable
+  // recovery of their OWN identity can finalize to a PENDING enrolment's
+  // idCommit, or to an honest device's pending successor, first; that
+  // enrolment then fails with "identity already enrolled", that finalize with
+  // the assert below. Denial of service only, at the cost of one prepared
+  // recovery per block: the victim retries with a fresh identity secret (or a
+  // fresh successor, before expiresAt). The fix is to prove the successor's
+  // opening here, from two new witnesses: successorSecret() and successorSalt().
   assert(!enrolled.member(disclose(newIdCommit)), "successor already enrolled");
   enrolled.insert(disclose(newIdCommit));
   thresholds.insert(disclose(newIdCommit), t);

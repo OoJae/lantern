@@ -19,6 +19,21 @@ import { DEFAULT_DELAY, checkDelay, periodOf, rootOf, slotOf, recoveryStatus, ti
 const NO_RESERVATION = new Uint8Array(32);
 const randomSeed = () => globalThis.crypto.getRandomValues(new Uint8Array(32));
 
+// finalizeRecovery never opens its successor argument (a known gap, noted in
+// the contract), so anyone holding a finalizable recovery can take a pending
+// enrolment's idCommit, or a device's pending successor, first. The refusal
+// keeps the contract's own words; this says what the owner does next.
+const TAKEN = {
+  'identity already enrolled': 'if you never enrolled this identity, a recovery may have been finalized to its '
+    + 'commitment first: generate a fresh identity with newIdentity(), deal new shares, and enrol that',
+  'successor already enrolled': 'someone may have finalized to this successor first: generate a fresh successor '
+    + 'with newIdentity() and finalize again before the recovery expires (its expiresAt)',
+};
+function explainTaken(e) {
+  const hit = Object.keys(TAKEN).find((k) => e?.message?.includes(k));
+  return hit ? new Error(`${e.message}. ${TAKEN[hit]}`, { cause: e }) : e;
+}
+
 export function createLantern2Sim({ rt, mod, now }) {
   const pure = mod.pureCircuits;
   let sim = null;
@@ -40,7 +55,9 @@ export function createLantern2Sim({ rt, mod, now }) {
     /** Enrol `owner` with a threshold and a delay (default 72 h). Returns the idCommit, which is the root. */
     enrol(owner, { threshold = 2, delay = DEFAULT_DELAY } = {}) {
       const { idCommit, vetoCommit } = commitmentsOf(pure, owner);
-      call(owner, 'enrollIdentity', idCommit, vetoCommit, BigInt(threshold), checkDelay(delay));
+      try {
+        call(owner, 'enrollIdentity', idCommit, vetoCommit, BigInt(threshold), checkDelay(delay));
+      } catch (e) { throw explainTaken(e); }
       return idCommit;
     },
     /** The owner adds a guardian (both secrets). Returns the guardian with its leaf. */
@@ -82,7 +99,11 @@ export function createLantern2Sim({ rt, mod, now }) {
     /** A check-in always names the identity ROOT, whatever the guardian passes (review F8). */
     checkIn: (guardian, idCommit) => call(guardian, 'checkIn', rootOf(sim.ledger, idCommit), period()),
     /** The device finalizes to a successor it generated. */
-    finalize: (device, rid, successor) => call(device, 'finalizeRecovery', rid, successor.idCommit, successor.vetoCommit),
+    finalize(device, rid, successor) {
+      try {
+        return call(device, 'finalizeRecovery', rid, successor.idCommit, successor.vetoCommit);
+      } catch (e) { throw explainTaken(e); }
+    },
     /** The reference host gate, as the owner of `idCommit` under `idRoot`. */
     gate: (owner, idRoot, idCommit, nonce) =>
       call({ ...owner, lineage: { root: idRoot, member: idCommit } }, 'hostGatedAction', idRoot, idCommit, nonce),

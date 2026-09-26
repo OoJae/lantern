@@ -252,6 +252,40 @@ describe('F1: the rotation\'s context is derived from the root, so nobody watchi
     expect(sim.ledger.enrolled.member(carolId)).toBe(true);
   });
 
+  it('KNOWN GAP (second review, open): the finalize route can still take a pending idCommit, and the client says what to do', () => {
+    // finalizeRecovery never opens its successor argument (noted at the assert
+    // in the contract). So a recovery of the attacker's OWN identity can take a
+    // victim's pending idCommit, or an honest device's pending successor. When
+    // the contract proves the successor's opening, Mallory's finalize below
+    // must be refused, and this test turned round.
+    const L = createLantern2Sim({ rt, mod: Lantern2 });
+    const rand32 = () => globalThis.crypto.getRandomValues(new Uint8Array(32));
+    const finalizable = (owner) => {
+      const root = L.enrol(owner, { delay: DAY });
+      const gs = [0, 1].map(() => L.addGuardian(owner, root, { guardianSecret: rand32(), leafSalt: rand32() }));
+      const sk = rand32();
+      const rid = L.open(gs[0], root, P.ephemeralPkOf(sk));
+      for (const g of gs) L.approve(g, root, rid);
+      return { root, rid, device: { ephemeralSk: sk, identitySecret: owner.identitySecret, idSalt: owner.idSalt } };
+    };
+    const mallory = finalizable(newIdentity());
+    const alice = finalizable(newIdentity());
+    L.setTime(L.status(alice.root).holder.unlockAt);
+
+    const victim = newIdentity();
+    const pending = commitmentsOf(P, victim);   // public in the victim's pending enrolment
+    L.finalize(mallory.device, mallory.rid, pending);
+    expect(hex(L.ledger.idRoots.lookup(pending.idCommit))).toBe(hex(mallory.root));
+    expect(() => L.enrol(victim)).toThrow(/identity already enrolled\. .*fresh identity with newIdentity\(\)/);
+    expect(() => L.enrol(newIdentity())).not.toThrow();
+
+    // An honest device whose successor was taken keeps its recovery, and retries.
+    expect(() => L.finalize(alice.device, alice.rid, pending)).toThrow(/successor already enrolled\. .*fresh successor/);
+    const next = commitmentsOf(P, newIdentity());
+    expect(() => L.finalize(alice.device, alice.rid, next)).not.toThrow();
+    expect(hex(L.ledger.idRoots.lookup(next.idCommit))).toBe(hex(alice.root));
+  });
+
   it('src/v2/sim.js rotates with a fresh random seed by default, and returns the context it installed', () => {
     // Twice: a constant default seed would pass once, then be refused as a
     // context already used.

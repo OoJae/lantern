@@ -514,35 +514,35 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('enrollIdentity',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 286 char 1',
+                                     'lantern2.compact line 288 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('enrollIdentity',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 286 char 1',
+                                     'lantern2.compact line 288 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
         if (!(vetoCommit_0.buffer instanceof ArrayBuffer && vetoCommit_0.BYTES_PER_ELEMENT === 1 && vetoCommit_0.length === 32)) {
           __compactRuntime.typeError('enrollIdentity',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 286 char 1',
+                                     'lantern2.compact line 288 char 1',
                                      'Bytes<32>',
                                      vetoCommit_0)
         }
         if (!(typeof(threshold_0) === 'bigint' && threshold_0 >= 0n && threshold_0 <= 255n)) {
           __compactRuntime.typeError('enrollIdentity',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'lantern2.compact line 286 char 1',
+                                     'lantern2.compact line 288 char 1',
                                      'Uint<0..256>',
                                      threshold_0)
         }
         if (!(typeof(delay_0) === 'bigint' && delay_0 >= 0n && delay_0 <= 18446744073709551615n)) {
           __compactRuntime.typeError('enrollIdentity',
                                      'argument 4 (argument 5 as invoked from Typescript)',
-                                     'lantern2.compact line 286 char 1',
+                                     'lantern2.compact line 288 char 1',
                                      'Uint<0..18446744073709551616>',
                                      delay_0)
         }
@@ -574,14 +574,14 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('addGuardian',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 315 char 1',
+                                     'lantern2.compact line 317 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('addGuardian',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 315 char 1',
+                                     'lantern2.compact line 317 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
@@ -611,21 +611,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('rotateGuardianSet',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 337 char 1',
+                                     'lantern2.compact line 339 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('rotateGuardianSet',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 337 char 1',
+                                     'lantern2.compact line 339 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
         if (!(seed_0.buffer instanceof ArrayBuffer && seed_0.BYTES_PER_ELEMENT === 1 && seed_0.length === 32)) {
           __compactRuntime.typeError('rotateGuardianSet',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 337 char 1',
+                                     'lantern2.compact line 339 char 1',
                                      'Bytes<32>',
                                      seed_0)
         }
@@ -657,28 +657,28 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('openRecovery',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 396 char 1',
+                                     'lantern2.compact line 398 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('openRecovery',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 396 char 1',
+                                     'lantern2.compact line 398 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
         if (!(ephemeralPk_0.buffer instanceof ArrayBuffer && ephemeralPk_0.BYTES_PER_ELEMENT === 1 && ephemeralPk_0.length === 32)) {
           __compactRuntime.typeError('openRecovery',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 396 char 1',
+                                     'lantern2.compact line 398 char 1',
                                      'Bytes<32>',
                                      ephemeralPk_0)
         }
         if (!(typeof(period_0) === 'bigint' && period_0 >= 0n && period_0 <= 4294967295n)) {
           __compactRuntime.typeError('openRecovery',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'lantern2.compact line 396 char 1',
+                                     'lantern2.compact line 398 char 1',
                                      'Uint<0..4294967296>',
                                      period_0)
         }
@@ -710,21 +710,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('approveRecovery',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 465 char 1',
+                                     'lantern2.compact line 467 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('approveRecovery',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 465 char 1',
+                                     'lantern2.compact line 467 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
         if (!(rid_0.buffer instanceof ArrayBuffer && rid_0.BYTES_PER_ELEMENT === 1 && rid_0.length === 32)) {
           __compactRuntime.typeError('approveRecovery',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 465 char 1',
+                                     'lantern2.compact line 467 char 1',
                                      'Bytes<32>',
                                      rid_0)
         }
@@ -755,21 +755,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('vetoRecovery',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 502 char 1',
+                                     'lantern2.compact line 504 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(rid_0.buffer instanceof ArrayBuffer && rid_0.BYTES_PER_ELEMENT === 1 && rid_0.length === 32)) {
           __compactRuntime.typeError('vetoRecovery',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 502 char 1',
+                                     'lantern2.compact line 504 char 1',
                                      'Bytes<32>',
                                      rid_0)
         }
         if (!(nextRid_0.buffer instanceof ArrayBuffer && nextRid_0.BYTES_PER_ELEMENT === 1 && nextRid_0.length === 32)) {
           __compactRuntime.typeError('vetoRecovery',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 502 char 1',
+                                     'lantern2.compact line 504 char 1',
                                      'Bytes<32>',
                                      nextRid_0)
         }
@@ -801,28 +801,28 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('finalizeRecovery',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 533 char 1',
+                                     'lantern2.compact line 535 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(rid_0.buffer instanceof ArrayBuffer && rid_0.BYTES_PER_ELEMENT === 1 && rid_0.length === 32)) {
           __compactRuntime.typeError('finalizeRecovery',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 533 char 1',
+                                     'lantern2.compact line 535 char 1',
                                      'Bytes<32>',
                                      rid_0)
         }
         if (!(newIdCommit_0.buffer instanceof ArrayBuffer && newIdCommit_0.BYTES_PER_ELEMENT === 1 && newIdCommit_0.length === 32)) {
           __compactRuntime.typeError('finalizeRecovery',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 533 char 1',
+                                     'lantern2.compact line 535 char 1',
                                      'Bytes<32>',
                                      newIdCommit_0)
         }
         if (!(newVetoCommit_0.buffer instanceof ArrayBuffer && newVetoCommit_0.BYTES_PER_ELEMENT === 1 && newVetoCommit_0.length === 32)) {
           __compactRuntime.typeError('finalizeRecovery',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'lantern2.compact line 533 char 1',
+                                     'lantern2.compact line 535 char 1',
                                      'Bytes<32>',
                                      newVetoCommit_0)
         }
@@ -854,21 +854,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('proveSuccession',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 583 char 1',
+                                     'lantern2.compact line 594 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idRoot_0.buffer instanceof ArrayBuffer && idRoot_0.BYTES_PER_ELEMENT === 1 && idRoot_0.length === 32)) {
           __compactRuntime.typeError('proveSuccession',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 583 char 1',
+                                     'lantern2.compact line 594 char 1',
                                      'Bytes<32>',
                                      idRoot_0)
         }
         if (!(head_0.buffer instanceof ArrayBuffer && head_0.BYTES_PER_ELEMENT === 1 && head_0.length === 32)) {
           __compactRuntime.typeError('proveSuccession',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 583 char 1',
+                                     'lantern2.compact line 594 char 1',
                                      'Bytes<32>',
                                      head_0)
         }
@@ -899,21 +899,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('proveHeadOwnership',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 591 char 1',
+                                     'lantern2.compact line 602 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idRoot_0.buffer instanceof ArrayBuffer && idRoot_0.BYTES_PER_ELEMENT === 1 && idRoot_0.length === 32)) {
           __compactRuntime.typeError('proveHeadOwnership',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 591 char 1',
+                                     'lantern2.compact line 602 char 1',
                                      'Bytes<32>',
                                      idRoot_0)
         }
         if (!(head_0.buffer instanceof ArrayBuffer && head_0.BYTES_PER_ELEMENT === 1 && head_0.length === 32)) {
           __compactRuntime.typeError('proveHeadOwnership',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 591 char 1',
+                                     'lantern2.compact line 602 char 1',
                                      'Bytes<32>',
                                      head_0)
         }
@@ -945,28 +945,28 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('hostGatedAction',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 604 char 1',
+                                     'lantern2.compact line 615 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(rootIdCommit_0.buffer instanceof ArrayBuffer && rootIdCommit_0.BYTES_PER_ELEMENT === 1 && rootIdCommit_0.length === 32)) {
           __compactRuntime.typeError('hostGatedAction',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 604 char 1',
+                                     'lantern2.compact line 615 char 1',
                                      'Bytes<32>',
                                      rootIdCommit_0)
         }
         if (!(currentIdCommit_0.buffer instanceof ArrayBuffer && currentIdCommit_0.BYTES_PER_ELEMENT === 1 && currentIdCommit_0.length === 32)) {
           __compactRuntime.typeError('hostGatedAction',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 604 char 1',
+                                     'lantern2.compact line 615 char 1',
                                      'Bytes<32>',
                                      currentIdCommit_0)
         }
         if (!(nonce_0.buffer instanceof ArrayBuffer && nonce_0.BYTES_PER_ELEMENT === 1 && nonce_0.length === 32)) {
           __compactRuntime.typeError('hostGatedAction',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'lantern2.compact line 604 char 1',
+                                     'lantern2.compact line 615 char 1',
                                      'Bytes<32>',
                                      nonce_0)
         }
@@ -997,14 +997,14 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('lockIdentity',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 637 char 1',
+                                     'lantern2.compact line 648 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('lockIdentity',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 637 char 1',
+                                     'lantern2.compact line 648 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
@@ -1034,21 +1034,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('unlockIdentity',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 651 char 1',
+                                     'lantern2.compact line 662 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('unlockIdentity',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 651 char 1',
+                                     'lantern2.compact line 662 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
         if (!(newVetoCommit_0.buffer instanceof ArrayBuffer && newVetoCommit_0.BYTES_PER_ELEMENT === 1 && newVetoCommit_0.length === 32)) {
           __compactRuntime.typeError('unlockIdentity',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 651 char 1',
+                                     'lantern2.compact line 662 char 1',
                                      'Bytes<32>',
                                      newVetoCommit_0)
         }
@@ -1079,21 +1079,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('checkIn',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 672 char 1',
+                                     'lantern2.compact line 683 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idRoot_0.buffer instanceof ArrayBuffer && idRoot_0.BYTES_PER_ELEMENT === 1 && idRoot_0.length === 32)) {
           __compactRuntime.typeError('checkIn',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 672 char 1',
+                                     'lantern2.compact line 683 char 1',
                                      'Bytes<32>',
                                      idRoot_0)
         }
         if (!(typeof(period_0) === 'bigint' && period_0 >= 0n && period_0 <= 4294967295n)) {
           __compactRuntime.typeError('checkIn',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 672 char 1',
+                                     'lantern2.compact line 683 char 1',
                                      'Uint<0..4294967296>',
                                      period_0)
         }
@@ -1946,7 +1946,7 @@ export class Contract {
     if (!(result_0.buffer instanceof ArrayBuffer && result_0.BYTES_PER_ELEMENT === 1 && result_0.length === 32)) {
       __compactRuntime.typeError('guardianSecret',
                                  'return value',
-                                 'lantern2.compact line 268 char 1',
+                                 'lantern2.compact line 270 char 1',
                                  'Bytes<32>',
                                  result_0)
     }
@@ -1963,7 +1963,7 @@ export class Contract {
     if (!(result_0.buffer instanceof ArrayBuffer && result_0.BYTES_PER_ELEMENT === 1 && result_0.length === 32)) {
       __compactRuntime.typeError('leafSalt',
                                  'return value',
-                                 'lantern2.compact line 269 char 1',
+                                 'lantern2.compact line 271 char 1',
                                  'Bytes<32>',
                                  result_0)
     }
@@ -1980,7 +1980,7 @@ export class Contract {
     if (!(typeof(result_0) === 'object' && result_0.leaf.buffer instanceof ArrayBuffer && result_0.leaf.BYTES_PER_ELEMENT === 1 && result_0.leaf.length === 32 && Array.isArray(result_0.path) && result_0.path.length === 32 && result_0.path.every((t) => typeof(t) === 'object' && typeof(t.sibling) === 'object' && typeof(t.sibling.field) === 'bigint' && t.sibling.field >= 0 && t.sibling.field <= __compactRuntime.MAX_FIELD && typeof(t.goes_left) === 'boolean'))) {
       __compactRuntime.typeError('guardianPath',
                                  'return value',
-                                 'lantern2.compact line 270 char 1',
+                                 'lantern2.compact line 272 char 1',
                                  'struct MerkleTreePath<leaf: Bytes<32>, path: Vector<32, struct MerkleTreePathEntry<sibling: struct MerkleTreeDigest<field: Field>, goes_left: Boolean>>>',
                                  result_0)
     }
@@ -1997,7 +1997,7 @@ export class Contract {
     if (!(typeof(result_0) === 'bigint' && result_0 >= 0 && result_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('identitySecret',
                                  'return value',
-                                 'lantern2.compact line 271 char 1',
+                                 'lantern2.compact line 273 char 1',
                                  'Field',
                                  result_0)
     }
@@ -2014,7 +2014,7 @@ export class Contract {
     if (!(result_0.buffer instanceof ArrayBuffer && result_0.BYTES_PER_ELEMENT === 1 && result_0.length === 32)) {
       __compactRuntime.typeError('idSalt',
                                  'return value',
-                                 'lantern2.compact line 272 char 1',
+                                 'lantern2.compact line 274 char 1',
                                  'Bytes<32>',
                                  result_0)
     }
@@ -2031,7 +2031,7 @@ export class Contract {
     if (!(typeof(result_0) === 'bigint' && result_0 >= 0 && result_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('vetoSecret',
                                  'return value',
-                                 'lantern2.compact line 273 char 1',
+                                 'lantern2.compact line 275 char 1',
                                  'Field',
                                  result_0)
     }
@@ -2048,7 +2048,7 @@ export class Contract {
     if (!(result_0.buffer instanceof ArrayBuffer && result_0.BYTES_PER_ELEMENT === 1 && result_0.length === 32)) {
       __compactRuntime.typeError('vetoSalt',
                                  'return value',
-                                 'lantern2.compact line 274 char 1',
+                                 'lantern2.compact line 276 char 1',
                                  'Bytes<32>',
                                  result_0)
     }
@@ -2065,7 +2065,7 @@ export class Contract {
     if (!(typeof(result_0) === 'bigint' && result_0 >= 0n && result_0 <= 18446744073709551615n)) {
       __compactRuntime.typeError('claimedNow',
                                  'return value',
-                                 'lantern2.compact line 275 char 1',
+                                 'lantern2.compact line 277 char 1',
                                  'Uint<0..18446744073709551616>',
                                  result_0)
     }
@@ -2082,7 +2082,7 @@ export class Contract {
     if (!(result_0.buffer instanceof ArrayBuffer && result_0.BYTES_PER_ELEMENT === 1 && result_0.length === 32)) {
       __compactRuntime.typeError('ephemeralSk',
                                  'return value',
-                                 'lantern2.compact line 276 char 1',
+                                 'lantern2.compact line 278 char 1',
                                  'Bytes<32>',
                                  result_0)
     }
@@ -2099,7 +2099,7 @@ export class Contract {
     if (!(typeof(result_0) === 'object' && result_0.leaf.buffer instanceof ArrayBuffer && result_0.leaf.BYTES_PER_ELEMENT === 1 && result_0.leaf.length === 32 && Array.isArray(result_0.path) && result_0.path.length === 32 && result_0.path.every((t) => typeof(t) === 'object' && typeof(t.sibling) === 'object' && typeof(t.sibling.field) === 'bigint' && t.sibling.field >= 0 && t.sibling.field <= __compactRuntime.MAX_FIELD && typeof(t.goes_left) === 'boolean'))) {
       __compactRuntime.typeError('lineagePath',
                                  'return value',
-                                 'lantern2.compact line 277 char 1',
+                                 'lantern2.compact line 279 char 1',
                                  'struct MerkleTreePath<leaf: Bytes<32>, path: Vector<32, struct MerkleTreePathEntry<sibling: struct MerkleTreeDigest<field: Field>, goes_left: Boolean>>>',
                                  result_0)
     }
@@ -2928,7 +2928,7 @@ export class Contract {
   _assertCurrentPeriod_0(context, partialProofData, period_0) {
     const start_0 = ((t1) => {
                       if (t1 > 18446744073709551615n) {
-                        throw new __compactRuntime.CompactError('lantern2.compact line 382 char 17: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                        throw new __compactRuntime.CompactError('lantern2.compact line 384 char 17: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                       }
                       return t1;
                     })(period_0 * this._periodSeconds_0());
@@ -2940,7 +2940,7 @@ export class Contract {
                                                 partialProofData,
                                                 ((t1) => {
                                                   if (t1 > 18446744073709551615n) {
-                                                    throw new __compactRuntime.CompactError('lantern2.compact line 384 char 22: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                                                    throw new __compactRuntime.CompactError('lantern2.compact line 386 char 22: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                                                   }
                                                   return t1;
                                                 })(start_0
@@ -3015,7 +3015,7 @@ export class Contract {
     const lo_0 = this._claimedNow_0(context, partialProofData);
     const hi_0 = ((t1) => {
                    if (t1 > 18446744073709551615n) {
-                     throw new __compactRuntime.CompactError('lantern2.compact line 406 char 14: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                     throw new __compactRuntime.CompactError('lantern2.compact line 408 char 14: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                    }
                    return t1;
                  })(lo_0 + this._openSlackSeconds_0());
@@ -3209,7 +3209,7 @@ export class Contract {
                                                  partialProofData,
                                                  ((t1) => {
                                                    if (t1 > 18446744073709551615n) {
-                                                     throw new __compactRuntime.CompactError('lantern2.compact line 437 char 26: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                                                     throw new __compactRuntime.CompactError('lantern2.compact line 439 char 26: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                                                    }
                                                    return t1;
                                                  })(_descriptor_4.fromValue(__compactRuntime.queryLedgerState(context,
@@ -3283,7 +3283,7 @@ export class Contract {
                             'a recovery is already live for this identity');
     const unlockAt_0 = ((t1) => {
                          if (t1 > 18446744073709551615n) {
-                           throw new __compactRuntime.CompactError('lantern2.compact line 445 char 20: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                           throw new __compactRuntime.CompactError('lantern2.compact line 447 char 20: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                          }
                          return t1;
                        })(hi_0
@@ -3319,14 +3319,14 @@ export class Contract {
                     approveBy:
                       ((t1) => {
                         if (t1 > 18446744073709551615n) {
-                          throw new __compactRuntime.CompactError('lantern2.compact line 454 char 25: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                          throw new __compactRuntime.CompactError('lantern2.compact line 456 char 25: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                         }
                         return t1;
                       })(hi_0 + this._approvalWindowSeconds_0()),
                     expiresAt:
                       ((t1) => {
                         if (t1 > 18446744073709551615n) {
-                          throw new __compactRuntime.CompactError('lantern2.compact line 455 char 25: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                          throw new __compactRuntime.CompactError('lantern2.compact line 457 char 25: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                         }
                         return t1;
                       })(unlockAt_0 + this._finalizeWindowSeconds_0()) };
@@ -3757,7 +3757,7 @@ export class Contract {
     const lo_0 = this._claimedNow_0(context, partialProofData);
     const hi_0 = ((t1) => {
                    if (t1 > 18446744073709551615n) {
-                     throw new __compactRuntime.CompactError('lantern2.compact line 519 char 14: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                     throw new __compactRuntime.CompactError('lantern2.compact line 521 char 14: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                    }
                    return t1;
                  })(lo_0 + this._vetoSlackSeconds_0());
@@ -5165,7 +5165,7 @@ export function ledger(stateOrChargedState) {
         if (!(elem_0.buffer instanceof ArrayBuffer && elem_0.BYTES_PER_ELEMENT === 1 && elem_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 207 char 1',
+                                     'lantern2.compact line 209 char 1',
                                      'Bytes<32>',
                                      elem_0)
         }
@@ -5252,7 +5252,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 208 char 1',
+                                     'lantern2.compact line 210 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -5284,7 +5284,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'lantern2.compact line 208 char 1',
+                                     'lantern2.compact line 210 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -5373,7 +5373,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 209 char 1',
+                                     'lantern2.compact line 211 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -5405,7 +5405,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'lantern2.compact line 209 char 1',
+                                     'lantern2.compact line 211 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -5479,7 +5479,7 @@ export function ledger(stateOrChargedState) {
         if (!(typeof(rt_0) === 'object' && typeof(rt_0.field) === 'bigint' && rt_0.field >= 0 && rt_0.field <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('checkRoot',
                                      'argument 1',
-                                     'lantern2.compact line 215 char 1',
+                                     'lantern2.compact line 217 char 1',
                                      'struct MerkleTreeDigest<field: Field>',
                                      rt_0)
         }
@@ -5532,14 +5532,14 @@ export function ledger(stateOrChargedState) {
         if (!(typeof(index_0) === 'bigint' && index_0 >= 0 && index_0 <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('path_for_leaf',
                                      'argument 1',
-                                     'lantern2.compact line 215 char 1',
+                                     'lantern2.compact line 217 char 1',
                                      'Field',
                                      index_0)
         }
         if (!(leaf_0.buffer instanceof ArrayBuffer && leaf_0.BYTES_PER_ELEMENT === 1 && leaf_0.length === 32)) {
           __compactRuntime.typeError('path_for_leaf',
                                      'argument 2',
-                                     'lantern2.compact line 215 char 1',
+                                     'lantern2.compact line 217 char 1',
                                      'Bytes<32>',
                                      leaf_0)
         }
@@ -5554,7 +5554,7 @@ export function ledger(stateOrChargedState) {
         if (!(leaf_0.buffer instanceof ArrayBuffer && leaf_0.BYTES_PER_ELEMENT === 1 && leaf_0.length === 32)) {
           __compactRuntime.typeError('find_path_for_leaf',
                                      'argument 1',
-                                     'lantern2.compact line 215 char 1',
+                                     'lantern2.compact line 217 char 1',
                                      'Bytes<32>',
                                      leaf_0)
         }
@@ -5624,7 +5624,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 218 char 1',
+                                     'lantern2.compact line 220 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -5656,7 +5656,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'lantern2.compact line 218 char 1',
+                                     'lantern2.compact line 220 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -5745,7 +5745,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 219 char 1',
+                                     'lantern2.compact line 221 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -5777,7 +5777,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'lantern2.compact line 219 char 1',
+                                     'lantern2.compact line 221 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -5866,7 +5866,7 @@ export function ledger(stateOrChargedState) {
         if (!(elem_0.buffer instanceof ArrayBuffer && elem_0.BYTES_PER_ELEMENT === 1 && elem_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 222 char 1',
+                                     'lantern2.compact line 224 char 1',
                                      'Bytes<32>',
                                      elem_0)
         }
@@ -5953,7 +5953,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 223 char 1',
+                                     'lantern2.compact line 225 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -5985,7 +5985,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'lantern2.compact line 223 char 1',
+                                     'lantern2.compact line 225 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -6074,7 +6074,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 224 char 1',
+                                     'lantern2.compact line 226 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -6106,7 +6106,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'lantern2.compact line 224 char 1',
+                                     'lantern2.compact line 226 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -6196,7 +6196,7 @@ export function ledger(stateOrChargedState) {
         if (!(elem_0.buffer instanceof ArrayBuffer && elem_0.BYTES_PER_ELEMENT === 1 && elem_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 225 char 1',
+                                     'lantern2.compact line 227 char 1',
                                      'Bytes<32>',
                                      elem_0)
         }
@@ -6283,7 +6283,7 @@ export function ledger(stateOrChargedState) {
         if (!(elem_0.buffer instanceof ArrayBuffer && elem_0.BYTES_PER_ELEMENT === 1 && elem_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 226 char 1',
+                                     'lantern2.compact line 228 char 1',
                                      'Bytes<32>',
                                      elem_0)
         }
@@ -6370,7 +6370,7 @@ export function ledger(stateOrChargedState) {
         if (!(elem_0.buffer instanceof ArrayBuffer && elem_0.BYTES_PER_ELEMENT === 1 && elem_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 227 char 1',
+                                     'lantern2.compact line 229 char 1',
                                      'Bytes<32>',
                                      elem_0)
         }
@@ -6457,7 +6457,7 @@ export function ledger(stateOrChargedState) {
         if (!(elem_0.buffer instanceof ArrayBuffer && elem_0.BYTES_PER_ELEMENT === 1 && elem_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 228 char 1',
+                                     'lantern2.compact line 230 char 1',
                                      'Bytes<32>',
                                      elem_0)
         }
@@ -6529,7 +6529,7 @@ export function ledger(stateOrChargedState) {
         if (!(typeof(rt_0) === 'object' && typeof(rt_0.field) === 'bigint' && rt_0.field >= 0 && rt_0.field <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('checkRoot',
                                      'argument 1',
-                                     'lantern2.compact line 229 char 1',
+                                     'lantern2.compact line 231 char 1',
                                      'struct MerkleTreeDigest<field: Field>',
                                      rt_0)
         }
@@ -6582,14 +6582,14 @@ export function ledger(stateOrChargedState) {
         if (!(typeof(index_0) === 'bigint' && index_0 >= 0 && index_0 <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('path_for_leaf',
                                      'argument 1',
-                                     'lantern2.compact line 229 char 1',
+                                     'lantern2.compact line 231 char 1',
                                      'Field',
                                      index_0)
         }
         if (!(leaf_0.buffer instanceof ArrayBuffer && leaf_0.BYTES_PER_ELEMENT === 1 && leaf_0.length === 32)) {
           __compactRuntime.typeError('path_for_leaf',
                                      'argument 2',
-                                     'lantern2.compact line 229 char 1',
+                                     'lantern2.compact line 231 char 1',
                                      'Bytes<32>',
                                      leaf_0)
         }
@@ -6604,7 +6604,7 @@ export function ledger(stateOrChargedState) {
         if (!(leaf_0.buffer instanceof ArrayBuffer && leaf_0.BYTES_PER_ELEMENT === 1 && leaf_0.length === 32)) {
           __compactRuntime.typeError('find_path_for_leaf',
                                      'argument 1',
-                                     'lantern2.compact line 229 char 1',
+                                     'lantern2.compact line 231 char 1',
                                      'Bytes<32>',
                                      leaf_0)
         }
@@ -6691,7 +6691,7 @@ export function ledger(stateOrChargedState) {
         if (!(elem_0.buffer instanceof ArrayBuffer && elem_0.BYTES_PER_ELEMENT === 1 && elem_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 231 char 1',
+                                     'lantern2.compact line 233 char 1',
                                      'Bytes<32>',
                                      elem_0)
         }
@@ -6778,7 +6778,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 238 char 1',
+                                     'lantern2.compact line 240 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -6810,7 +6810,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'lantern2.compact line 238 char 1',
+                                     'lantern2.compact line 240 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -6899,7 +6899,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 241 char 1',
+                                     'lantern2.compact line 243 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -6931,7 +6931,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'lantern2.compact line 241 char 1',
+                                     'lantern2.compact line 243 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -7020,7 +7020,7 @@ export function ledger(stateOrChargedState) {
         if (!(elem_0.buffer instanceof ArrayBuffer && elem_0.BYTES_PER_ELEMENT === 1 && elem_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 242 char 1',
+                                     'lantern2.compact line 244 char 1',
                                      'Bytes<32>',
                                      elem_0)
         }
@@ -7107,7 +7107,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 246 char 1',
+                                     'lantern2.compact line 248 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -7139,7 +7139,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'lantern2.compact line 246 char 1',
+                                     'lantern2.compact line 248 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -7229,7 +7229,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 248 char 1',
+                                     'lantern2.compact line 250 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -7261,7 +7261,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'lantern2.compact line 248 char 1',
+                                     'lantern2.compact line 250 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -7350,7 +7350,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 254 char 1',
+                                     'lantern2.compact line 256 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -7382,7 +7382,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'lantern2.compact line 254 char 1',
+                                     'lantern2.compact line 256 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -7471,7 +7471,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 257 char 1',
+                                     'lantern2.compact line 259 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -7503,7 +7503,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'lantern2.compact line 257 char 1',
+                                     'lantern2.compact line 259 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -7592,7 +7592,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 259 char 1',
+                                     'lantern2.compact line 261 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -7624,7 +7624,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'lantern2.compact line 259 char 1',
+                                     'lantern2.compact line 261 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -7714,7 +7714,7 @@ export function ledger(stateOrChargedState) {
         if (!(elem_0.buffer instanceof ArrayBuffer && elem_0.BYTES_PER_ELEMENT === 1 && elem_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 260 char 1',
+                                     'lantern2.compact line 262 char 1',
                                      'Bytes<32>',
                                      elem_0)
         }
@@ -8069,14 +8069,14 @@ export const pureCircuits = {
     if (!(idRoot_0.buffer instanceof ArrayBuffer && idRoot_0.BYTES_PER_ELEMENT === 1 && idRoot_0.length === 32)) {
       __compactRuntime.typeError('guardianCtxOf',
                                  'argument 1',
-                                 'lantern2.compact line 167 char 1',
+                                 'lantern2.compact line 169 char 1',
                                  'Bytes<32>',
                                  idRoot_0)
     }
     if (!(seed_0.buffer instanceof ArrayBuffer && seed_0.BYTES_PER_ELEMENT === 1 && seed_0.length === 32)) {
       __compactRuntime.typeError('guardianCtxOf',
                                  'argument 2',
-                                 'lantern2.compact line 167 char 1',
+                                 'lantern2.compact line 169 char 1',
                                  'Bytes<32>',
                                  seed_0)
     }
@@ -8132,7 +8132,7 @@ export const pureCircuits = {
     if (!(typeof(vetoes_0) === 'bigint' && vetoes_0 >= 0n && vetoes_0 <= 18446744073709551615n)) {
       __compactRuntime.typeError('cooldownSecondsOf',
                                  'argument 1',
-                                 'lantern2.compact line 192 char 1',
+                                 'lantern2.compact line 194 char 1',
                                  'Uint<0..18446744073709551616>',
                                  vetoes_0)
     }
