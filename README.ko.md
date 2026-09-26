@@ -77,7 +77,7 @@ LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify     # 수정 없이 �
 - 임계값과 가디언 수는 공개됩니다. 숨겨지는 것은 가디언이 누구인가입니다.
 - 복구는 누구나 열 수 있습니다. 새 기기에는 인증에 쓸 비밀값이 없기 때문입니다. 요청 횟수 제한은 v2에서 구현하고 테스트했지만, 아직 배포하지 않았습니다.
 
-v2 설계와 구현(영어): [docs/v2.md](docs/v2.md). 요청 횟수 제한, 거부권 카드로 거는 긴급 잠금, 등록 때 고르는 대기 기간, 누구인지 드러내지 않는 가디언 점검을 다룹니다. v2는 별도 컨트랙트([`contracts/v2/lantern2.compact`](contracts/v2/lantern2.compact))로 구현하고 테스트했지만(`npm run test:v2`), 어디에도 배포하지 않았습니다. Preprod에 수정 없이 배포한 컨트랙트는 동결된 채 바뀌지 않습니다.
+v2 설계와 구현(영어): [docs/v2.md](docs/v2.md). 요청 횟수 제한, 거부권 카드로 거는 긴급 잠금, 등록 때 고르는 대기 기간, 누구인지 드러내지 않는 가디언 점검을 다룹니다. v2는 별도 컨트랙트([`contracts/v2/lantern2.compact`](contracts/v2/lantern2.compact))로 구현하고 테스트했지만(`npm run test:v2`), Preprod에는 배포하지 않았습니다. Preprod에 수정 없이 배포한 컨트랙트는 동결된 채 바뀌지 않습니다.
 
 ## 링크
 
