@@ -3,11 +3,14 @@
 name: compile
 
 on:
+  # Docs-only changes skip this job, except README.md: this job is what checks its numbers
+  # (the circuit table, through scripts/check-cost.mjs).
+  # The patterns apply in order, so the last one brings README.md back.
   push:
     branches: [main]
-    paths-ignore: ['**.md', 'docs/**']
+    paths: ['**', '!**.md', '!docs/**', 'README.md']
   pull_request:
-    paths-ignore: ['**.md', 'docs/**']
+    paths: ['**', '!**.md', '!docs/**', 'README.md']
   workflow_dispatch:
 
 permissions:
@@ -91,6 +94,11 @@ jobs:
       # Fails unless exactly 17 circuits parse, each at k <= 14.
       - name: Assert every circuit fits k <= 14
         run: node scripts/check-cost.mjs
+
+      # /live compares the verifier keys on Preprod with the SHA-256 pinned in web/src/live/keys.js.
+      # The keys are not committed, so the pins must be this fresh compile's: all 17, none extra.
+      - name: Assert /live's pinned key hashes are a fresh compile's
+        run: node scripts/check-live-keys.mjs
 
       # /live checks the whole story's contract on Preprod against web/src/live/keys.js, which pins the
       # one key that run does not share with the committed build: the 60-second flavour's

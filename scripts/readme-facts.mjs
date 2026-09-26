@@ -10,7 +10,8 @@
 //
 // The test counts are taken from the runners' own lists (no test runs): vitest's, and Playwright's
 // for the browser tests, which needs web/ installed. Where it is not (CI's clean-clone job), the
-// browser counts are skipped, and said to be; CI's web job checks them.
+// browser counts are skipped, and said to be; CI's web job checks them, and runs on every change
+// to README.md (.github/workflows/web.yml).
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
@@ -182,11 +183,19 @@ const sum = (m, keys = [...m.keys()]) => keys.reduce((n, k) => n + (m.get(k) ?? 
 const WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
 const inWords = (n) => WORDS[n] ?? String(n);
 const capital = (w) => w.charAt(0).toUpperCase() + w.slice(1);
-/** The sponsor's policy tests: node:test, dependency-free, one top-level test() each. */
-const nodeTests = () => readdirSync(new URL('devnet/test/', root)).filter((f) => f.endsWith('.test.mjs'))
-  .reduce((n, f) => n + (readFileSync(new URL(`devnet/test/${f}`, root), 'utf8').match(/^test\(/gm) ?? []).length, 0);
+/** The node:test tests in devnet/test (dependency-free; CI runs them with `node --test`): each test()
+ *  or it() call, counted apart for the sponsor's policy (policy.test.mjs) and for the other devnet scripts. */
+function nodeTests() {
+  const count = { policy: 0, scripts: 0 };
+  for (const f of readdirSync(new URL('devnet/test/', root)).filter((x) => x.endsWith('.test.mjs'))) {
+    const n = (readFileSync(new URL(`devnet/test/${f}`, root), 'utf8').match(/^\s*(?:test|it)\(/gm) ?? []).length;
+    count[f === 'policy.test.mjs' ? 'policy' : 'scripts'] += n;
+  }
+  return count;
+}
 
 const UNIT = unitTests();
+const NODE = nodeTests();
 const BROWSER = browserTests();
 const unitTotal = sum(UNIT);
 const browserTotal = BROWSER && sum(BROWSER);
@@ -194,7 +203,7 @@ const browserTotal = BROWSER && sum(BROWSER);
 function tests() {
   if (!BROWSER) return null;
   const files = [...UNIT].sort(([a, x], [b, y]) => y - x || a.localeCompare(b)).map(([f, n]) => `${f} ${n}`).join(', ');
-  return `**Tests.** ${unitTotal} Vitest tests in ${UNIT.size} files: ${files}. ${capital(inWords(nodeTests()))} node:test tests of the sponsor's policy. ${browserTotal} Playwright tests, ${inWords(BROWSER.get('break') ?? 0)} of them for the "Try to break it" panel and ${sum(BROWSER, ['live', 'rehearse', 'kit'])} for \`/live\`, \`/rehearse\` and \`/kit\`, run in CI in Chromium at desktop size and as an emulated Pixel 7, and before release in WebKit, as an emulated iPhone 15, and in Firefox.`;
+  return `**Tests.** ${unitTotal} Vitest tests in ${UNIT.size} files: ${files}. ${capital(inWords(NODE.policy))} node:test tests of the sponsor's policy, and ${NODE.scripts} of the other devnet scripts. ${browserTotal} Playwright tests, ${inWords(BROWSER.get('break') ?? 0)} of them for the "Try to break it" panel and ${sum(BROWSER, ['live', 'rehearse', 'kit'])} for \`/live\`, \`/rehearse\` and \`/kit\`, run in CI in Chromium at desktop size and as an emulated Pixel 7, and before release in WebKit, as an emulated iPhone 15, and in Firefox.`;
 }
 
 // The same counts where the prose states them: each phrase must appear, and every number in it must

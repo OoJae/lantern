@@ -38,7 +38,8 @@ secret. Here is exactly what that is worth.
 | A recovery is vetoable by a secret no guardian holds | **Held** | `vetoRecovery`, gated on `vetoSecret`, which is never Shamir-shared |
 | Approvals go to the device the guardians were shown | **Held** | `finalizeRecovery` requires the ephemeral secret behind the approved public key |
 | Evicting guardians stops their recovery — even one that already reached quorum | **Held** | the guardian context is frozen into the recovery at open and re-checked at finalize |
-| Holding only your identity secret — a stolen laptop or malware — cannot mint guardians, evict yours, veto, or stop your recovery. Guardians who pooled their shares cannot mint, evict or veto either, but they can open and approve a recovery of their own, which your veto card stops | **Held** | `addGuardian` and `rotateGuardianSet` also require the veto secret; `vetoRecovery` requires only it. §4.3, §4.5 |
+| Evicting guardians revokes their shares | **Not held.** Only a recovery retires the secret; until then *t* shares from one earlier deal still act as you at every host | `rotateGuardianSet` changes the guardian context, not the identity secret. §6.17 |
+| Holding only your identity secret — a stolen laptop or malware — cannot mint guardians, evict yours, veto, or stop your recovery. Guardians who pooled their shares cannot mint, evict or veto either, but they can open and approve a recovery of their own, which your veto card stops | **Held**, if the device kept no guardian kits after dealing (§4.5) | `addGuardian` and `rotateGuardianSet` also require the veto secret; `vetoRecovery` requires only it. §4.3, §4.5 |
 | Guardian *identities* stay private | **Held** — and demonstrated | salted `persistentCommit` leaves; `npm run attack` |
 | Guardians survive a recovery, so an identity can be recovered again | **Held** | stable `idRoot`; leaves bind a guardian context, not the rotating commitment |
 | A downstream contract keeps working across a key loss | **Held, in-contract** | `hostGatedAction` reads `retiredIdentities` directly |
@@ -50,7 +51,8 @@ secret. Here is exactly what that is worth.
 
 **The one-line version:** Lantern turns *"your private state is gone forever"*
 into *"your private state can be restored, correctly, by people you chose — and if
-they turn on you, you get 72 hours of public notice and a veto they cannot hold."*
+they turn on you, you get at least 72 hours of public notice from the moment a recovery
+opens, and a veto they cannot hold."*
 It does not turn it into *"your guardians cannot betray you."*
 
 ---
@@ -96,7 +98,11 @@ provably the correct **value**. It says nothing about provenance.
 presented — *t* openings of *t* leaves, each writing a one-shot nullifier. Those
 tokens are minted by the owner's own device in `addGuardian`, so at the moment of
 dealing the owner holds everything needed to satisfy every guardian check at once.
-For the owner's own identity that is harmless. As evidence to a third party that
+That is harmless only while the owner alone holds them. Once a guardian is added, the
+device must erase that guardian's secret, leaf salt and share. A device that keeps them
+is a full quorum for whoever takes it (§4.5), and it can also compute every approval
+nullifier, `approvalNullifierOf(secret, idCommit, rid)`, which shows which guardian
+approved each recovery. As evidence to a third party that
 *t* independent people agreed, it is worth nothing, and no on-chain construction
 in this design can change that.
 
@@ -113,6 +119,7 @@ successful hostile recovery stays visible in `idRoots` and `lineage` forever.
 | Holder | Holds | Can rebuild |
 |---|---|---|
 | The owner's device | identity secret, veto secret, both salts | — |
+| The owner's device, while dealing | also every guardian's secret and leaf salt, because `addGuardian` computes each leaf in the owner's circuit, and every share | a full quorum of tokens, until it erases them (§6.16) |
 | The veto card (printed, or a second device) | veto secret | its salt, derived from it |
 | Each guardian | one Shamir share of the identity secret; their own guardian secret and leaf salt | nothing alone |
 | Any *t* guardians together | *t* shares | the identity secret **and its salt** — the salt is derived from the secret (`src/identity.js`), so the share set is the complete recovery kit. Never the veto secret |
@@ -141,11 +148,11 @@ Each primitive, where it is used, what it buys, and what it costs.
 | **witness / ledger split** | all of `lantern.compact` | identity secret, veto secret, guardian secrets, both salts and every Merkle path stay on the device | everything then depends on that device — §4.2 |
 | **`disclose()` as the taint boundary** | wherever witness-derived data becomes public: ledger operations, return values, block-time checks | every private-to-public crossing is one greppable token; the leakage audit was built by grepping for it | `disclose()` on a circuit *argument* changes nothing — arguments are already public |
 | **`persistentCommit` opening as correctness** | `idCommitOf`, `finalizeRecovery` | the project's core claim (§2) | ~2 SHA-256 blocks per preimage |
-| **Length-typed domain separation** | every `*Preimage` struct | each domain uses a distinct `Bytes<N>`, and N is part of the type alignment, so two preimages of different shape cannot collide. Struct *field names* contribute nothing — only shape does | a wrong N is a compile error, which is the good failure mode |
+| **Domain strings in exact-length `Bytes<N>`** | every `*Preimage` struct | every hashed preimage (`persistentHash`, and the `*Preimage` structs given to `transientHash`) begins with its own `lantern:<name>:v1` string, and no domain string is a prefix of another, so two hashes from different domains always differ in their bytes. A `persistentCommit` preimage does not begin with it: `persistentCommit(v, r)` is `persistentHash(r ‖ v)` (compact-runtime 0.16.0), so the 32-byte salt comes first, and for a guardian leaf the dealer chooses it. Two commitments are still separated by their domain strings, both at byte 32. A commitment and a hash are separated by total length alone: the commitments are 77 bytes (identity), 79 (veto) and 115 (guardian leaf), the SHA-256 hashes 78 (`rid`), 114 (`approve`) and 82 (`vetonul`). A new SHA-256 derivation must keep those two sets of lengths apart. The domain field's length N separates nothing: several domains share one (`rid` and `eph` 14; `lineage`, `approve` and `vetonul` 18; `gate` and `veto` 15; `guardian` and `hostgate` 19), and `persistentHash` and `persistentCommit` hash the bytes without the type's alignment: `{Bytes<18>, Bytes<32>}` and `{Bytes<14>, Bytes<36>}` over the same 50 bytes hash the same. Struct *field names* contribute nothing. The frozen comments in `lantern.compact` and `identity.compact` that call the length a second separation overstate it (§9) | a domain string longer than its N is a compile error; the exact N keeps each preimage inside two SHA-256 blocks |
 | **`export pure circuit`** | 9 derivations incl. `idCommitOf`, `guardianLeafOf`, `recoveryIdOf`, `ephemeralPkOf` | the client calls *the same compiled code* as the circuit. Client/circuit drift is not mitigated, it is impossible | CI must prove they never acquire a proving key — `.github/workflows/compile.yml` does |
 | **`HistoricMerkleTree` past-root acceptance** | `guardians.checkRoot` in `approveRecovery` | concurrent approvals stay valid against different historic roots | the chosen root is disclosed — a freshness fingerprint, §5 |
 | **Leaf-binding assert *before* `checkRoot`** | `approveRecovery`, `proveSuccession`, `hostGatedAction` | without it, *any* valid path passes for *any* leaf: an easy assert to leave out | one commitment per circuit |
-| **Nullifiers** | approvals, vetoes, gate actions, committee votes | one-shot semantics; approval nullifiers bind the *secret*, so extra leaves cannot inflate a quorum | each is a permanent public write |
+| **Nullifiers** | approvals, vetoes, gate actions, committee votes | one-shot semantics; approval nullifiers bind the *secret*, so extra leaves cannot inflate a quorum. A gate nullifier binds the caller's identity secret and the nonce, not the identity root, so each recovery starts a fresh set: once per secret, not once per identity (§8) | each is a permanent public write |
 | **`Set` non-membership in-circuit** | `!retiredIdentities.member(…)` | **headship.** "C is the current owner of R" is a *negative* claim, and no append-only structure can express it. This single primitive is why the in-contract gate is sound | only available to a contract that owns the ledger — §4.4 |
 | **Increment-only `Counter` + `lessThan`** | quorum checks in `finalizeRecovery`, `sealEpoch`, `sealRotation` | quorum by *comparison*, never `read()`: the boolean is monotone, so a concurrent approval cannot invalidate a finalize proof | progress is still publicly readable |
 | **Value-scoped read commitments** | proved in `test/concurrency.test.js` | two guardians proving against the same state do not invalidate each other | undocumented upstream — answered by experiment, with a negative control proving a real conflict *is* detected |
@@ -180,9 +187,15 @@ by counting `addGuardian` transactions, whose `idCommit` argument is public.
 
 A also gets the **liveness oracle** — §5.
 
-**Cannot.** Learn *which* guardian approved: `approveRecovery` discloses a
-historic root and a nullifier, and the transcript tests assert the guardian's
-secret, salt and path siblings are absent. Link one guardian's approvals across
+**Cannot.** Learn *which* guardian approved (a device that kept the dealing records can,
+§2): `approveRecovery` discloses a
+historic root and a nullifier, and the transcript test asserts the guardian's
+secret, salt and leaf are absent, and every path sibling that is a real node hash, since
+the leaf or a sibling would locate the guardian in the tree (`test/lantern.test.js ›
+never leaks the guardian secret or salt on approval`); each is found in the private
+transcript first. The lineage path's siblings are pinned the same way
+(`test/succession.test.js › discloses the root it checks against, and no path sibling or
+identity secret`). Link one guardian's approvals across
 recoveries (the nullifier binds `rid`) or across identities (it binds `idCommit`).
 Invert a guardian leaf — `npm run attack` tries 268 derivations including known
 plaintext and names none. Learn any secret. Forge, delay, or deny anything.
@@ -238,7 +251,12 @@ to run the client locally.
   sends the commitment to the indexer either: it reads each contract's whole public state
   and looks for the commitment locally. A browser test checks every request and stream
   message for it. The terminal watcher, `npm run watch`, reads the same way and sends its
-  alerts only to standard output and to a webhook you name.
+  alerts only to standard output and to a webhook you name; redirects are not followed, so
+  a webhook that answers with one never passes the alert on. A Slack or Discord webhook
+  URL is a secret: pass it as `LANTERN_WEBHOOK` or with `--webhook-file` (owner-only), not
+  `--webhook`, which other users on the host can read with `ps`. The `--id` commitment is
+  on the command line too: public on chain, but on a shared host it tells other users
+  which identity you watch.
 
 ### 4.2b B2 — the fee sponsor
 
@@ -251,7 +269,9 @@ and its record carries the evidence per transaction.
 
 **Can.** Refuse to pay. Learn metadata: which device asked, when, and for which
 circuit — a sponsor asked to pay for a `finalizeRecovery` knows a recovery is
-finishing, which sharpens the liveness oracle (§5).
+finishing, which sharpens the liveness oracle (§5). Be drained of DUST by identities
+enrolled for the purpose, if it pays without a quota (rule 4): that costs its
+availability, not Lantern's integrity, and DUST regenerates from the sponsor's NIGHT.
 
 **Cannot.**
 - **Alter the transaction.** The device proves and binds it before the sponsor
@@ -272,6 +292,18 @@ finishing, which sharpens the liveness oracle (§5).
 3. **A hosted sponsor never pays for opens** except under a per-identity rate limit.
    `devnet/src/policy.mjs` refuses them outright: paying for opens would give
    anyone free use of the liveness oracle. A guardian pays for the open instead.
+4. **A hosted sponsor pays for owner-secret circuits only under a quota per identity
+   root.** "Needs an owner secret" limits which circuits a sponsor pays for, not how
+   often: enrolment is permissionless, so anyone can enrol an identity of their own, hold
+   both its secrets, and ask without limit for `proveHeadOwnership` and
+   `requireCurrentOwnerAttested`, which change nothing, `hostGatedAction`, which takes
+   any fresh nonce, and `addGuardian` and `rotateGuardianSet`. `devnet/src/policy.mjs`
+   checks the transaction's shape, circuit and fee, and nothing per identity: it serves
+   only the recorded runs' own device. `finalizeRecovery` and `vetoRecovery` need no
+   quota: each runs at most once per recovery, and each recovery needs an open that
+   someone else paid for (a finalize also needs *t* approvals and 72 hours), so an attacker
+   pays for every transaction of theirs the sponsor pays for. Read the identity from the call's public arguments, or let the host DApp pay for
+   its own users.
 
 ### 4.3 C — t colluding guardians
 
@@ -292,7 +324,9 @@ They can also **grind**: `openRecovery` is permissionless, so each fee buys
 another recovery the owner must individually veto. §6.
 
 **Cannot.**
-- Act **silently** — every approval is a permanent public nullifier.
+- Act **silently** — every approval is a permanent public nullifier. The open is the
+  notice that counts: a recovery never expires, so once its lock is over its last
+  approvals can land in the same block as its finalize, however old the open is (§6.14).
 - Act **early** — no finalize lands earlier than 72 hours after the block that
   opened the recovery. A lying prover can shave at most the 10-minute slack off an
   honest prover's lock, never below 72 hours.
@@ -309,9 +343,11 @@ another recovery the owner must individually veto. §6.
   predicate — a threshold attacker could have blocked every legitimate recovery
   forever. The fix is one of the three options Midnight's own
   `guides/security-best-practices` prescribes.
-- **Survive eviction.** `rotateGuardianSet` kills every in-flight recovery,
+- **Keep a recovery alive through eviction.** `rotateGuardianSet` kills every in-flight recovery,
   *including one that already reached quorum* —
   `test/succession.test.js › a quorum reached before the rotation can no longer finalise`.
+  Their shares do outlive it: until your next recovery finalizes, *t* shares from one
+  deal still rebuild your live secret and act as you at every host (§6.17).
 - **Hijack another device's approvals** — `finalizeRecovery` requires the
   ephemeral secret of the device the guardians approved.
 - **Inflate a quorum** with extra leaves — the nullifier binds the secret, not the leaf.
@@ -339,13 +375,27 @@ the owners *were* when it was built. So `requireCurrentOwnerAttested` can accept
 **The in-contract gate is strictly more sound.** Both ship, deliberately: the gap
 between them *is* the architectural result. Use the attested host only if you
 cannot compile against Lantern, and only for decisions that tolerate a day of
-staleness, plus however long the committee takes from building a snapshot to sealing it.
+staleness, plus however long passes from building a snapshot to its seal, which anyone
+can stretch if a voted snapshot is left unsealed (below).
 
 **What the gate proves, since the review.** The caller holds the secret behind a
 commitment that a quorum attested, in the latest sealed epoch and inside the
 staleness window, as the current owner of the root: `requireCurrentOwnerAttested`
 opens the identity commitment with the shared `identity.compact` module and writes
-a nullifier bound to this host's tag, one per action. Measured: k=14, 9,242 rows.
+a nullifier bound to this host's tag, one per action for each identity secret
+(`hostGatedAction` does the same without the tag; a recovery starts a fresh set, §8).
+Measured: k=14, 9,242 rows.
+
+**The tag is the only thing that separates one host from another.** The contract does
+not bind its own address, and nothing checks that tags are unique. Two hosts deployed
+with the same tag and a shared committee key accept each other's signatures: anyone
+holding a quorum's votes for epoch N on one host can replay them on the other, use up
+its members' votes for that epoch and seal the first host's root there, with a
+staleness window that starts from the replayer's seal. The two hosts would also write
+the same gate nullifier for the same secret and nonce, which links the owner's actions
+across them; the comment in `host.compact` that says this never happens assumes
+distinct tags. The recorded runs all use tag 4242, but each run has a fresh random
+committee, so their votes cannot cross. Give every host its own random tag (§8).
 The committee signs the **canonical live-set root** — exactly the enrolled,
 non-retired owners, sorted, which `src/host/snapshot.js` rebuilds from Lantern's
 public ledger — and the contract no longer keeps an on-chain ownership log, whose
@@ -367,16 +417,37 @@ old secret passes against epoch 1 after the recovery, then fails once epoch 2 se
 Epochs sealed before a committee rotation stay valid; after the committee rotation
 (steps 10.6–10.9) the leaked key's vote is refused (step 10.14).
 
+**Anyone can seal, and a proposal that reached quorum never expires.** `sealEpoch` and
+`sealRotation` check no caller, no signature and no deadline: only that the proposal binds
+the current generation and has reached quorum. Each slot votes once per generation and
+epoch, so once a quorum has voted a root for epoch E, E can only ever seal with that root
+at this generation, and epochs seal in order, so no later epoch can seal before it. If the
+committee's seal does not land, anyone can seal that old snapshot whenever it suits them,
+including the holder of a secret retired in between, and the 24-hour window then starts
+at that late seal. So seal as soon as a proposal reaches quorum, and check that the seal
+landed. If it did not, vote E+1 over a fresh snapshot (a vote does not wait for E to seal),
+then seal E and E+1 back to back. A rotation that reached quorum can likewise be sealed by
+anyone until the generation changes, so treat it as installed. To withdraw one, seal a
+different rotation first, for a slot its voters have not voted on at this generation
+(re-installing that slot's current key will do); anyone can still race it by sealing the
+pending one.
+
 **Can.** At quorum, sign a root naming an attacker as the current owner of any
-identity root. Or stop signing, which bricks the gate once the window lapses.
+identity root. Or stop signing, which bricks the gate once the window lapses. Stopping
+takes fewer members than a quorum: at quorum 2, two of the three; at quorum 3, any one,
+who can then never be rotated out (§8).
 
 **Cannot.**
-- **Forge a signature** — `attestVote` runs the Foundation's in-circuit Jubjub
-  Schnorr verifier and binds each key to its slot.
+- **Forge a signature**, for keys whose secrets are actually secret — `attestVote` runs
+  the Foundation's in-circuit Jubjub Schnorr verifier and binds each key to its slot.
+  The constructor and `sealRotation` store any coordinates unchecked. The identity
+  point (0, 1) is the public key of the scalar 0, so anyone can sign for a slot that
+  holds it, and a key repeated across slots lets its one holder cast every one of those
+  votes. Check the committee before trusting a host (§8).
 - **Forge undetectably** — the canonical root is recomputable from Lantern's
   public ledger by anyone (`src/host/snapshot.js`), so signing any other root is
   publicly falsifiable.
-- **Act without a quorum** — there is no admin *in the contract logic*. The
+- **Act without a quorum** of genuine, distinct keys — there is no admin *in the contract logic*. The
   committee is installed atomically by the constructor, and after deployment
   *only a quorum* can change a key (`openRotation` / `rotateVote` /
   `sealRotation`). The ledger-level maintenance authority is separate: see its
@@ -386,8 +457,9 @@ identity root. Or stop signing, which bricks the gate once the window lapses.
   rotation voids every signature the old key made and strands every vote in flight.
   The committee is deliberately **not** `sealed`: a sealed committee would make a
   leaked key permanent — this project refuting its own thesis in one keyword.
-- **Stretch the window** — it starts at the *earliest* possible seal time, so a
-  lying sealer can only shorten acceptance.
+- **Stretch the window** past 24 hours from the seal — it starts at the *earliest*
+  possible seal time, so a lying sealer can only shorten acceptance. A late seal of a
+  voted snapshot moves the whole window later instead (above).
 - **Touch Lantern.** Nothing in `host.compact` can write to Lantern's ledger.
 
 ### 4.5 E — anyone holding the identity secret, but not the veto card
@@ -397,7 +469,7 @@ pooled their shares, scored here for what the identity secret alone buys them; w
 their *t* real tokens add is adversary C (§4.3). This is the adversary a recovery system exists for: the
 identity secret is exactly what a lost device leaks.
 
-*Confidentiality: **Lost** for that identity · Integrity: **Held** · Availability: **Held***
+*Confidentiality: **Lost** for that identity · Integrity: **Held**, if the device erased every guardian kit after dealing · Availability: **Held***
 
 **Can.** Act as the owner at every host until the owner's recovery finalizes:
 `hostGatedAction` and `proveHeadOwnership` accept the secret, because until then it
@@ -408,6 +480,11 @@ close the window sooner at every DApp that reads Lantern's ledger; an independen
 deployed DApp would also need a snapshot that leaves locked identities out, which is
 not built ([`docs/v2.md` §2](docs/v2.md#2-an-emergency-lock-with-the-veto-card)). The
 shipped contract has no lock.
+
+With guardian tokens the device kept after dealing (§2, §6.16), open, approve and
+finalize a recovery of its own. `addGuardian` refuses this thief, but kept tokens need no
+minting: that is adversary C with a full quorum, stopped only by the veto within 72
+hours. Hence the Integrity score's condition, and §8's rule to erase every kit.
 
 **Cannot.**
 - **Mint guardians.** `addGuardian` requires the veto secret. Without that, the
@@ -421,12 +498,23 @@ shipped contract has no lock.
 - **Veto.** `vetoRecovery` opens the veto commitment, not the identity commitment.
 - **Redeem the owner's approvals.** They are bound to the new device's ephemeral key.
 
-**Pooled shares are the one case that still takes the identity** — *t* guardians
-colluding hold *t* real tokens, not minted ones. That is adversary C (§4.3), and
-the answer there is the 72-hour window and the veto.
+**Pooled shares, or tokens the device kept, still take the identity** — *t* guardians
+colluding hold *t* real tokens, not minted ones, and so does a device that never erased
+what it dealt. That is adversary C (§4.3), and the answer there is the 72-hour window
+and the veto.
 
-**A thief who has the veto card too** holds everything the owner holds. They can
-block every recovery, but cannot take the identity without *t* guardians.
+**A thief who has the veto card too** holds everything the owner holds, and no circuit
+can tell them apart from the owner. Malware present while the owner dealt is this
+adversary, since adding a guardian needs the card on the same device. They can veto
+every recovery and evict the guardians with `rotateGuardianSet`, which also kills a
+recovery that has already reached quorum. They can take the identity without any
+guardian: `addGuardian` accepts the two secrets, so they mint *t* tokens of their own,
+approve a recovery for their own device and finalize after 72 hours. Only a veto from
+the owner's copy of the card stops that. Once the thief finalizes, the new identity
+secret and the new veto card are theirs, and the owner's shares rebuild only a retired
+secret. Rotating does not end it, because the thief can mint again under the new
+context. So the card must be kept apart from the device (§6.6, §6.8), and tokens minted
+this way outlive a recovery (§6.9).
 
 ---
 
@@ -444,13 +532,23 @@ veto arrives within 72 hours then answers a second question: *does the owner sti
 hold the veto secret, and are they watching?* A veto is a proof of life; silence is
 evidence of its opposite. Repeat it and you have a presence monitor the target
 cannot decline to answer. This is structural — the recovering device holds no
-secret, so there is nothing to authenticate an open with.
+secret, so there is nothing to authenticate an open with. Staying silent to hide that
+you are watching has a cost of its own: an open never expires (§6.14), so one you do not
+veto stays ready for its approvals for good.
 
 **The succession graph is public.** `idRoots` maps every commitment to its genesis
 root in the clear, so recovering does *not* yield a fresh pseudonym. **This is a
 trade-off, not an oversight:** that linkage is exactly what lets a downstream
 contract survive a key loss. You cannot have "the DApp keeps working" and "the
 rotation is unobservable" in this construction.
+
+**A veto commitment depends only on the card.** Its salt is derived from the veto
+secret (§2), so one card always publishes the same value in `vetoCommits`: the
+commitment hides the card, but it is deterministic. Lantern's client makes a new card
+for every identity and every successor. Never enrol a second identity with an existing
+card, because equal values in `vetoCommits` link the two publicly. A successor is
+already linked to its predecessor through `idRoots`, so keeping a card through a
+recovery adds only the hint that the same person holds both vetoes.
 
 **The anonymity set is smaller than "the tree".** `addGuardian` takes `idCommit` as
 a public argument, so each leaf is attributable to its identity from transaction
@@ -477,7 +575,10 @@ consequence.
    without disclosing their leaf is not achievable on an append-only tree with
    0.31.1's primitives: a revocation list would publish the leaf, making that
    guardian's approvals linkable across every recovery. We chose the coarser
-   operation and the stronger privacy. Removing one guardian costs *n* transactions.
+   operation and the stronger privacy. Removing one guardian's token costs *n*
+   transactions: a rotation and *n*−1 re-adds. It does not remove their Shamir share,
+   which a rotation leaves counting toward the live secret; removing that costs a whole
+   recovery (§6.17).
 
 2. **The threshold is fixed for the life of a lineage, and an unreachable one is a
    permanent lockout.** `enrollIdentity` can only require `t ≥ 2`: at enrolment
@@ -492,6 +593,13 @@ consequence.
    per-identity open counter, no escalating delay. One fee buys one more recovery
    the owner must veto within 72 hours; an owner offline for three days loses.
    Designed, not shipped — this is the largest gap between this and a production system.
+   Opens can also be used to hide one: anyone can open a recovery against any enrolled
+   identity, and none expires (§6.14), so twenty decoys at zero approvals could push the
+   one that can finalize off a list cut to the newest. `/live`'s watch therefore ranks by
+   approvals and never leaves out an open recovery that has one, and says how many it did
+   not draw; `npm run watch` lists every one. The answer to a flood is to rotate the
+   guardian set, which cancels every open recovery at once, your own included, and needs
+   the veto card; an attacker can then open again, one fee each.
    The design is [`docs/v2.md` §1](docs/v2.md#1-rate-limited-opens): only a current
    guardian can open, and each current guardian at most once per identity per quarter;
    one recovery per identity at a time; and after each veto a cooldown that doubles from
@@ -510,21 +618,43 @@ consequence.
    nominal. Back it up on separate media to get physical independence.
 
 7. **Veto versus finalize is decided by ordering.** `finalizeRecovery` checks
-   `!killed.member(rid)`. A veto landing first wins; a finalize landing first makes
-   the veto moot. Whoever can influence ordering in the final block can favour
-   either side — though the real boundary is the 72-hour window, not the block.
+   `!killed.member(rid)`. A veto landing first wins. A finalize landing first cannot be
+   undone, yet the contract still accepts a veto after it: `vetoRecovery` checks neither
+   the finalize nor the retired identity, so it marks the finalized recovery `killed`
+   too. So `killed` alone does not mean a recovery was stopped. Read `retiredIdentities`
+   first, as `/live` and `npm run watch` do (`web/src/live/status.js`, `recoveryState`):
+   on a retired identity, the one recovery that reached quorum is the one that finalized,
+   whatever `killed` says. Whoever can influence ordering in the final block can favour
+   either side — though the real boundary is the 72-hour window, not the block. The
+   shipped contract cannot change. v2's `vetoRecovery` refuses a retired identity; a
+   record of which recovery each finalize took is designed, not built
+   ([`docs/v2.md`](docs/v2.md#not-in-v2-yet)).
 
 8. **Rotating the guardian set, adding a guardian and vetoing all need the veto card.**
    This is what stops anyone holding a stolen identity secret from evicting your
    guardians, minting their own or vetoing your recovery (§4.5). The cost: an owner who
    has lost the veto card cannot veto a hostile recovery, add a guardian or evict the
    set until a recovery issues a new one. A recovery can: `finalizeRecovery` installs a fresh veto commitment.
+   But only once *t* guardians have been added. Neither `enrollIdentity` nor
+   `finalizeRecovery` checks that the veto commitment it stores can be opened, so if the
+   card is lost, or does not open its commitment, before *t* guardians are added, that
+   identity can never add a guardian and never be recovered. Its owner still holds the
+   identity secret, so the way out is a fresh enrolment, which loses whatever was bound to
+   the old root. If the same happens to a successor's card, the successor cannot rotate
+   away the old leaves (§6.9), though they can still recover it. Lantern's client derives
+   the commitment from the card it prints (`commitmentsOf` in `src/identity.js`), so this
+   takes a lost card or a broken client; §8 says what to check.
 
 9. **Guardian tokens outlive the recovery that follows them.** Leaves bind the
-   identity *root's* guardian context, which a recovery deliberately keeps. So
-   tokens minted by anyone who held both your identity secret and your veto card
-   still count for the successor. Rotate the guardian set after any recovery that
-   followed a compromise.
+   identity *root's* guardian context, which a recovery deliberately keeps. So every
+   guardian secret and leaf salt added so far still approves recoveries of the successor
+   until a rotation: those in the guardians' kits, those in old kits thrown away, those a
+   dealing device kept (§6.16), and those minted by anyone who held both your identity
+   secret and your veto card. An old kit's share rebuilds only the retired secret, so the
+   kit looks dead; its guardian secret and leaf salt are not. A re-deal that keeps each
+   guardian's credentials (`dealKits`' `credentials` option) leaves the old kits live, and
+   one with fresh credentials adds leaves beside the old ones. Rotate the guardian set
+   after every recovery, then deal new kits (§8).
 
 10. **The story runs, local and on Preprod, use a flavour with a 60-second timelock.**
     A 72-hour lock cannot be waited out in one run, so `npm run devnet`, with or without
@@ -568,6 +698,64 @@ consequence.
    rotation's fee each time. v2 derives the context from the identity root, so no other
    root can produce it.
 
+14. **A recovery never expires.** The 72 hours run from its open. `approveRecovery` has no
+   time check and `finalizeRecovery` checks only a lower bound on block time, so once the
+   lock is over, an open nobody vetoed can take its last approvals and finalize in one
+   block, however old it is and however few approvals it has: the approvals give no extra
+   notice. Veto every recovery you did not start, including one with no approvals; its
+   count is not a warning. Veto your own abandoned recoveries too: one that reached quorum
+   stays finalizable by whoever holds its device key and the identity secret, until a
+   rotation or another finalize kills it. The shipped contract cannot change; v2 gives
+   each recovery an approval deadline and an expiry
+   ([`docs/v2.md` §1](docs/v2.md#1-rate-limited-opens)).
+
+15. **A finalize can take a pending commitment.** `finalizeRecovery`'s successor,
+   `newIdCommit`, is an argument the circuit never opens (`contracts/src/lantern.compact`,
+   at the `successor already enrolled` assert). So anyone holding a finalizable recovery of
+   their own identity can finalize to a commitment someone else is about to use, and land
+   first. That can be another device's pending `enrollIdentity`, which then fails with
+   `identity already enrolled` (§6.13 reaches the same result more cheaply), or an honest
+   recovery's pending successor, which then fails with `successor already enrolled`. This
+   is denial of service only. Nothing is taken over, since the attacker's successor is a
+   commitment it cannot open. Each attempt retires one attacker identity, with its own
+   guardians and a recovery staged at least 72 hours earlier, though they can be staged in
+   parallel. The victim retries with a fresh salt or a fresh successor, and the recovery
+   itself stays finalizable. The shipped contract cannot change; v2's `finalizeRecovery`
+   proves the successor's opening
+   ([`docs/v2.md`](docs/v2.md#what-the-adversarial-review-changed)).
+
+16. **The dealing device briefly holds a full quorum.** `addGuardian` computes each leaf
+   inside the owner's circuit from the guardian's secret and leaf salt, so the device that
+   deals, and any proof server it uses, holds every guardian's token beside both owner
+   secrets. Kept after dealing, they are a full quorum for whoever later takes the device
+   (§4.5; `test/succession.test.js › a thief holding the identity secret AND the veto card
+   mints a quorum`), and with them anyone can tell which guardian approved each recovery (§2). No
+   circuit can check that the device erased them; §8 says to. The shipped contract cannot
+   change; the v2 design has the guardian make its own credential and hand the owner only
+   a commitment to it ([`docs/v2.md`](docs/v2.md#not-in-v2-yet)).
+
+17. **Replacing the guardians does not replace the secret.** `rotateGuardianSet` changes
+   the guardian context, not the identity secret, and no circuit but `finalizeRecovery`
+   retires a commitment and installs a new one. So a rotation voids every old guardian's
+   token and nobody's share: any *t* shares from one earlier deal still rebuild the live
+   secret, and its salt with it (§2). That covers an evicted guardian's share, a phished
+   one, and old kits that were kept or thrown away whole. With them anyone acts as you at
+   every host (`hostGatedAction`, `proveHeadOwnership`) and can open recoveries, silently
+   and with no time limit, until a recovery finalizes. They cannot approve with an old
+   kit, add a guardian, rotate or veto, and shares from different deals do not combine:
+   each deal draws fresh coefficients. To cut off a guardian you no longer trust, or one
+   whose kit may have leaked: rotate at once, which voids their token and kills any
+   recovery in flight; add the guardians you keep; recover to yourself onto a new secret
+   with their approvals (open for your own device, *t* approvals, 72 hours, finalize);
+   then, as after any recovery, deal kits of the new secret (§8). A guardian replaced only
+   because they are unreachable needs no recovery, as long as their kit cannot reach
+   anyone else. After any rotation without a recovery, every old kit must still be
+   destroyed. The shipped contract cannot change. v2's emergency lock would stop the
+   secret at every DApp that reads Lantern's ledger sooner
+   ([`docs/v2.md` §2](docs/v2.md#2-an-emergency-lock-with-the-veto-card)), and a rekey that
+   retires the secret without a recovery is future work
+   ([`docs/v2.md`](docs/v2.md#not-in-v2-yet)).
+
 ---
 
 ## 7. Found and fixed in review
@@ -584,7 +772,7 @@ twenty-first was fixed by removing the feature.
 | Veto and finalize proved the same predicate | a threshold attacker could veto every legitimate recovery forever | `cannot be performed with the identity secret` |
 | Guardian leaves bound the rotating commitment | Lantern worked **exactly once** per identity | `lets the ORIGINAL guardians recover the SUCCESSOR identity` |
 | A retired owner could still add guardians | once leaves bound a permanent root, a thief with the old secret could mint guardians **for the victim's new identity** | `a RETIRED owner cannot mint guardian leaves for the successor` |
-| Rotation did not kill a recovery that had reached quorum | evicting compromised guardians did not stop them | `a quorum reached before the rotation can no longer finalise` |
+| Rotation did not kill a recovery that had reached quorum | evicted guardians could still finalize a recovery that had reached quorum | `a quorum reached before the rotation can no longer finalise` |
 | The ephemeral key was stored but never checked | anyone else with the secret could finalise with approvals given to a different device | `rejects a finaliser who is not the device the guardians approved` |
 | `rotateCommittee` had no authorisation | anyone could stop every epoch from ever sealing | `regression: committee rotation needs a quorum` |
 | …and it replaced no key | a leaked key could re-sign under the new generation, so it revoked nothing | `a quorum REPLACES the leaked key, which can then no longer vote` |
@@ -610,11 +798,37 @@ and apart from it: the veto card is what stops a thief with your device from
 adding guardians, evicting yours or vetoing your recovery.
 Choose *t* assuming *t* colluding guardians win, and never above the number of
 guardians you will actually add (§6.2). Watch `recoveries`: one you did not start is
-an attack in progress, and you have 72 hours. **Veto it**, and if you suspect a
+an attack in progress, and you have 72 hours from its open. **Veto it**, however old it
+is and however few approvals it has, because a recovery never expires (§6.14); veto your
+own abandoned ones too. If you suspect a
 guardian, **rotate the guardian set** — that now kills any recovery already in
 flight, reached quorum or not. Both need the veto card, so keep it somewhere a
-thief who takes your device will not also find it. After a recovery, deal fresh
-shares for the new identity secret and rotate the guardian set.
+thief who takes your device will not also find it. A rotation voids their token, not
+their share: until a recovery retires the secret, their share and *t*−1 others from the
+same deal (an old kit nobody destroyed, a phished one) still rebuild it and act as you at
+every host. So if you no longer trust them, or their kit may have leaked, then recover to
+yourself onto a new secret with the guardians you keep, and deal fresh kits of it (§6.17).
+Replacing the guardians without a recovery leaves every share ever dealt able to rebuild
+the secret. Re-dealing the same secret neutralises leaked shares only while fewer than
+*t* of them leaked, because shares from different deals do not combine, and only once
+every old kit is destroyed; with *t* or more leaked, or if you cannot tell how many,
+recover to a new secret first. After a recovery, rotate the guardian set, then deal new
+kits (below).
+
+Add every guardian straight after enrolling, while the veto secret is still on the
+device, and move the card off the device only after the last `addGuardian` succeeds:
+neither `enrollIdentity` nor `finalizeRecovery` checks that the veto commitment it stores
+can be opened, so a card lost or misprinted before *t* guardians are added leaves an
+identity that can never be recovered (§6.8). Before enrolling, and before finalizing a
+recovery, check that the card opens the commitment you are about to store (`vetoCommitOf`,
+the contract's own pure circuit).
+
+Deal on a device you trust: while it deals, it holds every guardian's token (§6.16).
+Print kits without saving them (no print-to-PDF, no downloads), and once each guardian is
+added, erase that guardian's secret, leaf salt and share from the device. A device that
+keeps them is a full quorum for whoever takes it. Use one veto card per identity: never
+enrol a second identity with a card you already use, because equal veto commitments link
+the two (§5).
 
 **Guardians.** Before approving, confirm out of band that the ephemeral public key
 belongs to the person asking: your approval can only ever be redeemed by the holder
@@ -628,27 +842,78 @@ the recovery's public count and discloses which historic guardian root you prove
 against. None of it names you, but the root's age and the timing after the
 `openRecovery` narrow who you could be (§5).
 
-**After a recovery.** Deal fresh shares of the new identity secret — the old ones
-rebuild a retired secret — and, if the loss was a compromise rather than an
-accident, rotate the guardian set with the new veto card (§6.9).
+**After a recovery.** Whatever the cause, first rotate the guardian set with the new
+veto card, then deal new kits. The old kits' shares rebuild only the retired secret, but
+their guardian secrets and leaf salts still approve recoveries of the successor until the
+rotation, and so does any copy the lost device kept (§6.9, §6.16). Deal the new kits with
+fresh guardian secrets and leaf salts, under the root's current guardian context
+(`guardianCtx[idRoots[newIdCommit]]`, which after the rotation is its new context), not
+under the new identity commitment: `dealKits` takes that context as `ctx`, and a kit dealt
+under any other has no leaf in the tree. `dealKits` refuses kept credentials that repeat a
+guardian secret, since the contract counts one approval per guardian secret (§4.3), and a
+veto salt not derived from the veto secret, since that card could never veto.
+
+Deal each identity once per guardian context. Two deals of one identity under one
+context, *n* and *t* (a lost kit reprinted, say), make shares that do not combine: collect
+or destroy every old kit, or rotate. A recovering device rebuilds with `rebuildFromKits`
+(`src/kit.js`), which checks the secret against the identity commitment before
+`openRecovery` and names a kit from another deal.
 
 **Host integrators.** Prefer the in-contract gate: import `ownergate.compact` and
 `identity.compact` and call `ownershipHolds` with facts read from Lantern's own
 ledger, as `hostGatedAction` does. Use `host.compact` only if you cannot compile against
-Lantern, only for decisions that tolerate 24 hours of staleness plus the committee's
-build-to-seal time, and only after reading §4.4.
+Lantern, only for decisions that tolerate 24 hours of staleness plus the time from the
+build to the seal, which anyone can stretch if a voted snapshot is left unsealed, and only
+after reading §4.4. The contract checks none of the following, so check it yourself:
+- **The committee.** Before trusting a host, and after every `sealRotation`, read
+  `committee` from its ledger. Know who holds each of the three keys, and check that none
+  is the identity point (0, 1), whose secret is 0, and that no two are equal. Deploy with
+  quorum 2. At quorum 3 every seal and every rotation needs all three slots, so one slot
+  that cannot or will not vote halts the host for good: a lost key, a member who stops
+  signing, or coordinates off the prime-order subgroup. No epoch can seal, the gate
+  refuses everyone 24 hours after the last seal, and the slot can never be rotated out,
+  because its own vote is one of the three a rotation needs. At quorum 2 the same happens
+  once two slots are lost. Seal each proposal as soon as it reaches quorum, and check that
+  the seal landed: anyone can seal it later (§4.4).
+- **The tag.** Deploy every host with its own random tag (a fresh 31-byte value, not a
+  counter or 4242), and never give one committee key to two hosts, or a quorum's votes
+  on one can be replayed on the other (§4.4).
+- **Once per identity.** The reference gates, `hostGatedAction` and
+  `requireCurrentOwnerAttested`, allow an action once per identity *secret*, not once per
+  identity root. A recovery gives the root a new secret, so the same root can act on the
+  same nonce again (`test/succession.test.js › is one-shot per identity secret, not per
+  root`), and since the owner chooses the guardian leaves and can recover to
+  themselves, that is about once per 72 hours. A DApp that needs once per identity (one
+  vote per member) must write its own nullifier over the root and the action. That hides
+  nothing the reference gates do not already reveal: both take the current commitment as
+  a public argument, and the public `idRoots` map links it to the root. The trade-off: with a
+  root-bound nullifier, someone holding a stolen secret can use up the owner's action
+  before the owner's recovery finalizes.
 
 ---
 
 ## 9. Where our rigour stops
 
-- `requireCurrentOwnerAttested` casts `(epoch + 1) as Uint<32>`. At the maximum
-  epoch that cast may abort. We have not tested it and do not claim it.
+- `requireCurrentOwnerAttested` casts `(epoch + 1) as Uint<32>`. At epoch 2^32-1 that
+  cast aborts, so the gate refuses that epoch and the host is spent (`test/host.test.js`
+  writes that epoch into the ledger and shows the abort). `sealEpoch` refuses any epoch
+  but the next, so reaching it takes 2^32 seals in order: about 490,000 years at one seal
+  an hour.
 - Guardian contexts should be sampled randomly. A *predictable* context can be
   burned by an adversary through one `rotateGuardianSet` on an identity they
   control, because contexts are globally unique; a random one can be burned too, by
   anyone who sees the pending transaction (§6.13).
-- The committee size is fixed at three by the constructor's signature.
+- The committee size is fixed at three by the constructor's signature, and the
+  constructor and `sealRotation` check neither the committee keys (the identity point,
+  duplicates, points off the curve) nor that the host's tag is unique. §4.4 and §8 say
+  what an integrator must check instead.
+- The frozen header comments of `lantern.compact` and `identity.compact` say a distinct
+  `Bytes<N>` length per domain is a second separation, so preimages of different shape
+  can never collide. It is not: several domains share a length, and the persistent hashes
+  ignore the type's shape (§3). The domain strings separate every pair of hashes and every
+  pair of commitments; a commitment and a hash are separated by their total lengths, which
+  differ today, and nothing but §3's rule keeps them apart in a future derivation. The
+  files cannot change, so the comments stay until the next contract.
 - The full story has run on a single-node local chain (`deployments/local-devnet.json`)
   and on Preprod, a public network with real latency (`deployments/preprod.json`), both
   as the 60-second flavour (§6.10). The shipped contract, unchanged, has run the core
@@ -658,7 +923,7 @@ build-to-seal time, and only after reading §4.4.
 - The browser build is reproducible on one machine and in CI (two builds hash the
   same); across machines and operating systems it is not proven.
 - Every role in the recorded runs, local and on Preprod, shares one local proof server,
-  which sees each prover's witnesses. That is a demo convenience, not the deployment model (§4.2b).
+  whose image `devnet/compose.yml` pins by digest, and which sees each prover's witnesses. That is a demo convenience, not the deployment model (§4.2b).
 - The site's checks of Preprod, in the browser on `/live` and in the terminal, read the
   chain through Preprod's public indexer and trust its answers. We have not run either
   against a node and indexer of our own. The site's `connect-src` allows that indexer on
@@ -666,13 +931,14 @@ build-to-seal time, and only after reading §4.4.
 
 **If this continued past the hackathon, we would fix, in order:** rate-limit
 `openRecovery` (§6.4); reconstruct in a disposable worker (§6.5); make the committee
-size a constructor parameter.
+size a constructor parameter, and let the members who can still vote replace a slot
+that cannot (§8).
 
 The fixes that need a new contract are designed in [`docs/v2.md`](docs/v2.md):
 rate-limited opens (§6.4), an emergency lock that lets the veto card stop a stolen
 identity secret acting as the owner at every DApp that reads Lantern's ledger (§4.5), a
 recovery delay chosen at enrolment, and private guardian check-ins; it also answers
-§6.12 and §6.13. v2 is not part of this submission: the shipped contract on Preprod is
+§6.12, §6.13, §6.14 and §6.15. v2 is not part of this submission: the shipped contract on Preprod is
 frozen and unchanged, and nothing in this document claims v2's properties for it.
 
 ---

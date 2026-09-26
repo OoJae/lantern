@@ -49,10 +49,15 @@ let readme = '';
 try { readme = readFileSync(readmeUrl, 'utf8'); } catch { /* no README yet */ }
 const re = /(<!-- facts:circuits:start -->\n)([\s\S]*?)(\n<!-- facts:circuits:end -->)/;
 const found = readme.match(re);
-if (found && process.argv.includes('--write-readme')) {
+// A README without the block would pass unchecked, so its absence is a failure too.
+if (!found) {
+  console.error('check-cost: README.md has no <!-- facts:circuits:start --> … <!-- facts:circuits:end --> block to check');
+  process.exit(1);
+}
+if (process.argv.includes('--write-readme')) {
   writeFileSync(readmeUrl, readme.replace(re, `$1${block}$3`));
   console.log('check-cost: README circuit table rewritten');
-} else if (found && found[2] !== block) {
+} else if (found[2] !== block) {
   console.error('check-cost: the README circuit table differs from this measurement. Run: node scripts/check-cost.mjs --write-readme');
   process.exit(1);
 }

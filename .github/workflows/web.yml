@@ -3,11 +3,14 @@
 name: web
 
 on:
+  # Docs-only changes skip this job, except README.md: this job is what checks its numbers
+  # (the browser-test counts, through readme:check with web/ installed).
+  # The patterns apply in order, so the last one brings README.md back.
   push:
     branches: [main]
-    paths-ignore: ['**.md', 'docs/**']
+    paths: ['**', '!**.md', '!docs/**', 'README.md']
   pull_request:
-    paths-ignore: ['**.md', 'docs/**']
+    paths: ['**', '!**.md', '!docs/**', 'README.md']
   workflow_dispatch:
 
 permissions:

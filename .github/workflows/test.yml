@@ -42,12 +42,18 @@ jobs:
       - run: npm test
       # Every generated number in the README must still match the file it came from.
       - run: npm run readme:check
+      # Every relative import, and every script a package.json or workflow runs, reaches a file
+      # this commit tracks, and every text file is LF with eol=lf (.gitattributes).
+      - run: npm run repo:check
       # The adversarial demo is also an assertion: it exits non-zero if a
       # vulnerable target is NOT fully broken, or if the shipped one IS.
       - run: npm run attack -- --no-color
       # The whole story, as a terminal run; non-zero if any step goes unexpectedly.
       - run: npm run story -- --no-color --seed ci
-      # The fee sponsor's policy. Dependency-free, so no devnet install is needed.
+      # The fee sponsor's policy, and the devnet scripts' own logic (RPC retries, the watcher's
+      # alerts, compile.sh, compose.yml's pinned images, owner-only files, verify's plan, the
+      # executor's record and the fee sponsor). No devnet install is needed: the sponsor's test
+      # loads @midnight-ntwrk/ledger-v8 from the root install, the rest are dependency-free.
       # Unquoted: the shell expands the glob on every Node version.
       - run: node --test devnet/test/*.test.mjs
 

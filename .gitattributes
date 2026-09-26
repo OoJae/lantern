@@ -1,0 +1,10 @@
+# Every text file is stored and checked out with LF, whatever core.autocrlf says (Git for Windows
+# sets it to true). Checked out with CRLF, devnet/flavour.mjs cannot find the shipped timelock
+# line, so test/devnet.test.js and test/record.test.js fail, and the compile scripts stop at
+# `set -o pipefail`. `npm run repo:check` (scripts/check-repo.mjs) fails if this is lost.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
+*.wasm binary

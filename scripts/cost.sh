@@ -9,7 +9,12 @@ TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 printf '| circuit | k | rows | prover key | zkir |\n|---|---|---|---|---|\n'
 for f in contracts/managed/zkir/*.zkir contracts/managed-host/zkir/*.zkir; do
   n="$(basename "$f" .zkir)"
-  line="$("$ZKIR" compile -v "$f" "$TMP/p" "$TMP/v" 2>&1 | head -1)"
+  # Read all of zkir's output, then pick the line that carries k= and rows=. Never `| head -1`:
+  # head exits after one line, zkir then writes into a closed pipe, exits 1, and pipefail aborts
+  # the table on a busy machine although the measurement had been read. zkir writes that line
+  # to stderr and a tracing line ("k: 14") to stdout, so the first line is not always the one.
+  out="$("$ZKIR" compile -v "$f" "$TMP/p" "$TMP/v" 2>&1)"
+  line="$(grep -m1 -E 'k=[0-9]+' <<<"$out" || true)"
   k="$(printf '%s' "$line" | grep -oE 'k=[0-9]+' | cut -d= -f2)"
   rows="$(printf '%s' "$line" | grep -oE 'rows=[0-9]+' | head -1 | cut -d= -f2)"
   d="$(dirname "$(dirname "$f")")"; sz="$(ls -lh "${d}/keys/${n}.prover" 2>/dev/null | awk '{print $5}')"
