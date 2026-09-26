@@ -1,8 +1,9 @@
 // The v2 runner's record (devnet/src/v2-record.mjs) and its deploy plan (deploy-plan.mjs), checked
 // without a chain: a record built from the story run in memory, with made-up transactions, passes
 // its own consistency checks and fails them when altered; the deploy plan places every key once,
-// within budget; and each committed v2 record (deployments/*-v2.json), when there is one, is
-// consistent, was compiled from the sources committed here, and is the story this repo tells.
+// within budget; and each committed v2 record (deployments/local-v2.json, preprod-v2.json), when
+// there is one, is consistent, was compiled from the sources committed here, and is the story this
+// repo tells.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -72,7 +73,7 @@ describe('a v2 record', () => {
 
   it('is named for its network', () => {
     assert.equal(v2RecordName({ networkId: 'preprod', isPublic: true }), 'preprod-v2.json');
-    assert.equal(v2RecordName({ networkId: 'undeployed', isPublic: false }), 'local-devnet-v2.json');
+    assert.equal(v2RecordName({ networkId: 'undeployed', isPublic: false }), 'local-v2.json');
   });
 });
 
@@ -107,7 +108,7 @@ describe('the deploy plan', () => {
 });
 
 // Each committed v2 record, when the run has written one.
-for (const name of ['local-devnet-v2.json', 'preprod-v2.json']) {
+for (const name of ['local-v2.json', 'preprod-v2.json']) {
   const file = new URL(`deployments/${name}`, repo);
   describe(`deployments/${name}`, { skip: !existsSync(file) && 'not recorded yet' }, () => {
     const rec = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null;

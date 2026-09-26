@@ -9,7 +9,7 @@
 //
 // One-shot: a fresh contract every run. The paying wallet (the genesis wallet locally, the
 // operator wallet on Preprod) pays for everything. The record is written only if every step goes
-// as expected: deployments/local-devnet-v2.json, or deployments/preprod-v2.json on Preprod. Check
+// as expected: deployments/local-v2.json, or deployments/preprod-v2.json on Preprod. Check
 // it against the chain, with no wallet: npm run devnet:verify:v2.
 import './ws.mjs'; // before anything that loads the wallet SDK: see ws.mjs
 import { createHash } from 'node:crypto';

@@ -1,4 +1,4 @@
-// deployments/local-devnet-v2.json, or preprod-v2.json with LANTERN_NETWORK=preprod: committed
+// deployments/local-v2.json, or preprod-v2.json with LANTERN_NETWORK=preprod: committed
 // evidence of a real run of Lantern v2's chain story (v2-run.mjs), in the style of preprod.json.
 // Written only when every step went as the story expects: never a partial record.
 //
@@ -13,8 +13,11 @@ export const V2_CIRCUITS = [
 ];
 export const TOOLCHAIN = Object.freeze({ compact: '0.31.1', 'compact-runtime': '0.16.0', 'midnight-js': '4.1.1', 'wallet-sdk': '1.2.0' });
 
-/** The record's file name under deployments/: preprod-v2.json on Preprod, local-devnet-v2.json locally. */
-export const v2RecordName = ({ networkId, isPublic }) => `${isPublic ? networkId : 'local-devnet'}-v2.json`;
+/**
+ * The record's file name under deployments/: preprod-v2.json on Preprod, local-v2.json locally (not
+ * local-devnet-*, the names of v1's local records).
+ */
+export const v2RecordName = ({ networkId, isPublic }) => (isPublic ? `${networkId}-v2.json` : 'local-v2.json');
 
 const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : null; };
 const span = (xs) => ({ min: Math.min(...xs), median: median(xs), max: Math.max(...xs) });
