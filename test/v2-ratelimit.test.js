@@ -1,4 +1,4 @@
-// Rate-limited opens (docs/v2-spec.md §3). The cases of §3.9, in its order. Case 14,
+// Rate-limited opens (docs/v2.md §3). The cases of §3.9, in its order. Case 14,
 // two opens raced from one state, is in test/v2-concurrency.test.js with the
 // other replays. Every refusal is the circuit's own message.
 import { describe, it, expect } from 'vitest';

@@ -31,7 +31,8 @@ const COMMANDS = [
   ['npm run web:install && npm run web', 'Node 22.12 or later'],
   ['npm run devnet', 'real proofs on a local chain (Docker, Node 24 or later, compact 0.31.1)'],
   ['npm run devnet:verify', 're-check that chain against the record'],
-  ['LANTERN_NETWORK=preprod npm run devnet:verify', 're-check the Preprod run against the public chain, with no wallet'],
+  ['LANTERN_NETWORK=preprod npm run devnet:verify', 're-check the whole story’s Preprod run against the public chain, with no wallet'],
+  ['LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify', 're-check the shipped contract’s Preprod run the same way'],
 ];
 
 // The table's cells carry their column's name for the phone layout, where each row is a card that
@@ -86,7 +87,7 @@ export default function About() {
             <li>An open recovery is public: it tells the world an identity’s owner may have lost a key.</li>
           </ul>
           <p>The full threat model, with every limitation and its bound, is <a href="https://github.com/OoJae/lantern/blob/main/SECURITY.md"><code>SECURITY.md</code></a> in the repository. The runs on Preprod are recorded in <a href="https://github.com/OoJae/lantern/tree/main/deployments"><code>deployments/</code></a>, and the README shows how to check them. The assumptions behind this site and the chain runner are tested in <a href="https://github.com/OoJae/lantern/blob/main/docs/spikes.md"><code>docs/spikes.md</code></a>.</p>
-          <p className="onward"><Link to="/demo">Watch a recovery</Link> · <Link to="/attacks">Try to find the guardians</Link></p>
+          <p className="onward"><Link to="/demo">Watch a recovery</Link> · <Link to="/attacks">Try to find the guardians</Link> · <Link to="/live">Check the Preprod runs in your browser</Link></p>
         </div>
       </section>
     </section>

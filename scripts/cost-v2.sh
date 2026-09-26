@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prints the measured circuit cost table of Lantern v2 (docs/v2-spec.md §8), the same
+# Prints the measured circuit cost table of Lantern v2 (docs/v2.md §8), the same
 # way scripts/cost.sh does for v1. Needs `npm run compile:v2` first.
 set -euo pipefail
 ZKIR="${HOME}/.compact/versions/0.31.1/$(uname -m | sed 's/arm64/aarch64/')-darwin/zkir"

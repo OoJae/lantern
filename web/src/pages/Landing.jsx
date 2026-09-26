@@ -287,6 +287,11 @@ export default function Landing() {
             no chain, no proofs. Every accept and every refusal is the contract’s own.
           </p>
           <Ctas className="rv" />
+          {/* The next two ways in, set as the chapters' links (spaced in landing.css). */}
+          <div className="chapter-links rv">
+            <Link to="/live">See the real recovery on Preprod<Arrow /></Link>
+            <Link to="/rehearse">Rehearse your own<Arrow /></Link>
+          </div>
         </div>
       </section>
 

@@ -1,4 +1,4 @@
-// v1's test/concurrency.test.js, ported to v2 (docs/v2-spec.md §7), plus the races
+// v1's test/concurrency.test.js, ported to v2 (docs/v2.md §7), plus the races
 // v2's new rules create. The method is v1's: build a proof against a snapshot
 // of the state, let something else land, then REPLAY the proof's public
 // transcript against the new state exactly as a node would. v1's rule holds:
@@ -121,7 +121,7 @@ describe('v2 contention: the veto stays write-only on rate-limit state', () => {
   });
 });
 
-// docs/v2-spec.md §3.9 case 14: one live recovery holds under a race.
+// docs/v2.md §3.9 case 14: one live recovery holds under a race.
 describe('v2 contention: two opens raced from one state', () => {
   it('the second open is refused on replay, and a re-proved one is refused as live', () => {
     const { sim, id, guardians } = world();
@@ -140,7 +140,7 @@ describe('v2 contention: two opens raced from one state', () => {
   });
 });
 
-// docs/v2-spec.md §4.6 case 9: the lock wins, and no stale lock reaches a successor.
+// docs/v2.md §4.6 case 9: the lock wins, and no stale lock reaches a successor.
 describe('v2 contention: the lock', () => {
   it('a gate action proved before a lock lands is refused on replay', () => {
     const { sim, id, idRoot } = world();
@@ -174,7 +174,7 @@ describe('v2 contention: the lock', () => {
   });
 });
 
-// docs/v2-spec.md §6.4 case 9: only a period's FIRST check-in can conflict.
+// docs/v2.md §6.4 case 9: only a period's FIRST check-in can conflict.
 describe('v2 contention: check-ins', () => {
   it("two guardians' first check-ins of a period: the second is refused on replay and succeeds re-proved", () => {
     const { sim, id, guardians } = world();

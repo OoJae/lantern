@@ -4,15 +4,15 @@ name: compile
 
 on:
   push:
-    # v2: Lantern v2's branch (docs/v2-spec.md), until it merges.
+    # v2: Lantern v2's branch (docs/v2.md), until it merges.
     branches: [main, v2]
-    # Prose is skipped, except the two documents whose tables the last two steps
-    # compare with the measurement: README.md (the circuit table) and docs/v2-spec.md
+    # Prose is skipped, except the two documents whose tables the two cost steps
+    # compare with the measurement: README.md (the circuit table) and docs/v2.md
     # (§8 and §14.1). Order matters: a later pattern re-includes a path an
     # earlier '!' pattern excluded.
-    paths: ['**', '!**.md', '!docs/**', 'README.md', 'docs/v2-spec.md']
+    paths: ['**', '!**.md', '!docs/**', 'README.md', 'docs/v2.md']
   pull_request:
-    paths: ['**', '!**.md', '!docs/**', 'README.md', 'docs/v2-spec.md']
+    paths: ['**', '!**.md', '!docs/**', 'README.md', 'docs/v2.md']
   workflow_dispatch:
 
 permissions:
@@ -122,6 +122,20 @@ jobs:
       - name: Assert every circuit fits k <= 14
         run: node scripts/check-cost.mjs
 
-      # v2's 13 circuits, each at k <= 14 and equal to the table in docs/v2-spec.md §8.
+      # v2's 13 circuits, each at k <= 14 and equal to the table in docs/v2.md §8.
       - name: Assert every v2 circuit fits k <= 14
         run: node scripts/check-cost-v2.mjs
+
+      # /live checks the whole story's contract on Preprod against web/src/live/keys.js, which pins the
+      # one key that run does not share with the committed build: the 60-second flavour's
+      # finalizeRecovery. Build that flavour afresh, and the pin must be its key.
+      - name: Assert /live's pinned flavour key is a fresh flavour build's
+        run: |
+          set -euo pipefail
+          bash devnet/compile.sh
+          sha=$(shasum -a 256 devnet/build/lantern/keys/finalizeRecovery.verifier | cut -d' ' -f1)
+          grep -q "sha: '${sha}'" web/src/live/keys.js \
+            || { echo "::error::web/src/live/keys.js does not pin the flavour build's finalizeRecovery key (${sha})"; exit 1; }
+          echo "web/src/live/keys.js pins the flavour build's finalizeRecovery key: ${sha}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

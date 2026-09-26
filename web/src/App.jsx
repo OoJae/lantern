@@ -20,7 +20,11 @@ const Kit = lazy(() => import('./pages/Kit.jsx'));
 
 const PAGES = { '/': Landing, '/demo': Demo, '/attacks': Attacks, '/about': About, '/brand': Brand, '/live': Live, '/rehearse': Rehearse, '/kit': Kit };
 // What a lazy page says while it loads: nothing, where there is nothing worth saying.
-const LOADING = { '/demo': 'Loading the contract…', '/attacks': 'Loading the contract…', '/brand': 'Opening the brand kit…' };
+// /rehearse and /kit say, while their chunk loads, the line they then show while the contract loads.
+const LOADING = {
+  '/demo': 'Loading the contract…', '/attacks': 'Loading the contract…', '/brand': 'Opening the brand kit…',
+  '/rehearse': 'Loading the compiled contract into your browser…', '/kit': 'Loading the contract…',
+};
 
 const NAV = [['/demo', 'The recovery'], ['/attacks', 'Attack it'], ['/about', 'What is real']];
 

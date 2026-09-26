@@ -1,4 +1,4 @@
-// The adversarial review of Lantern v2, finding by finding (docs/v2-spec.md §3.10).
+// The adversarial review of Lantern v2, finding by finding (docs/v2.md §3.10).
 // Each describe block names the finding, and each test is the attack the
 // review ran against the first build, now refused -- or the property that
 // finding said was missing, now checked. The review's own scripts assumed the
@@ -803,10 +803,10 @@ describe('F5: both shared trees hold 2^32 leaves', () => {
     expect(src).not.toMatch(/<20, Bytes<32>>/);
   });
 
-  it('every tree depth docs/v2-spec.md shows is the contract\'s 32', () => {
+  it('every tree depth docs/v2.md shows is the contract\'s 32', () => {
     // After F5 deepened the trees, two circuit excerpts in the spec kept 20.
     // scripts/check-cost-v2.mjs guards this in compile.yml; this runs it in every `npm test`.
-    const doc = readFileSync(new URL('../docs/v2-spec.md', import.meta.url), 'utf8');
+    const doc = readFileSync(new URL('../docs/v2.md', import.meta.url), 'utf8');
     const depths = [...doc.matchAll(/(?:merkleTreePathRoot|MerkleTreePath|HistoricMerkleTree)<(\d+),/g)].map((m) => m[1]);
     expect(depths.length).toBeGreaterThan(0);   // never vacuous
     expect(new Set(depths)).toEqual(new Set(['32']));

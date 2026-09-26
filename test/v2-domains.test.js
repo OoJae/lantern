@@ -1,4 +1,4 @@
-// Names and domain separation for v2 (docs/v2-spec.md §2).
+// Names and domain separation for v2 (docs/v2.md §2).
 //
 // - The identity and veto commitments are SHARED with v1 on purpose: an
 //   identity commitment means the same thing in both contracts. Ported from

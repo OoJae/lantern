@@ -1,4 +1,4 @@
-// Private guardian check-ins (docs/v2-spec.md §6). The cases of §6.4, in its order.
+// Private guardian check-ins (docs/v2.md §6). The cases of §6.4, in its order.
 // Case 9, the first-check-in race, is in test/v2-concurrency.test.js.
 import { describe, it, expect } from 'vitest';
 import * as rt from '@midnight-ntwrk/compact-runtime';

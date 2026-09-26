@@ -1,7 +1,7 @@
 // "Try to break it": every attack the panel offers, run against the compiled contract in the
 // browser. Each refusal is asserted by the contract's exact assert message.
 import { test, expect } from '@playwright/test';
-import { BANNED, openDemo, expectNoSeriousA11yIssues, expectNoSideScroll, landsClear } from './helpers.js';
+import { BANNED, openDemo, expectNoSeriousA11yIssues, expectNoSideScroll, landsClear, pageCopy } from './helpers.js';
 
 // The contract's own messages (contracts/src/lantern.compact), as the story expects them too.
 const REFUSED = {
@@ -106,7 +106,7 @@ test('every attack is refused with the contract’s own message, and the honest 
   await expect(result).toHaveAttribute('data-ok', 'true');
   await expect(result.locator('.circuit')).toHaveText('finalizeRecovery');
   await expect(result.locator('.chip.ok')).toHaveText('accepted');
-  for (const label of ['device key', 'identity secret', 'identity salt']) {
+  for (const label of ['device secret key', 'identity secret', 'identity salt']) {
     await expect(result).toContainText(new RegExp(`Absent from the public record: .*${label}`));
   }
   await expect(result).toContainText('retired commitments +1');
@@ -385,7 +385,7 @@ test('with every result showing: no overclaiming words, no serious accessibility
   await card(page, 'honest').getByRole('button', { name: 'Finalize honestly' }).click();
   await expect(card(page, 'honest').locator('.try-result')).toHaveAttribute('data-outcome', 'accepted');
   await expect(page.locator('.breakit')).toContainText('no wallet, no chain, no proofs');
-  expect(await page.locator('body').innerText()).not.toMatch(BANNED);
+  expect(await pageCopy(page)).not.toMatch(BANNED);
   await expectNoSeriousA11yIssues(page);
   await expectNoSideScroll(page);
 

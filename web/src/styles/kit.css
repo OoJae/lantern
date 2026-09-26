@@ -1,0 +1,341 @@
+/* /kit, "Recovery kits" (pages/Kit.jsx, kit/*.jsx). Loaded with the page's own chunk, and then kept for
+   the visit, so nothing here may reach another page. On screen, every class is the page's own (kit-);
+   the two it shares, the word grid and the check words, which /rehearse shows too, are styled once in
+   kit/word-grid.css, which Sheets.jsx imports. In print, every rule sits under .kit-page, :root:has() or
+   body:has(.kit-sheets), so printing another page later is untouched (e2e/kit.spec.js holds that).
+
+   The one idea: what you print is paper. The veto card and the kits are the site's inverted scope
+   (.paper: Hanji, Night ink), the only paper on the page, laid on the night like a sheet under a
+   lantern. No Ember: it never sits on Hanji, and nothing here is the flame. */
+
+.kit-page { --kit-measure: 38rem; }
+
+/* ---- the steps: a numeral in the display italic, Ash, hung before each heading ---------------------- */
+.kit-step { margin-top: var(--space-8); }
+.kit-step-h {
+  display: flex; align-items: baseline; gap: 0.45em;
+  margin: 0 0 var(--space-3);
+  font-size: var(--step-3); line-height: var(--leading-3); letter-spacing: var(--tracking-3);
+}
+.kit-step-n {
+  font-family: var(--font-display); font-style: italic; font-weight: 300;
+  color: var(--muted); font-variant-numeric: lining-nums;
+}
+.kit-prose { max-width: var(--kit-measure); color: var(--ink); }
+.kit-note { max-width: var(--kit-measure); }
+.kit-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-4); }
+.kit-row .loading { padding: 0; }
+.kit-made { margin: 0; }
+.kit-field-label {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-sans); font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ---- choosing n and t: two rows of numbered capsules (radio buttons underneath) ---------------------- */
+.kit-choices { display: flex; flex-wrap: wrap; gap: var(--space-5) var(--space-7); margin-top: var(--space-5); }
+.kit-choice { margin: 0; padding: 0; border: 0; min-width: 0; }
+.kit-choice legend { padding: 0; }
+.kit-pills { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.kit-pill { position: relative; display: inline-flex; }
+.kit-pill input {
+  position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+  opacity: 0; cursor: pointer;
+}
+.kit-pill span {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 44px; padding: 0 var(--space-3);
+  border: 1px solid var(--edge); border-radius: var(--radius-pill);
+  font-family: var(--font-mono); font-size: var(--step-0); font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  transition: background-color var(--dur-hover) var(--ease-settle), border-color var(--dur-hover) var(--ease-settle), color var(--dur-hover) var(--ease-settle);
+}
+.kit-pill input:checked + span { background: var(--ink); border-color: var(--ink); color: var(--ground); }
+.kit-pill input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 3px; }
+@media (hover: hover) {
+  .kit-pill:hover input:not(:checked) + span { border-color: var(--ink); }
+}
+.kit-sentence {
+  margin: var(--space-5) 0 0; max-width: var(--kit-measure);
+  font-family: var(--font-display); font-style: italic; font-weight: 360;
+  font-size: var(--step-1); line-height: var(--leading-1); letter-spacing: var(--tracking-1);
+}
+.kit-sentence b { font-style: normal; font-weight: 420; font-variant-numeric: lining-nums; }
+
+/* ---- the deck: tabs over one sheet ------------------------------------------------------------------ */
+.kit-sheets:focus { outline: none; }
+.kit-sheets:focus-visible { outline: 2px solid var(--ink); outline-offset: 8px; }
+.kit-deck { margin-top: var(--space-5); }
+/* The tabs keep one line and scroll sideways when they outrun it (Kit.jsx keeps the chosen one in
+   view, a peek clear of the edge). The rule under them is drawn by the row itself, each tab and then the
+   space after the last, so the chosen tab's underline always lands on it, and a scrollbar, where a
+   system shows one, sits below it rather than between the two. An edge with more tabs beyond it fades
+   out, rule and all (data-more, set by Kit.jsx as the row scrolls): a mask, so it fades into whatever
+   the ground is. No scroll snap: it pulls the page's own scroll back to the nearest tab start, which
+   can leave the chosen tab under the fade. */
+.kit-tabs {
+  --kit-fade: var(--space-5);
+  display: flex; flex-wrap: nowrap;
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin;
+  scroll-padding-inline: var(--space-6);
+}
+.kit-tabs[data-more="end"] {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--kit-fade)), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--kit-fade)), transparent);
+}
+.kit-tabs[data-more="start"] {
+  -webkit-mask-image: linear-gradient(to left, #000 calc(100% - var(--kit-fade)), transparent);
+  mask-image: linear-gradient(to left, #000 calc(100% - var(--kit-fade)), transparent);
+}
+.kit-tabs[data-more="both"] {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--kit-fade), #000 calc(100% - var(--kit-fade)), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 var(--kit-fade), #000 calc(100% - var(--kit-fade)), transparent);
+}
+.kit-tabs::after { content: ""; flex: 1 0 var(--space-4); box-shadow: inset 0 -1px 0 var(--line); }
+.kit-page .kit-tab {
+  flex: none; white-space: nowrap;
+  min-height: 44px; padding: 0 var(--space-3);
+  border: 0; border-radius: 0; background: none;
+  color: var(--muted); font-weight: 500;
+  box-shadow: inset 0 -1px 0 var(--line);
+  transition: color var(--dur-hover) var(--ease-settle), box-shadow var(--dur-hover) var(--ease-settle);
+}
+.kit-page .kit-tab[aria-selected="true"] { color: var(--ink); box-shadow: inset 0 -2px 0 var(--ink); }
+.kit-page .kit-tab:focus-visible { outline-offset: -2px; }
+@media (hover: hover) {
+  .kit-page .kit-tab:hover { color: var(--ink); }
+}
+.kit-print-row { margin: var(--space-4) 0 var(--space-5); }
+/* Kits made for other numbers than the ones now chosen: said above them, in the refused dashed rule. */
+.kit-stale {
+  max-width: var(--kit-measure); margin: var(--space-4) 0 0; padding: var(--space-3) var(--space-4);
+  background: var(--surface); border-left: 2px dashed var(--muted);
+  border-radius: 0 var(--radius-surface) var(--radius-surface) 0;
+  font-size: var(--step--1); line-height: var(--leading--1); color: var(--ink);
+}
+.kit-panel[hidden] { display: none; }
+
+/* ---- a sheet: paper on the night ---------------------------------------------------------------------- */
+.kit-sheet {
+  position: relative;
+  max-width: 46rem;
+  padding: clamp(20px, 4.5vw, 44px);
+  border-radius: var(--radius-surface);
+}
+.kit-sheet-head { margin-bottom: var(--space-4); }
+/* Everything above the words, then a hairline: who the sheet is for, what it does, how to keep it. */
+.kit-outside { padding-bottom: var(--space-5); margin-bottom: var(--space-5); border-bottom: 1px solid var(--line); }
+.kit-kind {
+  margin: 0 0 var(--space-2);
+  font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  letter-spacing: var(--tracking--2); text-transform: uppercase; color: var(--muted);
+}
+.kit-brand {
+  font-family: var(--font-display); font-style: italic; font-weight: 400;
+  font-size: 1.35em; letter-spacing: 0; text-transform: none; color: var(--ink);
+}
+.kit-title { margin: 0; font-family: var(--font-display); font-size: var(--step-3); font-weight: 340; line-height: var(--leading-3); letter-spacing: var(--tracking-3); }
+.kit-aside { margin: var(--space-2) 0 0; color: var(--muted); font-size: var(--step--1); }
+/* Practice: said under the title, as a stamp in the ink, so a printed sheet is never taken for a backup.
+   Where the sheet is wide enough (and in print), the stamp stands on the title's line, at its right. */
+.kit-practice {
+  width: fit-content; margin: var(--space-3) 0 0; padding: 0.1em 0.55em;
+  border: 1px solid var(--ink); border-radius: var(--radius-surface);
+  font-size: var(--step--1); font-weight: 560; line-height: var(--leading--1); color: var(--ink);
+}
+@media (min-width: 600px) {
+  .kit-sheet-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-4); }
+  .kit-sheet-head > * { grid-column: 1 / -1; }
+  .kit-sheet-head > .kit-title { grid-column: 1; grid-row: 2; }
+  .kit-sheet-head > .kit-practice { grid-column: 2; grid-row: 2; align-self: center; margin: 0; }
+}
+.kit-lead { max-width: 34rem; font-size: var(--step-0); }
+.kit-small { margin: var(--space-2) 0 0; font-size: var(--step--1); line-height: var(--leading--1); color: var(--muted); max-width: 34rem; }
+.kit-label {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-sans); font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase;
+  color: var(--ink);
+}
+.kit-for { display: flex; align-items: baseline; gap: var(--space-3); margin: var(--space-4) 0; }
+.kit-for .kit-label { margin: 0; flex: none; }
+.kit-blank { flex: 1; max-width: 22rem; border-bottom: 1px solid var(--ink); }
+
+/* The guardian's script: a 2px rule, the words in the display italic. */
+.kit-script { margin-top: var(--space-5); padding-left: var(--space-4); border-left: 2px solid var(--ink); }
+.kit-script .kit-small { margin: 0 0 var(--space-3); }
+.kit-quote { margin: 0; }
+.kit-quote p {
+  margin: 0; max-width: 34rem;
+  font-family: var(--font-display); font-style: italic; font-weight: 380;
+  font-size: var(--step-1); line-height: var(--leading-1); letter-spacing: var(--tracking-1);
+}
+.kit-quote-page { margin: var(--space-5) 0; padding-left: var(--space-4); border-left: 2px solid var(--ink); }
+
+/* How to keep the sheet: in half, printed side in. Words, not a fold line (Sheets.jsx says why). */
+.kit-fold { max-width: 34rem; margin: var(--space-5) 0 0; font-size: var(--step--1); line-height: var(--leading--1); color: var(--muted); }
+.kit-fold .kit-label { display: block; margin-bottom: var(--space-1); }
+/* Never read them out: the one instruction inside, in the ink. */
+.kit-never { max-width: 34rem; margin: var(--space-4) 0 0; font-size: var(--step--1); font-weight: 560; line-height: var(--leading--1); color: var(--ink); }
+
+/* The words themselves (the grid, the check words) are drawn by kit/word-grid.css. */
+.kit-inside { position: relative; }
+.kit-section + .kit-section { margin-top: var(--space-5); }
+
+.kit-checkline { margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--line); }
+.kit-check-words { margin: 0; font-family: var(--font-mono); font-size: var(--step-1); }
+
+/* Covered while the owner types the card back in: a Night flap drawn down over the words. */
+.kit-inside[data-covered="true"] :is(.kit-grid, .kit-checkline) { visibility: hidden; }
+.kit-cover {
+  position: absolute; inset: calc(var(--step--2) * 2) 0 0;
+  display: flex; align-items: center; justify-content: center; margin: 0; padding: var(--space-4);
+  background: var(--night); color: var(--hanji); border-radius: var(--radius-surface);
+  font-family: var(--font-display); font-style: italic; font-size: var(--step-1); text-align: center;
+}
+html.motion .kit-cover { animation: kit-flap var(--dur-card) var(--ease-settle) both; }
+@keyframes kit-flap { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
+
+.kit-foot { margin-top: var(--space-6); font-size: var(--step--2); line-height: 1.5; color: var(--muted); }
+.kit-foot p { margin: var(--space-3) 0 0; }
+.kit-foot code { font-size: 1em; color: var(--ink); }
+.kit-foot .kit-expires { color: var(--ink); }
+.kit-public { display: grid; gap: var(--space-1); margin: 0; }
+.kit-public div { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); gap: var(--space-3); }
+.kit-public dt { color: var(--muted); }
+.kit-public dd { margin: 0; min-width: 0; }
+@media (max-width: 479px) {
+  .kit-public div { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}
+
+/* ---- check your backup ------------------------------------------------------------------------------ */
+.kit-backup { display: grid; gap: var(--space-6); max-width: 46rem; margin-top: var(--space-5); }
+.kit-form { display: grid; gap: var(--space-2); }
+/* Before the box: only practice cards belong in it. The site's solid rule, as .honesty draws it. */
+.kit-warn {
+  max-width: 38rem; margin: 0 0 var(--space-3); padding: var(--space-3) var(--space-4);
+  background: var(--surface); border-left: 2px solid var(--ink);
+  border-radius: 0 var(--radius-surface) var(--radius-surface) 0;
+  font-size: var(--step--1); line-height: var(--leading--1); color: var(--ink);
+}
+.kit-warn strong { font-weight: 600; }
+.kit-typed {
+  width: 100%; min-height: 7.5rem; resize: vertical;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--edge); border-radius: var(--radius-surface);
+  font-family: var(--font-mono); font-size: var(--step-0); line-height: 1.6;
+}
+.kit-typed:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-color: var(--ink); }
+.kit-count { margin: 0; font-size: var(--step--1); color: var(--muted); }
+.kit-count-n { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+.kit-count-bad { color: var(--ink); }
+.kit-form .meta { margin: 0; max-width: 34rem; }
+.kit-form .kit-row { margin-top: var(--space-2); }
+.kit-try .kit-row { margin-top: 0; }
+
+/* The verdict, in the site's two outcomes: a solid Hanji rule for the card that opens its commitment,
+   the refused dashed Ash rule for everything else. */
+.kit-result { padding: var(--space-4) var(--space-5); background: var(--surface); border-left: 2px dashed var(--muted); border-radius: 0 var(--radius-surface) var(--radius-surface) 0; }
+.kit-result[data-result="pass"] { border-left: 2px solid var(--ink); }
+/* Empty, it stays in the page (a live region must exist before it speaks), and takes no room. */
+.kit-result:empty { padding: 0; border: 0; background: none; }
+.kit-result p { margin: 0; max-width: 38rem; }
+.kit-result p + p { margin-top: var(--space-2); }
+.kit-result-title {
+  font-family: var(--font-display); font-style: italic; font-weight: 400;
+  font-size: var(--step-2); line-height: var(--leading-2);
+}
+.kit-result-check { font-size: var(--step--1); color: var(--muted); }
+html.motion .kit-result:not(:empty) { animation: kit-rise var(--dur-card) var(--ease-settle) both; }
+@keyframes kit-rise { from { clip-path: inset(0 0 100% 0); transform: translateY(6px); } to { clip-path: inset(0); transform: none; } }
+
+/* ---- on the day: two phones' six words, side by side ---------------------------------------------- */
+.kit-devices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: var(--space-4); margin: var(--space-5) 0; }
+.kit-device { margin: 0; padding: var(--space-4) var(--space-5); background: var(--surface); border-radius: var(--radius-surface); }
+.kit-device + .kit-device { border: 1px dashed var(--edge); }
+.kit-device-note { margin: var(--space-3) 0 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kit-pill span, .kit-page .kit-tab { transition: none; }
+  html .kit-cover, html .kit-result:not(:empty) { animation: none; }
+}
+
+/* ---- print: the sheets, and nothing else; one to a page, black on white ---------------------------- */
+/* Every rule under .kit-page, :root:has() or body:has(.kit-sheets): this file stays loaded after /kit,
+   and another page's print must not pick up a kit's sizes (e2e/kit.spec.js holds that). */
+@page kit { margin: 12mm 14mm; }
+@media print {
+  /* Light, not the site's dark scheme: with "Background graphics" on, a dark scheme paints the page
+     margins near-black (the canvas colour), whatever the body's own background. */
+  :root:has(.kit-sheets) { color-scheme: light; background: #fff; }
+  body:has(.kit-sheets) { background: #fff; }
+  body:has(.kit-sheets)::before { display: none; }
+  body:has(.kit-sheets) :is(header.site, footer.site, .skip) { display: none !important; }
+  .kit-page:has(.kit-sheets) { max-width: none; margin: 0; padding: 0; }
+  .kit-page:has(.kit-sheets) > :not(.kit-sheets),
+  :where(.kit-page) .kit-sheets > :not(.kit-deck),
+  :where(.kit-page) .kit-deck > :not(.kit-panel) { display: none !important; }
+  :where(.kit-page) .kit-sheets { margin: 0; }
+  :where(.kit-page) .kit-deck { margin: 0; }
+  :where(.kit-page) .kit-panel[hidden] { display: block; }
+  :where(.kit-page) .kit-panel { break-after: page; }
+  :where(.kit-page) .kit-panel:last-child { break-after: auto; }
+  /* "Print this sheet": only that one. */
+  .kit-page[data-print]:not([data-print="all"]) .kit-panel { display: none; break-after: auto; }
+  .kit-page[data-print="veto"] .kit-panel[data-panel="veto"],
+  .kit-page[data-print="kit-1"] .kit-panel[data-panel="kit-1"],
+  .kit-page[data-print="kit-2"] .kit-panel[data-panel="kit-2"],
+  .kit-page[data-print="kit-3"] .kit-panel[data-panel="kit-3"],
+  .kit-page[data-print="kit-4"] .kit-panel[data-panel="kit-4"],
+  .kit-page[data-print="kit-5"] .kit-panel[data-panel="kit-5"],
+  .kit-page[data-print="kit-6"] .kit-panel[data-panel="kit-6"],
+  .kit-page[data-print="kit-7"] .kit-panel[data-panel="kit-7"] { display: block; }
+
+  :where(.kit-page) .kit-sheet {
+    page: kit;
+    --ink: #000; --muted: #3b3b3b; --line: #000; --ground: #fff; --surface: #fff;
+    max-width: none; padding: 0; border-radius: 0;
+    background: #fff; color: #000;
+    break-inside: avoid;
+    font-size: 10pt;
+  }
+  :where(.kit-page) .kit-sheet-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 4mm; margin-bottom: 3mm; }
+  :where(.kit-page) .kit-sheet-head > * { grid-column: 1 / -1; }
+  :where(.kit-page) .kit-sheet-head > .kit-title { grid-column: 1; grid-row: 2; }
+  :where(.kit-page) .kit-sheet-head > .kit-practice { grid-column: 2; grid-row: 2; align-self: center; margin: 0; font-size: 9.5pt; border-color: #000; }
+  :where(.kit-page) .kit-kind { font-size: 8pt; margin-bottom: 1mm; }
+  :where(.kit-page) .kit-title { font-size: 21pt; }
+  :where(.kit-page) :is(.kit-aside, .kit-lead, .kit-small) { font-size: 9.5pt; }
+  :where(.kit-page) .kit-outside { padding-bottom: 3.5mm; margin-bottom: 3.5mm; }
+  :where(.kit-page) .kit-for { margin: 3mm 0; }
+  :where(.kit-page) .kit-script { margin-top: 3mm; }
+  :where(.kit-page) .kit-script .kit-small { max-width: none; margin-bottom: 1.5mm; }
+  :where(.kit-page) .kit-quote p { font-size: 11.5pt; line-height: 1.3; }
+  :where(.kit-page) .kit-fold { max-width: none; margin-top: 3mm; font-size: 8.5pt; }
+  :where(.kit-page) .kit-fold .kit-label { display: inline; margin: 0 1.5mm 0 0; }
+  :where(.kit-page) .kit-never { margin-top: 3mm; font-size: 8.5pt; }
+  :where(.kit-page) .kit-label { font-size: 8pt; margin-bottom: 1.5mm; }
+  /* A section's note stands beside its label, above the words, so each set of 24 takes its label's line. */
+  :where(.kit-page) .kit-section { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 4mm; align-items: baseline; }
+  :where(.kit-page) .kit-section > .kit-label { grid-row: 1; grid-column: 1; }
+  :where(.kit-page) .kit-section > .kit-small { grid-row: 1; grid-column: 2; margin: 0 0 1.5mm; font-size: 8pt; line-height: 1.3; }
+  :where(.kit-page) .kit-section > .kit-grid { grid-row: 2; grid-column: 1 / -1; }
+  :where(.kit-page) .kit-section + .kit-section { margin-top: 3.5mm; }
+  /* Words large: 16pt on the veto card, four across; 11.5pt on a kit, six across, so its three sets
+     of 24 and the script fit one page of A4 or US Letter (the longest word is eight letters). */
+  .kit-page .kit-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.6mm 3.5mm; font-size: 11.5pt; line-height: 1.3; }
+  .kit-page .kit-grid-lg { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2.5mm 6mm; font-size: 16pt; }
+  .kit-page .kit-n { color: #555; }
+  :where(.kit-page) .kit-checkline { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 4mm; align-items: baseline; margin-top: 4mm; padding-top: 2.5mm; }
+  :where(.kit-page) .kit-checkline .kit-label { margin: 0; }
+  :where(.kit-page) .kit-check-words { font-size: 13pt; }
+  :where(.kit-page) .kit-checkline .kit-small { grid-column: 1 / -1; margin-top: 1mm; font-size: 8pt; }
+  :where(.kit-page) .kit-inside[data-covered="true"] :is(.kit-grid, .kit-checkline) { visibility: visible; }
+  :where(.kit-page) .kit-cover { display: none; }
+  :where(.kit-page) .kit-foot { margin-top: 4mm; font-size: 7.5pt; line-height: 1.35; }
+  :where(.kit-page) .kit-foot p { margin-top: 1.5mm; }
+  :where(.kit-page) .kit-public { gap: 0.3mm; }
+  :where(.kit-page) .kit-public div { grid-template-columns: 30mm minmax(0, 1fr); gap: 3mm; }
+}

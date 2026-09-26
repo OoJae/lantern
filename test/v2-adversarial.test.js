@@ -1,4 +1,4 @@
-// v1's test/adversarial.test.js, ported to v2 (docs/v2-spec.md §10): the attack
+// v1's test/adversarial.test.js, ported to v2 (docs/v2.md §10): the attack
 // that names every guardian of targets 1, 2a and 2b names none of v2's, even
 // handed the real names, and links no vote, no open and no check-in. The
 // negative controls prove the engine is wired to v2, and the leak report

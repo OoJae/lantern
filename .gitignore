@@ -8,7 +8,7 @@ contracts/managed/contract/*.map
 contracts/managed-host/*
 !contracts/managed-host/contract/
 contracts/managed-host/contract/*.map
-# Lantern v2 (docs/v2-spec.md): a separate, undeployed contract, committed the same way.
+# Lantern v2 (docs/v2.md): a separate, undeployed contract, committed the same way.
 contracts/managed-lantern2/*
 !contracts/managed-lantern2/contract/
 contracts/managed-lantern2/contract/*.map

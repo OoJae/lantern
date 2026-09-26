@@ -1,0 +1,57 @@
+/* The six fingerprint words (components/FingerprintWords.jsx). Three columns of two, read across:
+   1 2 3 / 4 5 6, the order the owner says them. Numerals in Ash, small and tabular; words in the
+   monospace face at a size that survives a phone held at arm's length.
+
+   A word is never broken across two lines: "bachelo / r" read aloud is a wrong word. So every column is
+   as wide as the longest word on the list (eight letters, in a monospace face: 9ch holds the numeral
+   and all eight), and the list takes as many of those columns as its box holds, three at most: three
+   where there is room, two (1 2 / 3 4 / 5 6) where there is not, and one on the narrowest. Its box, not
+   the screen, decides, so the words fit a card half a page wide as well as a phone.
+
+   A wrapping row of equal items rather than an auto-fill grid: a grid works out its column count from
+   max-width even while its box is being sized, so it asked for three columns' width wherever it sat
+   (the /demo ledger at 320px was pushed 22px off the screen). A wrapping row asks for one column, and
+   takes more only when they fit. The extra pixel in max-width absorbs rounding, so three always fit
+   and a fourth (a whole column more) never does. */
+.fp-words {
+  --fp-size: var(--step-0);
+  --fp-gap: var(--space-4);
+  --fp-col: calc(9ch + var(--space-2));
+  display: flex;
+  flex-wrap: wrap;
+  max-width: calc(3 * var(--fp-col) + 2 * var(--fp-gap) + 1px);
+  gap: var(--space-1) var(--fp-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-mono);
+  font-size: var(--fp-size);
+  line-height: 1.35;
+  color: var(--ink);
+}
+/* Two classes deep, so a list the words sit inside (the /demo ledger's .values li) never restyles them. */
+.fp-words > .fp-word { flex: 0 0 var(--fp-col); display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; margin: 0; font-size: inherit; }
+.fp-n {
+  flex: none;
+  min-width: 1ch;
+  font-size: 0.72em;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  text-align: right;
+}
+.fp-w { white-space: nowrap; letter-spacing: 0.01em; }
+
+.fp-sm { --fp-size: var(--step--1); --fp-gap: var(--space-3); row-gap: 2px; }
+.fp-lg { --fp-size: var(--step-2); --fp-gap: var(--space-5); row-gap: var(--space-2); }
+
+/* On a row of its own inside a wrapping flex row (a /demo ledger entry, a step). */
+.fp-words.fp-block { flex-basis: 100%; margin-top: var(--space-1); }
+.step .fp-words.fp-block { margin: 0 0 var(--space-2); }
+
+/* Quiet: where the words sit under something they describe (a recovery in the /demo ledger). */
+.fp-words.fp-quiet { color: var(--muted); }
+
+@media print {
+  .fp-words { color: #000; }
+  .fp-n { color: #444; }
+}

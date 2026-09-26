@@ -1,4 +1,4 @@
-// v1's test/fixtures.js, adapted to v2 (docs/v2-spec.md §10):
+// v1's test/fixtures.js, adapted to v2 (docs/v2.md §10):
 //   (a) world() enrols with a delay, 72 h by default;
 //   (b) opens are made AS A GUARDIAN, for the current period;
 //   (c) a second recovery for one identity needs the first dead, the cooldown
@@ -34,7 +34,7 @@ export const vetoCommit = () => pureCircuits.vetoCommitOf(VETO_SECRET, VETO_SALT
 export const DELAY = DEFAULT_DELAY;
 export const SLACK = Number(pureCircuits.openSlackSeconds());
 export const VETO_SLACK = Number(pureCircuits.vetoSlackSeconds());
-/** A veto's second argument when it reserves no next device (docs/v2-spec.md §3.10). */
+/** A veto's second argument when it reserves no next device (docs/v2.md §3.10). */
 export const NO_RESERVATION = new Uint8Array(32);
 export const DAY = 86_400;
 export const PERIOD = Number(pureCircuits.periodSeconds());

@@ -8,13 +8,14 @@
 // The circuit-size table (<!-- facts:circuits -->) needs the Compact toolchain, so
 // scripts/check-cost.mjs maintains and checks that one.
 //
-// The test counts are prose, not a block, so they are only checked: every count the README
-// and docs/v2-spec.md state (the total, the v1/v2 split, the per-file counts) must equal
-// vitest's own list of the suite. --write does not touch them; the error says what to write.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+// The test counts are taken from the runners' own lists (no test runs): vitest's, and Playwright's
+// for the browser tests, which needs web/ installed. Where it is not (CI's clean-clone job), the
+// browser counts are skipped, and said to be; CI's web job checks them. Every count the README and
+// docs/v2.md state (the total, the v1/v2 split, the per-file counts) must equal those lists; --write
+// rewrites the README's block and the counts in its prose and in docs/v2.md's, and says which
+// per-file counts in docs/v2.md it cannot rewrite.
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { basename } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 const root = new URL('..', import.meta.url);
 const load = (f) => JSON.parse(readFileSync(new URL(`deployments/${f}`, root), 'utf8'));
@@ -147,86 +148,141 @@ function preprodStory() {
   ].join('\n');
 }
 
-// What `npm test` runs, file by file, as vitest lists it (no test is executed).
-function suite() {
-  const vitest = fileURLToPath(new URL('node_modules/vitest/vitest.mjs', root));
-  const out = execFileSync(process.execPath, [vitest, 'list', '--json'],
-    { cwd: fileURLToPath(root), maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'pipe'] }).toString();
-  const perFile = new Map();
-  for (const t of JSON.parse(out)) {
-    const f = basename(t.file);
-    perFile.set(f, (perFile.get(f) ?? 0) + 1);
+// ---- the test suites, as their runners list them -------------------------------------------------
+const run = (args, cwd) => execFileSync(process.execPath, args, { cwd: new URL(cwd, root), stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 << 20 }).toString();
+
+/** Each Vitest test file (by name, without .test.js) and how many tests it holds. */
+function unitTests() {
+  const byFile = new Map();
+  for (const t of JSON.parse(run(['node_modules/vitest/vitest.mjs', 'list', '--json'], '.'))) {
+    const f = t.file.split(/[\\/]/).pop().replace(/\.test\.js$/, '');
+    byFile.set(f, (byFile.get(f) ?? 0) + 1);
   }
-  const files = [...perFile.keys()];
-  const v2Files = files.filter((f) => f.startsWith('v2-'));
-  const v1Files = files.filter((f) => !f.startsWith('v2-'));
-  const sum = (fs) => fs.reduce((n, f) => n + perFile.get(f), 0);
-  return { perFile, files, v1Files, v2Files, total: sum(files), v1: sum(v1Files), v2: sum(v2Files) };
+  return byFile;
 }
 
-function testCountProblems() {
-  const t = suite();
-  if (!t.total) return ['vitest listed no tests'];
-  const name = (f) => f.replace(/\.test\.js$/, '');
-  // v1's per-file list as the README gives it: by count, most first, then by name.
-  const v1List = [...t.v1Files].sort((a, b) => (t.perFile.get(b) - t.perFile.get(a)) || name(a).localeCompare(name(b)))
-    .map((f) => `${name(f)} ${t.perFile.get(f)}`).join(', ');
-  const docs = { 'README.md': readFileSync(new URL('README.md', root), 'utf8'),
-    'docs/v2-spec.md': readFileSync(new URL('docs/v2-spec.md', root), 'utf8') };
-  const claims = [
-    ['README.md', /(\d+) tests in \[`test\/`\]\(test\/\) \((\d+) for shipped Lantern, (\d+) for \[Lantern v2\]/, [t.total, t.v1, t.v2]],
-    ['README.md', /npm test +# (\d+) tests \(v1's (\d+), v2's (\d+)\)/, [t.total, t.v1, t.v2]],
-    ['README.md', /\*\*Tests\.\*\* (\d+) Vitest tests in (\d+) files\. Shipped Lantern's (\d+) are in (\d+): ([^.]+)\. Lantern v2's (\d+) are in (\d+) /,
-      [t.total, t.files.length, t.v1, t.v1Files.length, v1List, t.v2, t.v2Files.length]],
-    ['README.md', /^test\/ +(\d+) tests, (\d+) of them for Lantern v2$/m, [t.total, t.v2]],
-    ['docs/v2-spec.md', /`npm run test:v2`: (\d+) files, (\d+) tests\. `npm test` runs them with v1's (\d+), which are unchanged: (\d+) in all\./,
-      [t.v2Files.length, t.v2, t.v1, t.total]],
-  ];
+/** Each Playwright spec (by name, without .spec.js) and how many tests it holds in one project, or null
+ *  when web/ is not installed. Every project runs the same list (a test that skips itself is listed). */
+function browserTests() {
+  if (!existsSync(new URL('web/node_modules/@playwright/test/cli.js', root))) return null;
+  const list = JSON.parse(run(['node_modules/@playwright/test/cli.js', 'test', '--list', '--reporter=json'], 'web/'));
+  const byFile = new Map();
+  const walk = (suite) => {
+    for (const spec of suite.specs ?? []) {
+      for (const t of spec.tests) {
+        if (t.projectName !== list.config.projects[0].name) continue;
+        const f = spec.file.replace(/\.spec\.js$/, '');
+        byFile.set(f, (byFile.get(f) ?? 0) + 1);
+      }
+    }
+    for (const child of suite.suites ?? []) walk(child);
+  };
+  for (const suite of list.suites) walk(suite);
+  return byFile;
+}
+
+const sum = (m, keys = [...m.keys()]) => keys.reduce((n, k) => n + (m.get(k) ?? 0), 0);
+const WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+const inWords = (n) => WORDS[n] ?? String(n);
+const capital = (w) => w.charAt(0).toUpperCase() + w.slice(1);
+/** The sponsor's policy tests: node:test, dependency-free, one top-level test() each. */
+const nodeTests = () => readdirSync(new URL('devnet/test/', root)).filter((f) => f.endsWith('.test.mjs'))
+  .reduce((n, f) => n + (readFileSync(new URL(`devnet/test/${f}`, root), 'utf8').match(/^test\(/gm) ?? []).length, 0);
+
+const UNIT = unitTests();
+const BROWSER = browserTests();
+// Lantern v2's files are test/v2-*.test.js (npm run test:v2); every other file tests shipped Lantern.
+const V2 = [...UNIT.keys()].filter((f) => f.startsWith('v2-'));
+const V1 = [...UNIT.keys()].filter((f) => !f.startsWith('v2-'));
+const unitTotal = sum(UNIT);
+const v1Total = sum(UNIT, V1);
+const v2Total = sum(UNIT, V2);
+const browserTotal = BROWSER && sum(BROWSER);
+
+function tests() {
+  if (!BROWSER) return null;
+  const files = V1.map((f) => [f, UNIT.get(f)]).sort(([a, x], [b, y]) => y - x || a.localeCompare(b)).map(([f, n]) => `${f} ${n}`).join(', ');
+  return `**Tests.** ${unitTotal} Vitest tests in ${UNIT.size} files. Shipped Lantern's ${v1Total} are in ${V1.length}: ${files}. Lantern v2's ${v2Total} are in ${V2.length} ([docs/v2.md §13](docs/v2.md#13-implementation)). ${capital(inWords(nodeTests()))} node:test tests of the sponsor's policy. ${browserTotal} Playwright tests, ${inWords(BROWSER.get('break') ?? 0)} of them for the "Try to break it" panel and ${sum(BROWSER, ['live', 'rehearse', 'kit'])} for \`/live\`, \`/rehearse\` and \`/kit\`, run in CI in Chromium at desktop size and as an emulated Pixel 7, and before release in WebKit, as an emulated iPhone 15, and in Firefox.`;
+}
+
+// The same counts where the prose states them: each phrase must appear, and every number in it must
+// be its count, in order (--write rewrites them).
+const COUNTS = [
+  ['README.md', 'unit tests, For reviewers', /all (\d+) unit tests pass, (\d+) for shipped Lantern and (\d+) for Lantern v2,/g, [unitTotal, v1Total, v2Total]],
+  ['README.md', 'unit tests, the Quality row', /(\d+) unit tests \((\d+) for shipped Lantern, (\d+) for \[Lantern v2\]/g, [unitTotal, v1Total, v2Total]],
+  ['README.md', 'unit tests, Quickstart', /npm test +# (\d+) tests \(v1's (\d+), v2's (\d+)\)/g, [unitTotal, v1Total, v2Total]],
+  ['README.md', 'browser tests, the Quality row', /(\d+) browser tests in Chromium, WebKit and Firefox/g, [browserTotal]],
+  ['README.md', 'browser tests, Quickstart', /# the (\d+) browser tests in Chromium/g, [browserTotal]],
+  ['README.md', 'browser tests, Quickstart (cross)', /# the same (\d+) in WebKit/g, [browserTotal]],
+  ['docs/v2.md', 'unit tests, docs/v2.md §13', /`npm run test:v2`: (\d+) files, (\d+) tests\. `npm test` runs them with shipped Lantern's (\d+), which are unchanged: (\d+) in all\./g,
+    [V2.length, v2Total, v1Total, unitTotal]],
+];
+
+/** Every match of `re` in `text`, and `text` with each group set to its count. */
+function fixCounts(text, re, want) {
+  const found = [...text.matchAll(new RegExp(re.source, `${re.flags}d`))];
+  const edits = [];
+  for (const m of found) m.indices.slice(1).forEach(([a, b], i) => { if (text.slice(a, b) !== String(want[i])) edits.push([a, b, String(want[i])]); });
+  let out = text;
+  for (const [a, b, v] of edits.sort((x, y) => y[0] - x[0])) out = out.slice(0, a) + v + out.slice(b);
+  return { found, out };
+}
+
+/** docs/v2.md §13's table has one row per v2 test file, and §14.2 cites files by count. */
+function v2FileCounts(text) {
   const problems = [];
-  for (const [doc, re, want] of claims) {
-    const m = docs[doc].match(re);
-    if (!m) { problems.push(`${doc}: no sentence matches ${re}`); continue; }
-    const got = m.slice(1);
-    if (got.some((g, i) => g !== String(want[i]))) problems.push(`${doc}: "${m[0]}" should give ${want.join(' / ')}`);
-  }
-  // docs/v2-spec.md §13's table has one row per v2 file, and §14.2 cites files by count.
-  const spec = docs['docs/v2-spec.md'];
-  const rows = new Map([...spec.matchAll(/^\| `(v2-[a-z0-9-]+\.test\.js)` \| (\d+) \|/gm)].map((m) => [m[1], Number(m[2])]));
-  for (const f of t.v2Files) {
-    if (!rows.has(f)) problems.push(`docs/v2-spec.md §13: no row for ${f} (${t.perFile.get(f)} tests)`);
-    else if (rows.get(f) !== t.perFile.get(f)) problems.push(`docs/v2-spec.md §13: ${f} says ${rows.get(f)}, vitest lists ${t.perFile.get(f)}`);
-  }
-  for (const f of rows.keys()) if (!t.perFile.has(f)) problems.push(`docs/v2-spec.md §13: a row for ${f}, which has no tests`);
-  for (const [cite, file, n] of spec.matchAll(/`(v2-[a-z0-9-]+)` \((\d+)\)/g)) {
-    const have = t.perFile.get(`${file}.test.js`);
-    if (have !== Number(n)) problems.push(`docs/v2-spec.md: ${cite} should be (${have ?? 'no such file'})`);
-  }
-  return problems;
+  const rows = new Set([...text.matchAll(/^\| `(v2-[a-z0-9-]+)\.test\.js` \| \d+ \|/gm)].map((m) => m[1]));
+  for (const f of V2) if (!rows.has(f)) problems.push(`docs/v2.md §13: no row for ${f}.test.js (${UNIT.get(f)} tests)`);
+  for (const f of rows) if (!UNIT.has(f)) problems.push(`docs/v2.md §13: a row for ${f}.test.js, which has no tests`);
+  for (const [cite, f] of text.matchAll(/`(v2-[a-z0-9-]+)` \(\d+\)/g)) if (!UNIT.has(f)) problems.push(`docs/v2.md: ${cite} names no test file`);
+  const count = (m, a, f, b) => (UNIT.has(f) ? `${a}${UNIT.get(f)}${b}` : m);
+  const out = text
+    .replace(/^(\| `(v2-[a-z0-9-]+)\.test\.js` \| )\d+( \|)/gm, (m, a, f, b) => count(m, a, f, b))
+    .replace(/(`(v2-[a-z0-9-]+)` \()\d+(\))/g, (m, a, f, b) => count(m, a, f, b));
+  return { problems, out };
 }
 
-const BLOCKS = { chain, 'chain-circuits': chainCircuits, attack, ...(shipped ? { preprod } : {}), ...(story ? { 'preprod-story': preprodStory } : {}) };
+const BLOCKS = { chain, 'chain-circuits': chainCircuits, attack, ...(shipped ? { preprod } : {}), ...(story ? { 'preprod-story': preprodStory } : {}), tests };
 
 const file = new URL('README.md', root);
+const v2doc = new URL('docs/v2.md', root);
 let readme = readFileSync(file, 'utf8');
 const stale = [];
+const skipped = [];
+const problems = [];
 for (const [name, make] of Object.entries(BLOCKS)) {
   const re = new RegExp(`(<!-- facts:${name}:start -->\\n)([\\s\\S]*?)(\\n<!-- facts:${name}:end -->)`);
   const m = readme.match(re);
   if (!m) { stale.push(`${name}: block missing`); continue; }
   const body = make();
+  if (body === null) { skipped.push(name); continue; }
   if (m[2] !== body) { stale.push(name); readme = readme.replace(re, `$1${body}$3`); }
 }
-const counts = testCountProblems();
-for (const p of counts) console.error(`readme-facts: test count: ${p}`);
+const texts = { 'README.md': readme, 'docs/v2.md': readFileSync(v2doc, 'utf8') };
+for (const [doc, what, re, want] of COUNTS) {
+  if (want.some((n) => n === null)) { skipped.push(what); continue; }
+  const { found, out } = fixCounts(texts[doc], re, want);
+  if (!found.length) { problems.push(`${doc}: ${what}: no sentence matches ${re}`); continue; }
+  if (out !== texts[doc]) {
+    stale.push(`${what} (${found.map((m) => m.slice(1).join(' / ')).join(', ')}, not ${want.join(' / ')})`);
+    texts[doc] = out;
+  }
+}
+const perFile = v2FileCounts(texts['docs/v2.md']);
+problems.push(...perFile.problems);
+if (perFile.out !== texts['docs/v2.md']) { stale.push('docs/v2.md per-file v2 test counts'); texts['docs/v2.md'] = perFile.out; }
+for (const p of problems) console.error(`readme-facts: test count: ${p}`);
+if (skipped.length) console.log(`readme-facts: skipped ${skipped.join(', ')}: web/ is not installed (npm run web:install)`);
 if (process.argv.includes('--write')) {
-  writeFileSync(file, readme);
+  writeFileSync(file, texts['README.md']);
+  writeFileSync(v2doc, texts['docs/v2.md']);
   console.log(stale.length ? `readme-facts: rewrote ${stale.join(', ')}` : 'readme-facts: already current');
-  if (counts.length) process.exit(1);
+  if (problems.length) process.exit(1);
 } else if (stale.length) {
-  console.error(`readme-facts: README.md is out of date with the evidence: ${stale.join(', ')}. Run: node scripts/readme-facts.mjs --write`);
+  console.error(`readme-facts: README.md or docs/v2.md is out of date with the evidence: ${stale.join(', ')}. Run: node scripts/readme-facts.mjs --write`);
   process.exit(1);
-} else if (counts.length) {
+} else if (problems.length) {
   process.exit(1);
 } else {
-  console.log(`readme-facts: all ${Object.keys(BLOCKS).length} generated blocks match their sources, and every test count matches vitest's list`);
+  console.log(`readme-facts: all ${Object.keys(BLOCKS).length - skipped.filter((x) => x in BLOCKS).length} generated blocks and ${COUNTS.length - skipped.filter((x) => !(x in BLOCKS)).length} stated test counts match their sources, and so does every per-file count in docs/v2.md`);
 }
