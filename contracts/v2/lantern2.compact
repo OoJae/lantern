@@ -79,8 +79,8 @@ struct RecoveryRecord {
 
 // Re-exported from the shared module, unchanged: an identity commitment means
 // the same thing in v1 and v2. The v2 client derives its SALTS under a
-// `lantern2` domain (src/v2/identity.js), so one secret enrolled in both
-// contracts still yields two unlinkable commitments.
+// `lantern2` domain, so its commitments are unlinkable to v1's for observers,
+// but never enrol one secret in both: it merges the guardian sets (spec §2).
 export pure circuit idCommitOf(secret: Field, salt: Bytes<32>): Bytes<32> {
   return Id_idCommitOf(secret, salt);
 }

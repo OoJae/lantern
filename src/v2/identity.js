@@ -8,7 +8,10 @@
 // Why separate domains (docs/v2-spec.md §2): idCommitOf and vetoCommitOf are SHARED
 // with v1 on purpose, so the same secret and the same salt would publish the
 // same idCommit in both ledgers and link them. Deriving v2's salts under their
-// own domain gives the same secret a different, unlinkable idCommit in v2.
+// own domain gives the same secret a different idCommit in v2, unlinkable to
+// OBSERVERS only. Reuse is still unsafe: t shares from either guardian set
+// rebuild the secret, and so act as the owner in both contracts. Never enrol
+// one identity secret in both; newIdentity() draws fresh ones.
 //
 // Portable: commitments come from the v2 contract's own pure circuits, passed in.
 import { sha256 } from '@noble/hashes/sha2.js';

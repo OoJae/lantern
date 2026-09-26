@@ -6,8 +6,8 @@
 // - Every other derivation carries a `lantern2:…:v1` domain, so no v2 value can
 //   equal a v1 value on the same inputs, and the three new ones differ pairwise.
 // - Within each hash family, every preimage domain has a DIFFERENT length.
-// - The v2 client derives its salts under `lantern2` domains, so one secret
-//   enrolled in both contracts publishes two unlinkable commitments.
+// - The v2 client derives its salts under `lantern2` domains, so one secret's
+//   commitments are unlinkable to observers; reuse still merges the guardian sets.
 // - Every v2 derivation is pinned, so any change fails here first.
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -138,7 +138,7 @@ describe('v2 domains: the client salts', () => {
     }
   });
 
-  it('one secret enrolled in v1 and in v2 publishes two unlinkable commitments', () => {
+  it('one secret in v1 and v2 gives commitments unlinkable to observers; reuse still merges the guardian sets', () => {
     const ident = newIdentity();
     const v2 = commitmentsOf(V2, ident);
     const v1Id = V1.idCommitOf(ident.identitySecret, v1IdSaltOf(ident.identitySecret));
