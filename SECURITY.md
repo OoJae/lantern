@@ -272,6 +272,13 @@ claiming to police conversations.
 They can also **grind**: `openRecovery` is permissionless, so each fee buys
 another recovery the owner must individually veto. §6.
 
+**v2, not shipped:** never enrol one identity secret in both Lantern and
+[Lantern v2](docs/v2-spec.md#2-names-and-domain-separation). The derived salts
+keep the two commitments unlinkable to observers, but the secret is the whole
+opening in both, so *t* shares from **either** guardian set act as you in both
+contracts: in v2 at the gate, until you lock, with no recovery, delay or veto.
+Make the v2 identity fresh, with `newIdentity()` in `src/v2/identity.js`.
+
 **Cannot.**
 - Act **silently** — every approval is a permanent public nullifier.
 - Act **early** — no finalize lands earlier than 72 hours after the block that
@@ -476,8 +483,9 @@ consequence.
    emergency lock, a delay chosen at enrolment (24 h to 90 days) and private
    guardian check-ins. Its design, its own limits and its measured cost are in
    [docs/v2-spec.md](docs/v2-spec.md); `npm run test:v2` runs its tests. Apart from one
-   note in §2 (the dealt guardian secrets) and one in item 13 below, nothing in this
-   document's other sections describes v2.
+   note in §2 (the dealt guardian secrets), one in §4.3 (never reuse an identity
+   secret across v1 and v2) and one in item 13 below, nothing in this document's
+   other sections describes v2.
 
 5. **A reconstructed secret cannot be zeroised.** `reconstruct()` returns a
    JavaScript `BigInt`, which is immutable. The secret stays in the recovering
