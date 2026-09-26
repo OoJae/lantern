@@ -467,6 +467,52 @@ describe('F6: slotOf agrees with the contract', () => {
     openAs(sim, guardians[1], id, EPH_A);
     expect(slotOf(sim.ledger, id, sim.now)).toMatchObject({ free: false, canOpenReserved: false });
   });
+
+  // The contract keeps a reservation after a finalize retires the head it names;
+  // no guardian can ever open it again. slotOf stops offering it.
+  const staleAfterFinalize = (sim, id, guardians, reservedRid) => {
+    const slot = slotOf(sim.ledger, id, sim.now);
+    expect(sim.ledger.vetoCounts.lookup(id).read()).toBeGreaterThan(0n);
+    expect(hex(sim.ledger.reservedRecovery.lookup(id))).toBe(hex(reservedRid));   // still in the contract
+    expect(slot.reserved).toBeNull();
+    expect(slot.canOpenReserved).toBe(false);
+    expect(() => openAs(sim, guardians[1], id, EPH_D)).toThrow(/identity retired/);
+  };
+
+  it('a reservation stops counting when another recovery finalizes, and stays dead after a successor recovery dies', () => {
+    const { sim, id, guardians } = world({ n: 4, delay: DAY });
+    const reservedRid = P.recoveryIdOf(id, EPH_D);
+    sim.call('vetoRecovery', openAs(sim, guardians[3], id, EPH_C), reservedRid);
+    expect(slotOf(sim.ledger, id, sim.now)).toMatchObject({ canOpen: false, canOpenReserved: true });
+    sim.setTime(cooldownUntil(sim, id));
+    const rid = openAndApprove(sim, id, guardians, 2, EPH_A);
+    toUnlock(sim, rid);
+    sim.call('finalizeRecovery', rid, NEW_ID(), NEW_VETO());
+    staleAfterFinalize(sim, id, guardians, reservedRid);
+
+    // A recovery of the successor opens and misses quorum: the slot is free
+    // again, and the old reservation must not come back with it.
+    const dead = openAs(sim, guardians[2], NEW_ID(), EPH_B);
+    sim.setTime(Number(sim.ledger.recoveries.lookup(dead).approveBy));
+    expect(slotOf(sim.ledger, id, sim.now)).toMatchObject({ status: 'missed-quorum', free: true, reserved: null, canOpenReserved: false });
+  });
+
+  it('a counted veto of a dead recovery, then the live one finalizing inside the cooldown: canOpen and canOpenReserved both false', () => {
+    // The owner's client refuses to veto a dead recovery (F2); the contract
+    // alone counts it, and its reservation then outlives the finalize.
+    const { sim, id, guardians } = world({ n: 3, delay: DAY });
+    const missed = openAs(sim, guardians[0], id, EPH_A);
+    sim.setTime(Number(sim.ledger.recoveries.lookup(missed).approveBy));
+    const live = openAndApprove(sim, id, guardians, 2, EPH_B, guardians[1]);
+    const reservedRid = P.recoveryIdOf(id, EPH_D);
+    sim.call('vetoRecovery', missed, reservedRid);
+    expect(sim.ledger.vetoCounts.lookup(id).read()).toBe(1n);
+    toUnlock(sim, live);
+    sim.call('finalizeRecovery', live, NEW_ID(), NEW_VETO());
+    expect(sim.now).toBeLessThan(cooldownUntil(sim, id));
+    expect(slotOf(sim.ledger, id, sim.now)).toMatchObject({ canOpen: false });
+    staleAfterFinalize(sim, id, guardians, reservedRid);
+  });
 });
 
 // ---------------------------------------------------------------------------

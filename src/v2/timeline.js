@@ -105,12 +105,35 @@ export function rootOf(ledger, idCommit) {
 }
 
 /**
+ * Whether the recovery the last counted veto reserved can still be opened. The
+ * reservation is recoveryIdOf(the head at veto time, the device key), and the
+ * contract opens a recovery only for a head that is not retired, so once a
+ * finalize retires that head no guardian can ever open it -- but the contract
+ * leaves the stale value in reservedRecovery. It is live exactly when a counted
+ * veto (a killed recovery of the CURRENT guardian set: contexts never repeat, so
+ * such a veto was counted) names a head that is not retired: vetoes follow the
+ * lineage in order, so if any such head is live, the last one is. One scan of
+ * `killed`, from the public ledger alone, so a watcher can run it too.
+ */
+function reservationLive(ledger, idRoot) {
+  const ctx = ledger.guardianCtx.lookup(idRoot);
+  for (const rid of ledger.killed) {
+    const rec = ledger.recoveries.lookup(rid);
+    if (sameBytes(rec.idRoot, idRoot) && sameBytes(rec.ctx, ctx) && !ledger.retiredIdentities.member(rec.idCommit)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * The slot and cooldown of an identity at time `now`: what a guardian's client
  * checks before spending its one open for the period. Takes the root or any
  * commitment of its lineage. Mirrors the contract's cooldown clause: no vetoes
  * means no wait at all (lastVetoAt is not even consulted, so a rotation's reset
  * is immediate), and the recovery the last counted veto reserved may open
- * during the cooldown.
+ * during the cooldown. A reservation stops counting at the next finalize: its
+ * head is retired, so `reserved` is null from then on.
  */
 export function slotOf(ledger, idCommit, now) {
   const idRoot = rootOf(ledger, idCommit);
@@ -120,7 +143,7 @@ export function slotOf(ledger, idCommit, now) {
   const status = holder ? recoveryStatus(ledger, holder, now) : null;
   const free = !holder || isDead(status);
   const res = vetoes > 0n && ledger.reservedRecovery.member(idRoot) ? ledger.reservedRecovery.lookup(idRoot) : null;
-  const reserved = res && !sameBytes(res, ZERO32) ? res : null;
+  const reserved = res && !sameBytes(res, ZERO32) && reservationLive(ledger, idRoot) ? res : null;
   return {
     vetoes: num(vetoes), cooldownUntil, holder, status, free,
     canOpen: free && num(now) >= cooldownUntil,
