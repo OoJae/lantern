@@ -1,5 +1,5 @@
 // What Lantern v2 still leaks (docs/v2.md §9): v1's classification
-// (src/attack/leaks.mjs), with the entries v2 changes rewritten and its eight
+// (src/attack/leaks.mjs), with the entries v2 changes rewritten and its nine
 // new fields added. test/v2-adversarial.test.js asserts that every field of
 // v2's ledger appears here, so adding one without classifying it fails CI.
 // Every entry is MEASURED from the observer's view, never asserted.
@@ -54,6 +54,17 @@ export const COVERAGE = {
     sev: 'LOW', what: 'when each lineage was last vetoed, to within the slack',
     why: 'derivable from the veto transaction\'s time.',
     measure: (L) => `${[...L.lastVetoAt].filter(([, t]) => t > 0n).length} root(s) ever vetoed`,
+  },
+  reservedRecovery: {
+    sev: 'MED', what: "the recovery an owner's veto reserved for their next device",
+    why: 'a non-zero reservation says the owner vetoed from somewhere other than the device being '
+       + 'recovered, which suggests they lost it, and when that rid opens, everyone knows it is the '
+       + 'owner\'s own recovery. It names a device key\'s hash, never a guardian. Reserving is optional: '
+       + 'a veto that passes zeros publishes nothing new.',
+    measure: (L) => {
+      const zero = (u) => u.every((b) => b === 0);
+      return `${[...L.reservedRecovery].filter(([, r]) => !zero(r)).length} root(s) with a reservation`;
+    },
   },
   openNullifiers: {
     sev: 'LOW', what: 'how many opens, never whose',

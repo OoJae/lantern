@@ -32,8 +32,8 @@ import "../src/identity" prefix Id_;
 //
 // v2 also STRENGTHENS v1's length rule: within each hash family every preimage
 // has a different Bytes<N> domain length (v1's approve and veto nullifiers
-// shared 18). persistentHash: 15, 19, 20, 23. transientHash: 15, 16, 19, 20, 23.
-// persistentCommit: 20.
+// shared 18). persistentHash: 15, 19, 20, 23. transientHash: 15, 16, 18, 19, 20,
+// 23. persistentCommit: 20.
 // ---------------------------------------------------------------------------
 
 struct RidPreimage        { domain: Bytes<15>; idCommit: Bytes<32>; ephemeralPk: Bytes<32>; }
@@ -46,6 +46,7 @@ struct VetoNulPreimage    { domain: Bytes<20>; secret: Field; rid: Bytes<32>; }
 struct OpenNulPreimage    { domain: Bytes<20>; secret: Bytes<32>; idCommit: Bytes<32>; period: Uint<32>; }
 struct CheckInNulPreimage { domain: Bytes<23>; secret: Bytes<32>; ctx: Bytes<32>; period: Uint<32>; }
 struct CheckInKeyPreimage { domain: Bytes<23>; idRoot: Bytes<32>; ctx: Bytes<32>; period: Uint<32>; }
+struct CtxPreimage        { domain: Bytes<18>; idRoot: Bytes<32>; seed: Bytes<32>; }
 
 // Written once by openRecovery and never mutated, so reading it binds no
 // contended read. v2 freezes the whole timeline into it (§3.3): a watcher reads
@@ -157,12 +158,27 @@ export pure circuit checkInKeyOf(idRoot: Bytes<32>, ctx: Bytes<32>, period: Uint
     CheckInKeyPreimage { domain: pad(23, "lantern2:checkin-key:v1"), idRoot: idRoot, ctx: ctx, period: period }));
 }
 
+// NEW. The guardian context a rotation installs, DERIVED from the identity root
+// and a seed the owner picks, never chosen outright (§3.10, review F1). A
+// caller-chosen context let anyone watching pending transactions block a
+// rotation by rotating a throwaway identity to the same context first, or block
+// an enrolment by rotating to the victim's pending idCommit: `usedGuardianCtx`
+// is global. Bound to the root, no other identity can ever produce this value.
+export pure circuit guardianCtxOf(idRoot: Bytes<32>, seed: Bytes<32>): Bytes<32> {
+  return upgradeFromTransient(transientHash<CtxPreimage>(
+    CtxPreimage { domain: pad(18, "lantern2:rotate:v1"), idRoot: idRoot, seed: seed }));
+}
+
 // ---------------------------------------------------------------------------
 // CONSTANTS (§3.3). Compact has no module-level const, so each is a pure
 // circuit; the client and a watcher read them from the same compiled code.
 // ---------------------------------------------------------------------------
 
 export pure circuit openSlackSeconds(): Uint<64> { return 600; }
+// The veto's own, wider bracket (§3.10, review F4). v1's veto had no clock; a
+// 600 s bracket would make the owner's most important action go stale 10
+// minutes after proving. A lying owner can lengthen the cooldown by at most this.
+export pure circuit vetoSlackSeconds(): Uint<64> { return 3600; }             // 1 h
 export pure circuit minRecoveryDelaySeconds(): Uint<64> { return 86400; }     // 24 h
 export pure circuit maxRecoveryDelaySeconds(): Uint<64> { return 7776000; }   // 90 days
 export pure circuit approvalWindowSeconds(): Uint<64> { return 604800; }      // 7 days
@@ -185,13 +201,18 @@ export pure circuit cooldownSecondsOf(vetoes: Uint<64>): Uint<64> {
 
 // ---------------------------------------------------------------------------
 // PUBLIC LEDGER -- every item here is hostile-readable. v1's sixteen fields,
-// then v2's eight. src/v2/leaks.mjs classifies every one (§9).
+// then v2's nine. src/v2/leaks.mjs classifies every one (§9).
 // ---------------------------------------------------------------------------
 
 export ledger enrolled: Set<Bytes<32>>;
 export ledger thresholds: Map<Bytes<32>, Uint<8>>;
 export ledger vetoCommits: Map<Bytes<32>, Bytes<32>>;
-export ledger guardians: HistoricMerkleTree<20, Bytes<32>>;
+// Depth 32, not v1's 20 (review F5). Both trees are shared by every identity
+// and enrolment and addGuardian are permissionless, so about a million cheap
+// transactions would fill a 2^20 tree -- and a full `lineage` refuses every
+// finalize. 2^32 leaves puts that out of reach; the 12 extra levels cost about
+// 372 rows in each membership proof and nothing in the inserts.
+export ledger guardians: HistoricMerkleTree<32, Bytes<32>>;
 // Any commitment -> its GENESIS root. Carried forward by finalizeRecovery, so
 // the root, and everything keyed by it below, outlives every recovery.
 export ledger idRoots: Map<Bytes<32>, Bytes<32>>;
@@ -205,7 +226,7 @@ export ledger approvedNullifiers: Set<Bytes<32>>;
 export ledger vetoNullifiers: Set<Bytes<32>>;
 export ledger killed: Set<Bytes<32>>;
 export ledger retiredIdentities: Set<Bytes<32>>;
-export ledger lineage: HistoricMerkleTree<20, Bytes<32>>;
+export ledger lineage: HistoricMerkleTree<32, Bytes<32>>;
 export ledger gateActions: Counter;
 export ledger gateNullifiers: Set<Bytes<32>>;
 
@@ -225,6 +246,12 @@ export ledger openNullifiers: Set<Bytes<32>>;
 export ledger vetoCounts: Map<Bytes<32>, Counter>;
 // idRoot -> the later time bound claimed by the last veto. Seeded 0.
 export ledger lastVetoAt: Map<Bytes<32>, Uint<64>>;
+// idRoot -> the rid the last counted veto RESERVED for the owner's next device
+// (§3.10, review F0): recoveryIdOf(head, next device key). That one recovery
+// may open during the cooldown, so colluders who win the race at the
+// cooldown's public end find the owner's recovery already in the slot. Keyed to
+// the head through the rid, so it is single-use and dies with a finalize.
+export ledger reservedRecovery: Map<Bytes<32>, Bytes<32>>;
 // idRoot -> locked. A Map seeded false rather than a Set, so every write is a
 // plain insert and every reader does one lookup with no conditional.
 export ledger locked: Map<Bytes<32>, Boolean>;
@@ -240,14 +267,14 @@ constructor() {}
 
 witness guardianSecret(): Bytes<32>;
 witness leafSalt(): Bytes<32>;
-witness guardianPath(): MerkleTreePath<20, Bytes<32>>;
+witness guardianPath(): MerkleTreePath<32, Bytes<32>>;
 witness identitySecret(): Field;
 witness idSalt(): Bytes<32>;
 witness vetoSecret(): Field;
 witness vetoSalt(): Bytes<32>;
 witness claimedNow(): Uint<64>;
 witness ephemeralSk(): Bytes<32>;
-witness lineagePath(): MerkleTreePath<20, Bytes<32>>;
+witness lineagePath(): MerkleTreePath<32, Bytes<32>>;
 
 // ---------------------------------------------------------------------------
 // ENROLMENT
@@ -304,17 +331,23 @@ export circuit addGuardian(idCommit: Bytes<32>): Bytes<32> {
 // guardian-only, so whoever was being vetoed can no longer open at all.
 // It also kills the live recovery, because that recovery's ctx is no longer
 // current, which frees the slot (§3.4).
-export circuit rotateGuardianSet(idCommit: Bytes<32>, newCtx: Bytes<32>): [] {
+// NEW: the context is guardianCtxOf(idRoot, seed), not a caller's choice, so
+// nobody can take it first (§3.10, review F1). Seeing the seed in a pending
+// transaction does not help: under another root it derives another context.
+export circuit rotateGuardianSet(idCommit: Bytes<32>, seed: Bytes<32>): Bytes<32> {
   assert(idCommitOf(identitySecret(), idSalt()) == idCommit, "not the identity owner");
   assert(enrolled.member(disclose(idCommit)), "identity not enrolled");
   assert(!retiredIdentities.member(disclose(idCommit)), "identity retired");
-  assert(!usedGuardianCtx.member(disclose(newCtx)), "context already used");
   assert(vetoCommits.lookup(disclose(idCommit)) == vetoCommitOf(vetoSecret(), vetoSalt()),
          "rotating the guardian set requires the veto secret");
   const idRoot = idRoots.lookup(disclose(idCommit));
-  usedGuardianCtx.insert(disclose(newCtx));
-  guardianCtx.insert(disclose(idRoot), disclose(newCtx));
+  const newCtx = disclose(guardianCtxOf(idRoot, seed));
+  // Reachable only by the owner reusing a seed.
+  assert(!usedGuardianCtx.member(newCtx), "context already used");
+  usedGuardianCtx.insert(newCtx);
+  guardianCtx.insert(disclose(idRoot), newCtx);
   vetoCounts.insert(disclose(idRoot), default<Counter>);
+  return newCtx;
 }
 
 // ---------------------------------------------------------------------------
@@ -382,7 +415,7 @@ export circuit openRecovery(idCommit: Bytes<32>, ephemeralPk: Bytes<32>, period:
   const secret = guardianSecret();
   const path = guardianPath();
   assert(path.leaf == guardianLeafOf(secret, ctx, leafSalt()), "path does not bind to this guardian leaf");
-  assert(guardians.checkRoot(disclose(merkleTreePathRoot<20, Bytes<32>>(path))), "guardian not in tree");
+  assert(guardians.checkRoot(disclose(merkleTreePathRoot<32, Bytes<32>>(path))), "guardian not in tree");
 
   // NEW: one open per guardian per head per period.
   assertCurrentPeriod(period);
@@ -395,8 +428,12 @@ export circuit openRecovery(idCommit: Bytes<32>, ephemeralPk: Bytes<32>, period:
   // The `vetoes == 0` clause is what makes a rotation's reset complete: the
   // rotation zeroes the count but leaves lastVetoAt, which is the last veto's
   // LATER bound and so may sit up to the slack in the future.
+  // The recovery the last veto RESERVED is exempt (§3.10, review F0): the
+  // owner's next device opens during the cooldown, so there is no race to lose
+  // at its end. A colluder opening that same rid is opening the owner's recovery.
   const vetoes = vetoCounts.lookup(disclose(idRoot)).read();
   assert(vetoes == 0
+         || (reservedRecovery.member(disclose(idRoot)) && reservedRecovery.lookup(disclose(idRoot)) == disclose(rid))
          || blockTimeGte((lastVetoAt.lookup(disclose(idRoot)) + cooldownSecondsOf(vetoes)) as Uint<64>),
          "cooling down after a veto");
 
@@ -440,7 +477,7 @@ export circuit approveRecovery(idCommit: Bytes<32>, rid: Bytes<32>): [] {
   assert(path.leaf == guardianLeafOf(secret, ctx, leafSalt()), "path does not bind to this guardian leaf");
   // HistoricMerkleTree accepts PAST roots, which keeps concurrent approvals
   // valid. Disclosure reveals only WHICH historic root, never the path.
-  assert(guardians.checkRoot(disclose(merkleTreePathRoot<20, Bytes<32>>(path))), "guardian not in tree");
+  assert(guardians.checkRoot(disclose(merkleTreePathRoot<32, Bytes<32>>(path))), "guardian not in tree");
 
   const nul = approvalNullifierOf(secret, idCommit, rid);
   assert(!approvedNullifiers.member(disclose(nul)), "guardian already approved");
@@ -452,10 +489,17 @@ export circuit approveRecovery(idCommit: Bytes<32>, rid: Bytes<32>): [] {
 // Owner-exclusive, on the INDEPENDENT veto secret no guardian holds. NEW:
 //  - refuses on a retired identity, so an old card cannot bump the
 //    successor's cooldown (in v1 such a "veto" did nothing; here it would not);
-//  - brackets a claimed time exactly as open does, and feeds the cooldown from
-//    the later bound, so a lying owner can only LENGTHEN the wait, by at most
-//    the slack. It only increments and writes: it reads no rate-limit state.
-export circuit vetoRecovery(rid: Bytes<32>): [] {
+//  - brackets a claimed time as open does, with its own 1 h slack (review F4),
+//    and feeds the cooldown from the later bound, so a lying owner can only
+//    LENGTHEN the wait, by at most that slack;
+//  - counts only a recovery of the CURRENT guardian set (review F2): a veto of a
+//    recovery a rotation already killed changes no rate-limit state, so it
+//    cannot bring back the cooldown the rotation reset;
+//  - reserves `nextRid`, recoveryIdOf(head, the owner's next device key), which
+//    may then open during the cooldown (review F0). Pass zeros to reserve none.
+// It reads no rate-limit state: only the context, which only the owner's own
+// rotation can change.
+export circuit vetoRecovery(rid: Bytes<32>, nextRid: Bytes<32>): [] {
   assert(recoveries.member(disclose(rid)), "no such recovery");
   const rec = recoveries.lookup(disclose(rid));
 
@@ -472,11 +516,14 @@ export circuit vetoRecovery(rid: Bytes<32>): [] {
   killed.insert(disclose(rid));
 
   const lo = claimedNow();
-  const hi = (lo + openSlackSeconds()) as Uint<64>;
+  const hi = (lo + vetoSlackSeconds()) as Uint<64>;
   assert(blockTimeGte(disclose(lo)), "claimed time is in the future");
   assert(blockTimeLt(disclose(hi)), "claimed time is too far in the past");
-  vetoCounts.lookup(disclose(rec.idRoot)).increment(1);
-  lastVetoAt.insert(disclose(rec.idRoot), disclose(hi));
+  if (guardianCtx.lookup(disclose(rec.idRoot)) == rec.ctx) {
+    vetoCounts.lookup(disclose(rec.idRoot)).increment(1);
+    lastVetoAt.insert(disclose(rec.idRoot), disclose(hi));
+    reservedRecovery.insert(disclose(rec.idRoot), disclose(nextRid));
+  }
 }
 
 // Proves the recovered secret is the RIGHT secret: it OPENS the original
@@ -536,7 +583,7 @@ export circuit finalizeRecovery(
 export circuit proveSuccession(idRoot: Bytes<32>, head: Bytes<32>): [] {
   const path = lineagePath();
   assert(path.leaf == lineageLeafOf(idRoot, head), "path does not bind to this lineage leaf");
-  assert(lineage.checkRoot(disclose(merkleTreePathRoot<20, Bytes<32>>(path))), "not a known lineage root");
+  assert(lineage.checkRoot(disclose(merkleTreePathRoot<32, Bytes<32>>(path))), "not a known lineage root");
   assert(enrolled.member(disclose(head)), "head is not enrolled");
   assert(!retiredIdentities.member(disclose(head)), "head has been superseded");
 }
@@ -561,7 +608,7 @@ export circuit hostGatedAction(
 ): [] {
   const path = lineagePath();
   assert(path.leaf == lineageLeafOf(rootIdCommit, currentIdCommit), "path does not bind to this lineage leaf");
-  const descends = lineage.checkRoot(disclose(merkleTreePathRoot<20, Bytes<32>>(path)));
+  const descends = lineage.checkRoot(disclose(merkleTreePathRoot<32, Bytes<32>>(path)));
   assert(Gate_ownershipHolds(
            enrolled.member(disclose(currentIdCommit)),
            retiredIdentities.member(disclose(currentIdCommit)),
@@ -597,14 +644,18 @@ export circuit lockIdentity(idCommit: Bytes<32>): [] {
 }
 
 // Both secrets: a copied card alone cannot unlock, and a stolen secret alone
-// cannot unlock.
-export circuit unlockIdentity(idCommit: Bytes<32>): [] {
+// cannot unlock. NEW: the same transaction installs `newVetoCommit` (review F3).
+// Otherwise whoever copied the card could lock again after every unlock, for
+// ever, and the only way to replace a card was a recovery the copier can veto.
+// Passing the current commitment keeps the card.
+export circuit unlockIdentity(idCommit: Bytes<32>, newVetoCommit: Bytes<32>): [] {
   assert(idCommitOf(identitySecret(), idSalt()) == idCommit, "not the identity owner");
   assert(enrolled.member(disclose(idCommit)), "identity not enrolled");
   assert(!retiredIdentities.member(disclose(idCommit)), "identity retired");
   assert(vetoCommits.lookup(disclose(idCommit)) == vetoCommitOf(vetoSecret(), vetoSalt()),
          "unlocking requires the veto secret");
   locked.insert(disclose(idRoots.lookup(disclose(idCommit))), false);
+  vetoCommits.insert(disclose(idCommit), disclose(newVetoCommit));
 }
 
 // ---------------------------------------------------------------------------
@@ -613,20 +664,21 @@ export circuit unlockIdentity(idCommit: Bytes<32>): [] {
 // A current guardian proves membership and writes a nullifier bound to
 // (secret, context, period); a counter for (root, context, period) goes up by
 // one. The owner compares it with n, already public, and learns "2 of 3
-// checked in this quarter" -- never which two. `idCommit` may be any enrolled
-// commitment of the lineage: guardians need not track the head.
+// checked in this quarter" -- never which two. The argument is the identity
+// ROOT, always (review F8): guardians need not track the head, and a choice
+// between the root and a later commitment would fingerprint the guardian.
 // ---------------------------------------------------------------------------
 
-export circuit checkIn(idCommit: Bytes<32>, period: Uint<32>): [] {
-  assert(enrolled.member(disclose(idCommit)), "identity not enrolled");
-  const idRoot = idRoots.lookup(disclose(idCommit));
+export circuit checkIn(idRoot: Bytes<32>, period: Uint<32>): [] {
+  assert(enrolled.member(disclose(idRoot)), "identity not enrolled");
+  assert(idRoots.lookup(disclose(idRoot)) == disclose(idRoot), "check in with the identity root");
   const ctx = guardianCtx.lookup(disclose(idRoot));
   assertCurrentPeriod(period);
 
   const secret = guardianSecret();
   const path = guardianPath();
   assert(path.leaf == guardianLeafOf(secret, ctx, leafSalt()), "path does not bind to this guardian leaf");
-  assert(guardians.checkRoot(disclose(merkleTreePathRoot<20, Bytes<32>>(path))), "guardian not in tree");
+  assert(guardians.checkRoot(disclose(merkleTreePathRoot<32, Bytes<32>>(path))), "guardian not in tree");
 
   const nul = checkInNullifierOf(secret, ctx, period);
   assert(!checkInNullifiers.member(disclose(nul)), "guardian already checked in this period");

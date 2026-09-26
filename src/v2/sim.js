@@ -14,7 +14,10 @@
 import { createContractSim } from '../contract-sim.js';
 import { lantern2Witnesses } from './witnesses.js';
 import { commitmentsOf } from './identity.js';
-import { DEFAULT_DELAY, checkDelay, periodOf, slotOf, recoveryStatus, timelineOf } from './timeline.js';
+import { DEFAULT_DELAY, checkDelay, periodOf, slotOf, recoveryStatus, timelineOf, vetoAdvice } from './timeline.js';
+
+const NO_RESERVATION = new Uint8Array(32);
+const randomSeed = () => globalThis.crypto.getRandomValues(new Uint8Array(32));
 
 export function createLantern2Sim({ rt, mod, now }) {
   const pure = mod.pureCircuits;
@@ -49,11 +52,34 @@ export function createLantern2Sim({ rt, mod, now }) {
     /** A current guardian opens a recovery for a device's public key, in the current period. */
     open: (guardian, idCommit, ephemeralPk) => call(guardian, 'openRecovery', idCommit, ephemeralPk, period()),
     approve: (guardian, idCommit, rid) => call(guardian, 'approveRecovery', idCommit, rid),
-    veto: (owner, rid) => call(owner, 'vetoRecovery', rid),
-    rotate: (owner, idCommit, newCtx) => call(owner, 'rotateGuardianSet', idCommit, newCtx),
+    /**
+     * The owner's veto. `nextDevice` is the public key of the owner's next
+     * device, when they have lost this one: the veto reserves that device's
+     * recovery, which a guardian may then open during the cooldown (review F0).
+     * Refuses, before any transaction, to veto a recovery that is already dead:
+     * that would only restart the cooldown (review F2).
+     */
+    veto(owner, rid, { nextDevice = null } = {}) {
+      const advice = vetoAdvice(sim.ledger, rid, sim.now);
+      if (!advice.ok) throw new Error(`not vetoing: ${advice.reason}`);
+      const head = sim.ledger.recoveries.lookup(rid).idCommit;
+      const nextRid = nextDevice ? pure.recoveryIdOf(head, nextDevice) : NO_RESERVATION;
+      return call(owner, 'vetoRecovery', rid, nextRid);
+    },
+    /** Evict every guardian. The new context is derived from the root and a fresh seed; it is returned. */
+    rotate: (owner, idCommit, seed = randomSeed()) => call(owner, 'rotateGuardianSet', idCommit, seed),
     lock: (owner, idCommit) => call(owner, 'lockIdentity', idCommit),
-    unlock: (owner, idCommit) => call(owner, 'unlockIdentity', idCommit),
-    checkIn: (guardian, idCommit) => call(guardian, 'checkIn', idCommit, period()),
+    /**
+     * Unlock, with both secrets. Pass `newCard` ({ vetoSecret, vetoSalt }) to
+     * replace a card someone may have copied in the same transaction (review
+     * F3); without it the current card stays.
+     */
+    unlock(owner, idCommit, { newCard = null } = {}) {
+      const card = newCard ?? owner;
+      return call(owner, 'unlockIdentity', idCommit, pure.vetoCommitOf(card.vetoSecret, card.vetoSalt));
+    },
+    /** A check-in always names the identity ROOT, whatever the guardian passes (review F8). */
+    checkIn: (guardian, idCommit) => call(guardian, 'checkIn', sim.ledger.idRoots.lookup(idCommit), period()),
     /** The device finalizes to a successor it generated. */
     finalize: (device, rid, successor) => call(device, 'finalizeRecovery', rid, successor.idCommit, successor.vetoCommit),
     /** The reference host gate, as the owner of `idCommit` under `idRoot`. */

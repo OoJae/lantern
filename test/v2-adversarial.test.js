@@ -89,7 +89,7 @@ describe('v2 regression: the target\'s secrets are fresh entropy, not a function
 describe('v2 leak report', () => {
   it('classifies EVERY field of the v2 ledger', () => {
     const fields = Object.keys(T.view.ledger);
-    expect(fields.length).toBe(24);
+    expect(fields.length).toBe(25);   // v1's 16 and v2's 9
     expect(fields.filter((f) => !(f in COVERAGE))).toEqual([]);
     expect(Object.keys(COVERAGE).sort()).toEqual([...fields].sort());
   });
@@ -119,7 +119,7 @@ describe('v2 leak report', () => {
     expect(COVERAGE.approvals.measure(empty)).toBe('no recoveries');
     expect(COVERAGE.recoveries.measure(empty)).toBe('0 opened (ever)');
     for (const f of ['recoveryDelays', 'locked', 'checkIns', 'liveRecovery', 'vetoCounts', 'lastVetoAt',
-      'openNullifiers', 'checkInNullifiers']) {
+      'reservedRecovery', 'openNullifiers', 'checkInNullifiers']) {
       expect(() => COVERAGE[f].measure(empty), f).not.toThrow();
     }
   });
@@ -133,6 +133,6 @@ describe('v2 leak report', () => {
     expect(rep.filter((r) => r.sev === 'HIGH').map((r) => r.field)).toContain('recoveries');
     expect(rep.find((r) => r.field === 'recoveries').why).toMatch(/only a current guardian can open/);
     // The new public signals are classified, and none is BENIGN.
-    for (const f of ['recoveryDelays', 'locked', 'checkIns']) expect(COVERAGE[f].sev, f).toBe('MED');
+    for (const f of ['recoveryDelays', 'locked', 'checkIns', 'reservedRecovery']) expect(COVERAGE[f].sev, f).toBe('MED');
   });
 });

@@ -33,7 +33,7 @@ export type ImpureCircuits<PS> = {
               idCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   rotateGuardianSet(context: __compactRuntime.CircuitContext<PS>,
                     idCommit_0: Uint8Array,
-                    newCtx_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+                    seed_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   openRecovery(context: __compactRuntime.CircuitContext<PS>,
                idCommit_0: Uint8Array,
                ephemeralPk_0: Uint8Array,
@@ -41,7 +41,9 @@ export type ImpureCircuits<PS> = {
   approveRecovery(context: __compactRuntime.CircuitContext<PS>,
                   idCommit_0: Uint8Array,
                   rid_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
-  vetoRecovery(context: __compactRuntime.CircuitContext<PS>, rid_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  vetoRecovery(context: __compactRuntime.CircuitContext<PS>,
+               rid_0: Uint8Array,
+               nextRid_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   finalizeRecovery(context: __compactRuntime.CircuitContext<PS>,
                    rid_0: Uint8Array,
                    newIdCommit_0: Uint8Array,
@@ -59,9 +61,10 @@ export type ImpureCircuits<PS> = {
   lockIdentity(context: __compactRuntime.CircuitContext<PS>,
                idCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   unlockIdentity(context: __compactRuntime.CircuitContext<PS>,
-                 idCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+                 idCommit_0: Uint8Array,
+                 newVetoCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   checkIn(context: __compactRuntime.CircuitContext<PS>,
-          idCommit_0: Uint8Array,
+          idRoot_0: Uint8Array,
           period_0: bigint): __compactRuntime.CircuitResults<PS, []>;
 }
 
@@ -75,7 +78,7 @@ export type ProvableCircuits<PS> = {
               idCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   rotateGuardianSet(context: __compactRuntime.CircuitContext<PS>,
                     idCommit_0: Uint8Array,
-                    newCtx_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+                    seed_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   openRecovery(context: __compactRuntime.CircuitContext<PS>,
                idCommit_0: Uint8Array,
                ephemeralPk_0: Uint8Array,
@@ -83,7 +86,9 @@ export type ProvableCircuits<PS> = {
   approveRecovery(context: __compactRuntime.CircuitContext<PS>,
                   idCommit_0: Uint8Array,
                   rid_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
-  vetoRecovery(context: __compactRuntime.CircuitContext<PS>, rid_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  vetoRecovery(context: __compactRuntime.CircuitContext<PS>,
+               rid_0: Uint8Array,
+               nextRid_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   finalizeRecovery(context: __compactRuntime.CircuitContext<PS>,
                    rid_0: Uint8Array,
                    newIdCommit_0: Uint8Array,
@@ -101,9 +106,10 @@ export type ProvableCircuits<PS> = {
   lockIdentity(context: __compactRuntime.CircuitContext<PS>,
                idCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   unlockIdentity(context: __compactRuntime.CircuitContext<PS>,
-                 idCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+                 idCommit_0: Uint8Array,
+                 newVetoCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   checkIn(context: __compactRuntime.CircuitContext<PS>,
-          idCommit_0: Uint8Array,
+          idRoot_0: Uint8Array,
           period_0: bigint): __compactRuntime.CircuitResults<PS, []>;
 }
 
@@ -122,7 +128,9 @@ export type PureCircuits = {
   openNullifierOf(secret_0: Uint8Array, idCommit_0: Uint8Array, period_0: bigint): Uint8Array;
   checkInNullifierOf(secret_0: Uint8Array, ctx_0: Uint8Array, period_0: bigint): Uint8Array;
   checkInKeyOf(idRoot_0: Uint8Array, ctx_0: Uint8Array, period_0: bigint): Uint8Array;
+  guardianCtxOf(idRoot_0: Uint8Array, seed_0: Uint8Array): Uint8Array;
   openSlackSeconds(): bigint;
+  vetoSlackSeconds(): bigint;
   minRecoveryDelaySeconds(): bigint;
   maxRecoveryDelaySeconds(): bigint;
   approvalWindowSeconds(): bigint;
@@ -171,7 +179,11 @@ export type Circuits<PS> = {
                idRoot_0: Uint8Array,
                ctx_0: Uint8Array,
                period_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  guardianCtxOf(context: __compactRuntime.CircuitContext<PS>,
+                idRoot_0: Uint8Array,
+                seed_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   openSlackSeconds(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, bigint>;
+  vetoSlackSeconds(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, bigint>;
   minRecoveryDelaySeconds(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, bigint>;
   maxRecoveryDelaySeconds(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, bigint>;
   approvalWindowSeconds(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, bigint>;
@@ -188,7 +200,7 @@ export type Circuits<PS> = {
               idCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   rotateGuardianSet(context: __compactRuntime.CircuitContext<PS>,
                     idCommit_0: Uint8Array,
-                    newCtx_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+                    seed_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   openRecovery(context: __compactRuntime.CircuitContext<PS>,
                idCommit_0: Uint8Array,
                ephemeralPk_0: Uint8Array,
@@ -196,7 +208,9 @@ export type Circuits<PS> = {
   approveRecovery(context: __compactRuntime.CircuitContext<PS>,
                   idCommit_0: Uint8Array,
                   rid_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
-  vetoRecovery(context: __compactRuntime.CircuitContext<PS>, rid_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  vetoRecovery(context: __compactRuntime.CircuitContext<PS>,
+               rid_0: Uint8Array,
+               nextRid_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   finalizeRecovery(context: __compactRuntime.CircuitContext<PS>,
                    rid_0: Uint8Array,
                    newIdCommit_0: Uint8Array,
@@ -214,9 +228,10 @@ export type Circuits<PS> = {
   lockIdentity(context: __compactRuntime.CircuitContext<PS>,
                idCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   unlockIdentity(context: __compactRuntime.CircuitContext<PS>,
-                 idCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+                 idCommit_0: Uint8Array,
+                 newVetoCommit_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   checkIn(context: __compactRuntime.CircuitContext<PS>,
-          idCommit_0: Uint8Array,
+          idRoot_0: Uint8Array,
           period_0: bigint): __compactRuntime.CircuitResults<PS, []>;
 }
 
@@ -373,6 +388,13 @@ export type Ledger = {
     member(key_0: Uint8Array): boolean;
     lookup(key_0: Uint8Array): bigint;
     [Symbol.iterator](): Iterator<[Uint8Array, bigint]>
+  };
+  reservedRecovery: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(key_0: Uint8Array): boolean;
+    lookup(key_0: Uint8Array): Uint8Array;
+    [Symbol.iterator](): Iterator<[Uint8Array, Uint8Array]>
   };
   locked: {
     isEmpty(): boolean;

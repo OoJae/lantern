@@ -33,6 +33,9 @@ export const idCommit = () => pureCircuits.idCommitOf(ID_SECRET, ID_SALT);
 export const vetoCommit = () => pureCircuits.vetoCommitOf(VETO_SECRET, VETO_SALT);
 export const DELAY = DEFAULT_DELAY;
 export const SLACK = Number(pureCircuits.openSlackSeconds());
+export const VETO_SLACK = Number(pureCircuits.vetoSlackSeconds());
+/** A veto's second argument when it reserves no next device (docs/v2.md §3.10). */
+export const NO_RESERVATION = new Uint8Array(32);
 export const DAY = 86_400;
 export const PERIOD = Number(pureCircuits.periodSeconds());
 export const APPROVAL_WINDOW = Number(pureCircuits.approvalWindowSeconds());
@@ -86,7 +89,7 @@ export const toUnlock = (sim, rid, plus = 0) => sim.setTime(Number(recordOf(sim,
 
 /** The owner vetoes `rid`, then the clock moves past the cooldown that veto starts. */
 export function vetoAndCool(sim, rid) {
-  sim.call('vetoRecovery', rid);
+  sim.call('vetoRecovery', rid, NO_RESERVATION);
   const root = recordOf(sim, rid).idRoot;
   const vetoes = sim.ledger.vetoCounts.lookup(root).read();
   const until = Number(sim.ledger.lastVetoAt.lookup(root)) + Number(pureCircuits.cooldownSecondsOf(vetoes));

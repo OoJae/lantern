@@ -7,7 +7,7 @@ import {
   pureCircuits, bytes32, fieldOf,
   world, asGuardian, openAs, openAndApprove, succeed, ephSkFor, toUnlock, loadLineage, periodOf,
   ID_SECRET, ID_SALT, VETO_SECRET as VETO_SECRET_OLD, VETO_SALT as VETO_SALT_OLD,
-  EPH_A, EPH_B, EPH_C, EPH_D, DELAY, hex,
+  EPH_A, EPH_B, EPH_C, EPH_D, DELAY, hex, NO_RESERVATION,
 } from './v2-fixtures.js';
 import { assertNoLeak, encodingsOf, flatten } from '../src/leakscan.js';
 
@@ -105,12 +105,22 @@ describe('v2 guardian-set rotation', () => {
     expect(sim.ledger.approvals.lookup(rid).read()).toBe(2n);
   });
 
+  // v1 refused a context another identity had claimed. v2 goes further: the
+  // context is DERIVED from the rotating identity's own root (docs/v2.md
+  // §3.10), so another identity's context cannot even be named, and a reused
+  // seed on the same root is still refused.
   it('rejects a context already claimed by another identity', () => {
     const { sim, id } = world();
     const bobSecret = fieldOf(900), bobSalt = bytes32(901);
     const bobId = pureCircuits.idCommitOf(bobSecret, bobSalt);
     sim.ps.identitySecret = bobSecret; sim.ps.idSalt = bobSalt;
+    sim.ps.vetoSecret = fieldOf(902); sim.ps.vetoSalt = bytes32(903);
     sim.call('enrollIdentity', bobId, pureCircuits.vetoCommitOf(fieldOf(902), bytes32(903)), 2n, D);
+    // Bob passes Alice's context (her root) as his seed: he gets a context bound to HIS root.
+    const bobCtx = sim.call('rotateGuardianSet', bobId, id);
+    expect(hex(bobCtx)).toBe(hex(pureCircuits.guardianCtxOf(bobId, id)));
+    expect(hex(bobCtx)).not.toBe(hex(id));
+    expect(hex(sim.ledger.guardianCtx.lookup(id))).toBe(hex(id));
     expect(() => sim.call('rotateGuardianSet', bobId, id)).toThrow(/context already used/);
   });
 
@@ -118,7 +128,7 @@ describe('v2 guardian-set rotation', () => {
   it('the rotated context survives a recovery, and the rotation resets the veto count', () => {
     const { sim, id, guardians: old } = world();
     const vetoed = openAs(sim, old[0], id, EPH_C);
-    sim.call('vetoRecovery', vetoed);
+    sim.call('vetoRecovery', vetoed, NO_RESERVATION);
     expect(sim.ledger.vetoCounts.lookup(id).read()).toBe(1n);
 
     sim.call('rotateGuardianSet', id, bytes32(555));
@@ -314,7 +324,7 @@ describe('v2 regression: holding the identity secret is not enough to rotate or 
     asSecretHolder(sim);
     expect(() => sim.call('rotateGuardianSet', id, bytes32(902))).toThrow(/requires the veto secret/);
     sim.ps.vetoSecret = ID_SECRET; sim.ps.vetoSalt = ID_SALT;
-    expect(() => sim.call('vetoRecovery', rid)).toThrow(/veto secret does not open/);
+    expect(() => sim.call('vetoRecovery', rid, NO_RESERVATION)).toThrow(/veto secret does not open/);
 
     Object.assign(sim.ps, card);
     sim.ps.ephemeralSk = ephSkFor(EPH_A);
@@ -325,9 +335,11 @@ describe('v2 regression: holding the identity secret is not enough to rotate or 
 
   // v1 let the colluders open a SECOND recovery beside the owner's. v2 allows
   // one live recovery per identity, so the port runs the race the other way
-  // round: the colluders open first and reach quorum; the owner vetoes theirs;
-  // after the 1-day cooldown an honest guardian opens the owner's. Every v1
-  // refusal is kept, and the colluders' second open is refused outright.
+  // round: the colluders open first and reach quorum; the owner's veto kills
+  // theirs AND reserves the owner's new phone, which an honest guardian opens
+  // at once, inside the cooldown (docs/v2.md §3.10, review F0). Every v1
+  // refusal is kept, and the colluders' second open is refused outright, at
+  // the cooldown's public end as much as before it.
   it('colluders who pooled shares cannot stop the owner recovery finalizing', () => {
     const { sim, id, guardians } = world({ n: 3 });
     const card = { vetoSecret: sim.ps.vetoSecret, vetoSalt: sim.ps.vetoSalt };
@@ -335,13 +347,14 @@ describe('v2 regression: holding the identity secret is not enough to rotate or 
     const theirRid = openAs(sim, guardians[1], id, EPH_C);
     for (const g of guardians.slice(1)) { asGuardian(sim, g); sim.call('approveRecovery', id, theirRid); }
 
-    // The owner's card kills theirs; after the cooldown, guardian 0 opens the owner's new phone.
-    sim.call('vetoRecovery', theirRid);
-    expect(() => openAs(sim, guardians[0], id, EPH_A)).toThrow(/cooling down after a veto/);
-    sim.advance(86_400 + 600);
+    // The owner's card kills theirs and reserves the new phone; guardian 0 opens it at once.
+    sim.call('vetoRecovery', theirRid, pureCircuits.recoveryIdOf(id, EPH_A));
+    expect(() => openAs(sim, guardians[2], id, EPH_D)).toThrow(/cooling down after a veto/);
     const ownerRid = openAndApprove(sim, id, guardians, 2, EPH_A);
 
-    // The colluders cannot open a competing recovery while the owner's is in flight.
+    // The colluders cannot open a competing recovery while the owner's is in flight,
+    // not even at the second the cooldown ends.
+    sim.setTime(Number(sim.ledger.lastVetoAt.lookup(id)) + 86_400);
     expect(() => openAs(sim, guardians[2], id, EPH_D)).toThrow(/already live/);
     asSecretHolder(sim);
     expect(() => sim.call('rotateGuardianSet', id, bytes32(903))).toThrow(/requires the veto secret/);
@@ -373,8 +386,9 @@ describe('v2 regression: holding the identity secret is not enough to rotate or 
 
   it('the owner, holding both the secret and the veto card, still rotates', () => {
     const { sim, id, idRoot } = world({ n: 3 });
-    sim.call('rotateGuardianSet', id, bytes32(904));
-    expect(hex(sim.ledger.guardianCtx.lookup(idRoot))).toBe(hex(bytes32(904)));
+    const ctx = sim.call('rotateGuardianSet', id, bytes32(904));
+    expect(hex(ctx)).toBe(hex(pureCircuits.guardianCtxOf(idRoot, bytes32(904))));
+    expect(hex(sim.ledger.guardianCtx.lookup(idRoot))).toBe(hex(ctx));
   });
 
   it('after a recovery, the successor rotates with its NEW veto card, not the old one', () => {

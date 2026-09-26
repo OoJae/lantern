@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 import {
   pureCircuits, bytes32, fieldOf,
   world, asGuardian, openAs, openAndApprove, toUnlock, succeed, loadLineage, periodOf,
-  ID_SECRET, ID_SALT, VETO_SECRET, VETO_SALT, EPH_A, DAY,
+  ID_SECRET, ID_SALT, VETO_SECRET, VETO_SALT, EPH_A, DAY, NO_RESERVATION, vetoCommit,
 } from './v2-fixtures.js';
 import { assertNoLeak } from '../src/leakscan.js';
 
@@ -48,12 +48,12 @@ describe('§4.6.3 unlocking needs both secrets', () => {
     const { sim, id, idRoot } = world();
     sim.call('lockIdentity', id);
     asThief(sim);
-    expect(() => sim.call('unlockIdentity', id)).toThrow(/unlocking requires the veto secret/);
+    expect(() => sim.call('unlockIdentity', id, vetoCommit())).toThrow(/unlocking requires the veto secret/);
     asCardOnly(sim);
-    expect(() => sim.call('unlockIdentity', id)).toThrow(/not the identity owner/);
+    expect(() => sim.call('unlockIdentity', id, vetoCommit())).toThrow(/not the identity owner/);
     expect(sim.ledger.locked.lookup(idRoot)).toBe(true);
     asOwner(sim);
-    sim.call('unlockIdentity', id);
+    sim.call('unlockIdentity', id, vetoCommit());
     expect(sim.ledger.locked.lookup(idRoot)).toBe(false);
     expect(() => gate(sim, idRoot, id, 2)).not.toThrow();
     expect(sim.ledger.gateActions).toBe(1n);
@@ -69,7 +69,7 @@ describe('§4.6.4 nothing else is blocked while locked', () => {
     asGuardian(sim, guardians[0]);
     expect(() => sim.call('checkIn', id, periodOf(sim.now))).not.toThrow();
     const rid = openAs(sim, guardians[1], id, EPH_A);
-    expect(() => sim.call('vetoRecovery', rid)).not.toThrow();
+    expect(() => sim.call('vetoRecovery', rid, NO_RESERVATION)).not.toThrow();
     expect(() => sim.call('rotateGuardianSet', id, bytes32(446))).not.toThrow();
     expect(sim.ledger.locked.lookup(id)).toBe(true);
   });
@@ -103,7 +103,7 @@ describe('§4.6.6 the wrong card', () => {
     const g1 = succeed(sim, id, guardians, 1);
     asOwner(sim);   // the old secret and the old card
     expect(() => sim.call('lockIdentity', id)).toThrow(/identity retired/);
-    expect(() => sim.call('unlockIdentity', id)).toThrow(/identity retired/);
+    expect(() => sim.call('unlockIdentity', id, vetoCommit())).toThrow(/identity retired/);
     // Nor through the successor's commitment: the old card does not open its veto commitment.
     expect(() => sim.call('lockIdentity', g1.newId)).toThrow(/locking requires the veto secret/);
     expect(sim.ledger.locked.lookup(idRoot)).toBe(false);
@@ -143,8 +143,8 @@ describe('§4.6.7 scope and idempotence', () => {
     expect(() => gate(sim, bId, bId, 5)).not.toThrow();
 
     asOwner(sim);
-    sim.call('unlockIdentity', id);
-    expect(() => sim.call('unlockIdentity', id)).not.toThrow();
+    sim.call('unlockIdentity', id, vetoCommit());
+    expect(() => sim.call('unlockIdentity', id, vetoCommit())).not.toThrow();
     expect(sim.ledger.locked.lookup(id)).toBe(false);
   });
 });
@@ -154,7 +154,7 @@ describe('§4.6.8 a refused gate call spends nothing', () => {
     const { sim, id, idRoot } = world();
     sim.call('lockIdentity', id);
     expect(() => gate(sim, idRoot, id, 42)).toThrow(/identity is locked/);
-    sim.call('unlockIdentity', id);
+    sim.call('unlockIdentity', id, vetoCommit());
     expect(() => gate(sim, idRoot, id, 42)).not.toThrow();
     expect(() => gate(sim, idRoot, id, 42)).toThrow(/already performed/);
   });
@@ -170,7 +170,7 @@ describe('§4.6.10 privacy of lock and unlock', () => {
   it("unlockIdentity's public transcript holds neither secret nor either salt", () => {
     const { sim, id } = world();
     sim.call('lockIdentity', id);
-    sim.call('unlockIdentity', id);
+    sim.call('unlockIdentity', id, vetoCommit());
     assertNoLeak(sim.lastProofData, {
       identitySecret: ID_SECRET, idSalt: ID_SALT, vetoSecret: VETO_SECRET, vetoSalt: VETO_SALT,
     });
@@ -182,11 +182,11 @@ describe('§4 the lock and the rest of v2', () => {
     const { sim, id, guardians } = world({ n: 3 });
     sim.call('lockIdentity', id);
     const rid = openAs(sim, guardians[0], id, EPH_A);
-    sim.call('vetoRecovery', rid);
+    sim.call('vetoRecovery', rid, NO_RESERVATION);
     sim.call('rotateGuardianSet', id, bytes32(447));
     sim.advance(DAY);
     expect(sim.ledger.locked.lookup(id)).toBe(true);
-    sim.call('unlockIdentity', id);
+    sim.call('unlockIdentity', id, vetoCommit());
     expect(sim.ledger.locked.lookup(id)).toBe(false);
   });
 });

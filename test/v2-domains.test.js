@@ -46,6 +46,8 @@ const NEW_DERIVATIONS = {
   checkInNullifierOf: [(X) => X.checkInNullifierOf(A, B, P), '53bc94434ab4bd870ee95464caa4083db8f459527aecb1bb689e397b69c0b8cd'],
   checkInKeyOf: [(X) => X.checkInKeyOf(A, B, P), '9c5429cb0da599c8b7faef09e33d7792b526f768a26afbc5837544d8ff133100'],
 };
+// Review F1: the rotation's context, derived from (root, seed) instead of chosen.
+const CTX_PINNED = '72331ec4dde764b406662c027b8bd5b31ee4799163243098f6edc437d3807800';
 
 describe('v2 domains: what is shared with v1', () => {
   it('idCommitOf and vetoCommitOf are unchanged on a fixed input, and equal v1 byte for byte', () => {
@@ -75,6 +77,20 @@ describe('v2 domains: what is separated from v1', () => {
     for (const v of vals) expect(older).not.toContain(v);
   });
 
+  it('guardianCtxOf is pinned, binds the root, and never equals another derivation on the same inputs', () => {
+    expect(hex(V2.guardianCtxOf(A, B))).toBe(CTX_PINNED);
+    // The root is bound: the same seed under another root is another context.
+    expect(hex(V2.guardianCtxOf(A, B))).not.toBe(hex(V2.guardianCtxOf(C, B)));
+    expect(hex(V2.guardianCtxOf(A, B))).not.toBe(hex(V2.guardianCtxOf(A, C)));
+    // Nor is it the seed, or the root: a derived context can never be anyone's idCommit (their genesis context).
+    expect(hex(V2.guardianCtxOf(A, B))).not.toBe(hex(A));
+    expect(hex(V2.guardianCtxOf(A, B))).not.toBe(hex(B));
+    const others = [V2.lineageLeafOf(A, B), V2.recoveryIdOf(A, B), V2.idCommitOf(F, B)].map(hex);
+    expect(others).not.toContain(hex(V2.guardianCtxOf(A, B)));
+    // v1 had no such derivation.
+    expect(V1.guardianCtxOf).toBeUndefined();
+  });
+
   it('the period is bound: one guardian, one context, two periods, two unlinkable nullifiers and keys', () => {
     for (const f of ['openNullifierOf', 'checkInNullifierOf', 'checkInKeyOf']) {
       expect(hex(V2[f](A, B, P)), f).not.toBe(hex(V2[f](A, B, P + 1n)));
@@ -87,12 +103,12 @@ describe('v2 domains: the source follows the rule', () => {
   const domains = [...src.matchAll(/pad\((\d+), "([^"]+)"\)/g)].map((m) => ({ n: Number(m[1]), s: m[2] }));
 
   it('every v2 domain is lantern2:<name>:v1, padded to exactly its own length', () => {
-    expect(domains).toHaveLength(10);
+    expect(domains).toHaveLength(11);
     for (const { n, s } of domains) {
       expect(s, s).toMatch(/^lantern2:[a-z-]+:v1$/);
       expect(n, s).toBe(s.length);
     }
-    expect(new Set(domains.map((d) => d.s)).size).toBe(10);
+    expect(new Set(domains.map((d) => d.s)).size).toBe(11);
   });
 
   it('within each hash family, every preimage domain has a different length (v1 had one collision)', () => {
@@ -104,7 +120,7 @@ describe('v2 domains: the source follows the rule', () => {
     const transient = family('transientHash');
     const commit = family('persistentCommit');
     expect(persistent.sort((a, b) => a - b)).toEqual([15, 19, 20, 23]);
-    expect(transient.sort((a, b) => a - b)).toEqual([15, 16, 19, 20, 23]);
+    expect(transient.sort((a, b) => a - b)).toEqual([15, 16, 18, 19, 20, 23]);
     expect(commit).toEqual([20]);
     for (const fam of [persistent, transient, commit]) expect(new Set(fam).size).toBe(fam.length);
   });

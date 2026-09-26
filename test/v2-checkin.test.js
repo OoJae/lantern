@@ -25,7 +25,7 @@ describe('§6.4.1 the count', () => {
     expect(sim.ledger.checkInNullifiers.size()).toBe(2n);
   });
 
-  it("the transaction's arguments are only (idCommit, period)", () => {
+  it("the transaction's arguments are only (idRoot, period)", () => {
     const { sim, id, guardians } = world();
     const p = periodOf(sim.now);
     checkIn(sim, guardians[0], id, p);
@@ -118,15 +118,32 @@ describe('§6.4.6 after a rotation', () => {
 });
 
 describe('§6.4.7 across a recovery', () => {
-  it("the successor's commitment and the root reach the SAME counter", () => {
+  it('the root reaches the SAME counter before and after a recovery', () => {
     const { sim, id, guardians } = world({ n: 3 });
     const p = periodOf(sim.now);
+    checkIn(sim, guardians[2], id);
     const g1 = succeed(sim, id, guardians, 1);
     expect(periodOf(sim.now)).toBe(p);
-    checkIn(sim, guardians[2], g1.newId);
     expect(() => checkIn(sim, guardians[2], id)).toThrow(/already checked in this period/);
     checkIn(sim, guardians[0], id);   // through the retired root: still the lineage's count
     expect(count(sim, id, p)).toBe(2n);
+    expect(sim.ledger.retiredIdentities.member(id)).toBe(true);
+    expect(hex(sim.ledger.idRoots.lookup(g1.newId))).toBe(hex(id));
+  });
+
+  // Review F8: if a guardian could pass the root OR a later commitment, the
+  // choice would fingerprint that guardian's client. The contract takes the root only.
+  it("a check-in naming the successor's commitment is refused: the argument is always the root", () => {
+    const { sim, id, guardians } = world({ n: 3 });
+    const p = periodOf(sim.now);
+    const g1 = succeed(sim, id, guardians, 1);
+    expect(() => checkIn(sim, guardians[2], g1.newId)).toThrow(/check in with the identity root/);
+    expect(count(sim, id, p)).toBe(0n);
+    checkIn(sim, guardians[2], id);
+    // Every check-in's transaction names the same public argument, whoever sent it.
+    const args = (g) => { checkIn(sim, g, id); return flatten(sim.lastProofData.input); };
+    expect(args(guardians[0])).toEqual(args(guardians[1]));
+    expect(count(sim, id, p)).toBe(3n);
   });
 });
 

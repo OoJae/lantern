@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   Lantern2Sim, pureCircuits, bytes32, fieldOf,
   world, asGuardian, openAs, openAndApprove, recordOf, toUnlock, idCommit, vetoCommit, ephSkFor,
-  EPH_A, EPH_B, EPH_C, DAY, SLACK, APPROVAL_WINDOW, FINALIZE_WINDOW,
+  EPH_A, EPH_B, EPH_C, DAY, SLACK, APPROVAL_WINDOW, FINALIZE_WINDOW, NO_RESERVATION,
 } from './v2-fixtures.js';
 
 const MIN = Number(pureCircuits.minRecoveryDelaySeconds());
@@ -144,7 +144,7 @@ describe('§5.5.7 the inheritance profile, end to end', () => {
   const history = () => {
     const { sim, id, guardians } = world({ n: 3, delay: MAX });
     const premature = openAs(sim, guardians[0], id, EPH_A);
-    sim.call('vetoRecovery', premature);
+    sim.call('vetoRecovery', premature, NO_RESERVATION);
     const cooldownEnd = Number(sim.ledger.lastVetoAt.lookup(id)) + DAY;
     sim.setTime(cooldownEnd - 1);
     expect(() => openAs(sim, guardians[1], id, EPH_B)).toThrow(/cooling down/);

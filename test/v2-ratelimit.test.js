@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import {
   pureCircuits, bytes32, fieldOf,
   world, asGuardian, openAs, openAndApprove, recordOf, toUnlock, succeed, periodOf, ephSkFor,
-  EPH_A, EPH_B, EPH_C, EPH_D, DAY, PERIOD, SLACK, hex,
+  EPH_A, EPH_B, EPH_C, EPH_D, DAY, PERIOD, VETO_SLACK, hex, NO_RESERVATION,
 } from './v2-fixtures.js';
 import { recoveryStatus, slotOf, periodBounds } from '../src/v2/timeline.js';
 import { assertNoLeak } from '../src/leakscan.js';
@@ -66,7 +66,7 @@ describe('§3.9.4 one open per guardian, per head, per period', () => {
   it('a guardian opens at most once per head per period, even with a new device key', () => {
     const { sim, id, guardians } = world();
     const ridA = openAs(sim, guardians[0], id, EPH_A);
-    sim.call('vetoRecovery', ridA);
+    sim.call('vetoRecovery', ridA, NO_RESERVATION);
     sim.setTime(lastVeto(sim, id) + DAY);
     expect(() => openAs(sim, guardians[0], id, EPH_B)).toThrow(/guardian already opened a recovery this period/);
     // Another guardian still can: the quota is per guardian.
@@ -76,7 +76,7 @@ describe('§3.9.4 one open per guardian, per head, per period', () => {
   it('in the next period the same guardian can open again', () => {
     const { sim, id, guardians } = world();
     const ridA = openAs(sim, guardians[0], id, EPH_A);
-    sim.call('vetoRecovery', ridA);
+    sim.call('vetoRecovery', ridA, NO_RESERVATION);
     const p = periodOf(sim.now);
     sim.setTime(periodBounds(p + 1n).start);
     expect(() => openAs(sim, guardians[0], id, EPH_B)).not.toThrow();
@@ -118,8 +118,8 @@ describe('§3.9.6 the cooldown after one veto', () => {
     const { sim, id, guardians } = world();
     const rid = openAs(sim, guardians[0], id, EPH_A);
     const vetoBlock = sim.now;
-    sim.call('vetoRecovery', rid);
-    expect(lastVeto(sim, id)).toBe(vetoBlock + SLACK);   // hi = claimed lo + slack
+    sim.call('vetoRecovery', rid, NO_RESERVATION);
+    expect(lastVeto(sim, id)).toBe(vetoBlock + VETO_SLACK);   // hi = claimed lo + the veto's slack
     expect(sim.ledger.vetoCounts.lookup(id).read()).toBe(1n);
 
     sim.setTime(lastVeto(sim, id) + DAY - 1);
@@ -141,7 +141,7 @@ describe('§3.9.7 the cooldown doubles, to a bound', () => {
     const ephs = [EPH_A, EPH_B, EPH_C, EPH_D];
     let rid = openAs(sim, guardians[0], id, ephs[0]);
     for (const [level, days] of [[1, 1], [2, 2], [3, 4]]) {
-      sim.call('vetoRecovery', rid);
+      sim.call('vetoRecovery', rid, NO_RESERVATION);
       expect(sim.ledger.vetoCounts.lookup(id).read()).toBe(BigInt(level));
       sim.setTime(lastVeto(sim, id) + days * DAY - 1);
       expect(() => openAs(sim, guardians[level], id, ephs[level]), `level ${level}`).toThrow(/cooling down/);
@@ -156,13 +156,13 @@ describe('§3.9.8 the veto brackets its time claim', () => {
     const { sim, id, guardians } = world();
     const rid = openAs(sim, guardians[0], id, EPH_A);
     sim.ps.claimedNow = sim.now + 1;
-    expect(() => sim.call('vetoRecovery', rid)).toThrow(/claimed time is in the future/);
-    sim.ps.claimedNow = sim.now - SLACK;
-    expect(() => sim.call('vetoRecovery', rid)).toThrow(/claimed time is too far in the past/);
+    expect(() => sim.call('vetoRecovery', rid, NO_RESERVATION)).toThrow(/claimed time is in the future/);
+    sim.ps.claimedNow = sim.now - VETO_SLACK;
+    expect(() => sim.call('vetoRecovery', rid, NO_RESERVATION)).toThrow(/claimed time is too far in the past/);
     expect(sim.ledger.killed.member(rid)).toBe(false);
     // A lie inside the bracket can only LENGTHEN the wait: hi is never before the veto's block.
-    sim.ps.claimedNow = sim.now - SLACK + 1;
-    sim.call('vetoRecovery', rid);
+    sim.ps.claimedNow = sim.now - VETO_SLACK + 1;
+    sim.call('vetoRecovery', rid, NO_RESERVATION);
     expect(lastVeto(sim, id)).toBe(sim.now + 1);
   });
 });
@@ -170,7 +170,7 @@ describe('§3.9.8 the veto brackets its time claim', () => {
 describe('§3.9.9 what resets the count', () => {
   it('a rotation resets it: after rotating and re-adding guardians, an open lands with no wait', () => {
     const { sim, id, guardians } = world();
-    sim.call('vetoRecovery', openAs(sim, guardians[0], id, EPH_A));
+    sim.call('vetoRecovery', openAs(sim, guardians[0], id, EPH_A), NO_RESERVATION);
     sim.call('rotateGuardianSet', id, bytes32(444));
     expect(sim.ledger.vetoCounts.lookup(id).read()).toBe(0n);
     sim.ps.guardianSecret = bytes32(300); sim.ps.leafSalt = bytes32(301);
@@ -183,7 +183,7 @@ describe('§3.9.9 what resets the count', () => {
   it('a finalize does NOT reset it: the successor inherits the count and its doubling', () => {
     const { sim, id, guardians } = world({ n: 3 });
     const ridA = openAs(sim, guardians[0], id, EPH_A);
-    sim.call('vetoRecovery', ridA);
+    sim.call('vetoRecovery', ridA, NO_RESERVATION);
     sim.setTime(lastVeto(sim, id) + DAY);
     // guardians[0] spent its open for this head, so guardians[1] opens the recovery that succeeds.
     const rid = openAndApprove(sim, id, guardians, 2, EPH_B, guardians[1]);
@@ -193,7 +193,7 @@ describe('§3.9.9 what resets the count', () => {
     expect(sim.ledger.vetoCounts.lookup(id).read()).toBe(1n);
     const rid2 = openAs(sim, guardians[2], g1.newId, EPH_C);
     sim.ps.vetoSecret = g1.vSecret; sim.ps.vetoSalt = g1.vSalt;   // the successor's card
-    sim.call('vetoRecovery', rid2);
+    sim.call('vetoRecovery', rid2, NO_RESERVATION);
     expect(sim.ledger.vetoCounts.lookup(id).read()).toBe(2n);
     sim.setTime(lastVeto(sim, id) + 2 * DAY - 1);
     expect(() => openAs(sim, guardians[1], g1.newId, EPH_D)).toThrow(/cooling down/);
@@ -206,7 +206,7 @@ describe('§3.9.10 slot release, each boundary at t - 1 and t', () => {
   it('vetoed: the slot frees at once, the cooldown gates the next open', () => {
     const { sim, id, guardians } = world();
     const rid = openAs(sim, guardians[0], id, EPH_A);
-    sim.call('vetoRecovery', rid);
+    sim.call('vetoRecovery', rid, NO_RESERVATION);
     expect(recoveryStatus(sim.ledger, rid, sim.now)).toBe('vetoed');
     expect(slotOf(sim.ledger, id, sim.now)).toMatchObject({ free: true, canOpen: false, vetoes: 1 });
     sim.setTime(lastVeto(sim, id) + DAY - 1);
@@ -349,9 +349,9 @@ describe('§3.9.15 a retired card has no effect on the successor', () => {
     const oldCard = { vetoSecret: sim.ps.vetoSecret, vetoSalt: sim.ps.vetoSalt };
     const g1 = succeed(sim, id, guardians, 1, EPH_A);
     Object.assign(sim.ps, oldCard);
-    expect(() => sim.call('vetoRecovery', g1.rid)).toThrow(/identity retired/);
+    expect(() => sim.call('vetoRecovery', g1.rid, NO_RESERVATION)).toThrow(/identity retired/);
     const rid2 = openAs(sim, guardians[1], g1.newId, EPH_B);
-    expect(() => sim.call('vetoRecovery', rid2)).toThrow(/veto secret does not open/);
+    expect(() => sim.call('vetoRecovery', rid2, NO_RESERVATION)).toThrow(/veto secret does not open/);
     expect(sim.ledger.vetoCounts.lookup(id).read()).toBe(0n);
     expect(sim.ledger.lastVetoAt.lookup(id)).toBe(0n);
   });

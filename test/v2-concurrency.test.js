@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   world, asGuardian, openAs, openAndApprove, toUnlock, loadLineage, periodOf, ephSkFor,
-  snapshot, proveAgainst, replay, land, pureCircuits, bytes32, fieldOf, EPH_A, EPH_B, hex,
+  snapshot, proveAgainst, replay, land, pureCircuits, bytes32, fieldOf, EPH_A, EPH_B, hex, NO_RESERVATION,
 } from './v2-fixtures.js';
 
 const READ_MISMATCH = (expected, actual) =>
@@ -80,7 +80,7 @@ describe('v2 read-commitment contention: finalizeRecovery', () => {
 
   it('detects a real conflict: a veto that lands first invalidates the pending finalize', () => {
     const { sim, rid, pending } = provedFinalize();
-    sim.call('vetoRecovery', rid);
+    sim.call('vetoRecovery', rid, NO_RESERVATION);
     expect(sim.ledger.killed.member(rid)).toBe(true);
     const S1 = snapshot(sim);
     expect(() => replay(sim, S1, pending)).toThrow(READ_MISMATCH('-', '01'));
@@ -96,7 +96,7 @@ describe('v2 contention: the veto stays write-only on rate-limit state', () => {
   it('a veto proved before an approval lands still applies', () => {
     const { sim, id, guardians } = world({ n: 3 });
     const rid = openAndApprove(sim, id, guardians, 1);
-    const pending = proveAgainst(sim, snapshot(sim), 'vetoRecovery', rid);
+    const pending = proveAgainst(sim, snapshot(sim), 'vetoRecovery', rid, NO_RESERVATION);
     asGuardian(sim, guardians[1]);
     sim.call('approveRecovery', id, rid);
     expect(() => land(sim, pending)).not.toThrow();
@@ -108,7 +108,7 @@ describe('v2 contention: the veto stays write-only on rate-limit state', () => {
     const { sim, id, guardians } = world();
     const rid = openAndApprove(sim, id, guardians, 2);
     toUnlock(sim, rid);
-    const pending = proveAgainst(sim, snapshot(sim), 'vetoRecovery', rid);
+    const pending = proveAgainst(sim, snapshot(sim), 'vetoRecovery', rid, NO_RESERVATION);
     sim.call('finalizeRecovery', rid, NEW_ID(), NEW_VETO());
     expect(() => replay(sim, snapshot(sim), pending)).toThrow(ANY_READ_MISMATCH);
     expect(sim.ledger.vetoCounts.lookup(id).read()).toBe(0n);

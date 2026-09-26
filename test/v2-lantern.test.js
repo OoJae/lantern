@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import {
   Lantern2Sim, pureCircuits, bytes32, fieldOf,
   world, asGuardian, openAs, openAndApprove, recordOf, toUnlock, vetoAndCool, idCommit, vetoCommit,
-  ID_SECRET, ID_SALT, VETO_SECRET, VETO_SALT, EPH_A, EPH_B, DELAY, SLACK, hex,
+  ID_SECRET, ID_SALT, VETO_SECRET, VETO_SALT, EPH_A, EPH_B, DELAY, SLACK, hex, NO_RESERVATION,
 } from './v2-fixtures.js';
 import { assertNoLeak, scanProofData } from '../src/leakscan.js';
 
@@ -151,7 +151,7 @@ describe('v2 veto', () => {
   it('kills an in-flight recovery for the veto-secret holder', () => {
     const { sim, id, guardians } = world();
     const rid = openAndApprove(sim, id, guardians, 2);
-    sim.call('vetoRecovery', rid);
+    sim.call('vetoRecovery', rid, NO_RESERVATION);
     expect(sim.ledger.killed.member(rid)).toBe(true);
   });
 
@@ -160,21 +160,21 @@ describe('v2 veto', () => {
     const rid = openAndApprove(sim, id, guardians, 2);
     sim.ps.vetoSecret = ID_SECRET;
     sim.ps.vetoSalt = ID_SALT;
-    expect(() => sim.call('vetoRecovery', rid)).toThrow(/veto secret does not open/);
+    expect(() => sim.call('vetoRecovery', rid, NO_RESERVATION)).toThrow(/veto secret does not open/);
   });
 
   it('cannot be performed by a colluding guardian', () => {
     const { sim, id, guardians } = world();
     const rid = openAndApprove(sim, id, guardians, 2);
     sim.ps.vetoSecret = fieldOf(666);
-    expect(() => sim.call('vetoRecovery', rid)).toThrow(/veto secret does not open/);
+    expect(() => sim.call('vetoRecovery', rid, NO_RESERVATION)).toThrow(/veto secret does not open/);
   });
 
   it('cannot be replayed onto the same recovery', () => {
     const { sim, id, guardians } = world();
     const rid = openAndApprove(sim, id, guardians, 2);
-    sim.call('vetoRecovery', rid);
-    expect(() => sim.call('vetoRecovery', rid)).toThrow(/veto already used/);
+    sim.call('vetoRecovery', rid, NO_RESERVATION);
+    expect(() => sim.call('vetoRecovery', rid, NO_RESERVATION)).toThrow(/veto already used/);
   });
 
   // (c): the second attempt can only open once the first is dead and the
@@ -184,7 +184,7 @@ describe('v2 veto', () => {
     const ridA = openAndApprove(sim, id, guardians, 1, EPH_A);
     vetoAndCool(sim, ridA);
     const ridB = openAs(sim, guardians[1], id, EPH_B);
-    expect(() => sim.call('vetoRecovery', ridB)).not.toThrow();
+    expect(() => sim.call('vetoRecovery', ridB, NO_RESERVATION)).not.toThrow();
   });
 });
 
@@ -247,7 +247,7 @@ describe('v2 finalize', () => {
   it('rejects a vetoed recovery', () => {
     const { sim, id, guardians } = world();
     const rid = openAndApprove(sim, id, guardians, 2);
-    sim.call('vetoRecovery', rid);
+    sim.call('vetoRecovery', rid, NO_RESERVATION);
     toUnlock(sim, rid);
     expect(() => finalize(sim, rid)).toThrow(/recovery vetoed/);
   });
@@ -301,7 +301,7 @@ describe('v2 privacy', () => {
   it('never leaks the veto secret or salt on veto', () => {
     const { sim, id, guardians } = world();
     const rid = openAndApprove(sim, id, guardians, 2);
-    sim.call('vetoRecovery', rid);
+    sim.call('vetoRecovery', rid, NO_RESERVATION);
     assertNoLeak(sim.lastProofData, { vetoSecret: VETO_SECRET, vetoSalt: VETO_SALT });
   });
 
