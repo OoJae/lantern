@@ -14,8 +14,11 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { pureCircuits as V1 } from './simulator.js';
 import { pureCircuits as V2 } from './v2-simulator.js';
-import { idSaltOf as v1IdSaltOf, vetoSaltOf as v1VetoSaltOf } from '../src/identity.js';
-import { idSaltOf, vetoSaltOf, newIdentity, commitmentsOf, ID_SALT_DOMAIN, VETO_SALT_DOMAIN } from '../src/v2/identity.js';
+import * as rt from '@midnight-ntwrk/compact-runtime';
+import * as Lantern2 from '../contracts/managed-lantern2/contract/index.js';
+import { idSaltOf as v1IdSaltOf, vetoSaltOf as v1VetoSaltOf, newIdentity as v1NewIdentity, dealShares as v1DealShares } from '../src/identity.js';
+import { idSaltOf, vetoSaltOf, newIdentity, commitmentsOf, recoverFromShares, ID_SALT_DOMAIN, VETO_SALT_DOMAIN } from '../src/v2/identity.js';
+import { createLantern2Sim } from '../src/v2/sim.js';
 
 const hex = (u) => Buffer.from(u).toString('hex');
 const A = new Uint8Array(32).map((_, i) => i);
@@ -150,5 +153,35 @@ describe('v2 domains: the client salts', () => {
 
   it('commitmentsOf refuses v1 pure circuits', () => {
     expect(() => commitmentsOf(V1, newIdentity())).toThrow(/not Lantern v2/);
+  });
+});
+
+describe('v2 domains: one identity secret in v1 and v2 merges the guardian sets (second review, spec §2)', () => {
+  // The salts differ, so observers cannot link the two commitments, and the v2
+  // client accepts the identity (its salts are v2's). But the SECRET is the same:
+  // t of v1's guardians rebuild it from v1 shares alone, and so act as the v2 owner.
+  const nonce = (n) => new Uint8Array(32).fill(n);
+
+  it('two of v1\'s guardians, with v1 shares only, pass the v2 gate as the owner, until the owner locks', () => {
+    const v1 = v1NewIdentity();
+    const v1Shares = v1DealShares(v1.identitySecret, 3, 2);         // what v1's guardians hold
+    const card = newIdentity();
+    const owner = { identitySecret: v1.identitySecret, idSalt: idSaltOf(v1.identitySecret), vetoSecret: card.vetoSecret, vetoSalt: card.vetoSalt };
+    const L = createLantern2Sim({ rt, mod: Lantern2 });
+    const root = L.enrol(owner);                                      // accepted: nothing can see the secret is v1's
+    const rebuilt = recoverFromShares([v1Shares[0], v1Shares[2]]);    // v2's recovery code, v1's shares
+    expect(rebuilt.identitySecret).toBe(v1.identitySecret);
+    expect(() => L.gate(rebuilt, root, root, nonce(1))).not.toThrow();  // no v2 open, delay or veto
+    L.lock(owner, root);
+    expect(() => L.gate(rebuilt, root, root, nonce(2))).toThrow(/identity is locked/);
+  });
+
+  it('with a fresh secret from newIdentity(), v1\'s shares open nothing in v2', () => {
+    const v1 = v1NewIdentity();
+    const v1Shares = v1DealShares(v1.identitySecret, 3, 2);
+    const L = createLantern2Sim({ rt, mod: Lantern2 });
+    const root = L.enrol(newIdentity());
+    const rebuilt = recoverFromShares([v1Shares[0], v1Shares[2]]);
+    expect(() => L.gate(rebuilt, root, root, nonce(1))).toThrow(/caller does not hold the current identity secret/);
   });
 });
