@@ -14,8 +14,11 @@ const Demo = lazy(() => import('./pages/Demo.jsx'));
 const Attacks = lazy(() => import('./pages/Attacks.jsx'));
 const Brand = lazy(() => import('./pages/Brand.jsx'));
 const NotFound = lazy(() => import('./pages/NotFound.jsx'));
+const Live = lazy(() => import('./pages/Live.jsx'));
+const Rehearse = lazy(() => import('./pages/Rehearse.jsx'));
+const Kit = lazy(() => import('./pages/Kit.jsx'));
 
-const PAGES = { '/': Landing, '/demo': Demo, '/attacks': Attacks, '/about': About, '/brand': Brand };
+const PAGES = { '/': Landing, '/demo': Demo, '/attacks': Attacks, '/about': About, '/brand': Brand, '/live': Live, '/rehearse': Rehearse, '/kit': Kit };
 // What a lazy page says while it loads: nothing, where there is nothing worth saying.
 const LOADING = { '/demo': 'Loading the contract…', '/attacks': 'Loading the contract…', '/brand': 'Opening the brand kit…' };
 
@@ -24,7 +27,7 @@ const NAV = [['/demo', 'The recovery'], ['/attacks', 'Attack it'], ['/about', 'W
 // Each page's title, so history, tabs and a screen reader's page change name the page: its name in the
 // nav, then "· Lantern" ("Nothing here · Lantern" for an address with no page). The landing keeps
 // index.html's.
-const TITLES = Object.fromEntries([...NAV, ['/brand', 'Brand kit'], ['', 'Nothing here']].map(([to, name]) => [to, `${name} · Lantern`]));
+const TITLES = Object.fromEntries([...NAV, ['/brand', 'Brand kit'], ['/live', 'On Preprod'], ['/rehearse', 'Rehearse a recovery'], ['/kit', 'Recovery kits'], ['', 'Nothing here']].map(([to, name]) => [to, `${name} · Lantern`]));
 TITLES['/'] = document.title;
 
 export default function App() {
@@ -101,6 +104,7 @@ export default function App() {
           <p>Social recovery for Midnight private state · <span className="nowrap">Midnight Korea Hackathon 2026</span></p>
           <p className="colophon"><span>Apache-2.0</span> · <span>Compact 0.31.1</span> · <span>compact-runtime 0.16.0</span></p>
           <p>Source code: <a href="https://github.com/OoJae/lantern">github.com/OoJae/lantern</a> · <Link to="/brand" aria-current={path === '/brand' ? 'page' : undefined}>Brand kit</Link></p>
+          <p><Link to="/live" aria-current={path === '/live' ? 'page' : undefined}>On Preprod</Link> · <Link to="/rehearse" aria-current={path === '/rehearse' ? 'page' : undefined}>Rehearse a recovery</Link> · <Link to="/kit" aria-current={path === '/kit' ? 'page' : undefined}>Recovery kits</Link></p>
           <p className="fiction">The people in the story are fictional.</p>
         </div>
       </footer>

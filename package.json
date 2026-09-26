@@ -45,7 +45,8 @@
     "@midnight-ntwrk/ledger-v8": "8.1.0",
     "@midnight-ntwrk/midnight-did-jubjub-schnorr": "0.7.0",
     "@midnight-ntwrk/onchain-runtime-v3": "3.0.0",
-    "@noble/hashes": "2.4.0"
+    "@noble/hashes": "2.4.0",
+    "@scure/bip39": "2.4.0"
   },
   "devDependencies": {
     "vitest": "4.1.11"
