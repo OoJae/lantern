@@ -6,6 +6,15 @@
 #   devnet/build/host      the independently deployed host, unchanged
 #   devnet/build/shipped   the shipped lantern.compact, so verify can show every other
 #                          circuit's verifier key is identical to the shipped build's
+#
+# `compile.sh --v2` builds Lantern v2 alone, instead of the three above:
+#
+#   devnet/build/lantern2  contracts/v2/lantern2.compact, unchanged (no flavour: v2's delay is
+#                          chosen at enrolment, and 24 h is its minimum), with its proving keys.
+#                          devnet/src/v2-run.mjs deploys it; verify-v2.mjs compares the chain's
+#                          verifier keys with it
+#
+# Each mode has its own stamp, so neither rebuilds, or touches, the other's builds.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -18,6 +27,25 @@ fi
 
 # shasum comes with perl (macOS, most Linux); a minimal Linux image may have only coreutils' sha256sum.
 sha256() { if command -v shasum >/dev/null 2>&1; then shasum -a 256; else sha256sum; fi; }
+
+if [ "${1:-}" = "--v2" ]; then
+  # v2 imports identity.compact and ownergate.compact from contracts/src: both are in its stamp.
+  stamp2="$(cat contracts/v2/*.compact contracts/src/identity.compact contracts/src/ownergate.compact devnet/compile.sh | sha256 | cut -d' ' -f1)"
+  if [ -f devnet/build/.stamp-v2 ] && [ "$(cat devnet/build/.stamp-v2)" = "$stamp2" ] && [ -d devnet/build/lantern2/keys ]; then
+    echo "devnet: v2 build is current"; exit 0
+  fi
+  # As below: the stamp is written only once the build has succeeded.
+  rm -f devnet/build/.stamp-v2
+  mkdir -p devnet/build
+  echo "devnet: compiling contracts/v2/lantern2.compact -> devnet/build/lantern2"
+  rm -rf devnet/build/lantern2
+  compact compile "+${COMPACT_VERSION}" contracts/v2/lantern2.compact devnet/build/lantern2 >/dev/null \
+    || { echo "devnet: the v2 compile failed (see compact's errors above); devnet/build/lantern2 is incomplete" >&2; exit 1; }
+  echo "$stamp2" > devnet/build/.stamp-v2
+  echo "devnet: v2 built with compact ${COMPACT_VERSION}"
+  exit 0
+fi
+
 stamp="$(cat contracts/src/*.compact devnet/flavour.mjs devnet/compile.sh | sha256 | cut -d' ' -f1)"
 if [ -f devnet/build/.stamp ] && [ "$(cat devnet/build/.stamp)" = "$stamp" ] \
    && [ -d devnet/build/lantern/keys ] && [ -d devnet/build/host/keys ] && [ -d devnet/build/shipped/keys ]; then
