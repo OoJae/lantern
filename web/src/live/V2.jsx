@@ -59,7 +59,7 @@ export default function V2({ chain }) {
   return (
     <div className="lv-v2">
       <p className="lv-intro">
-        A second contract on Preprod, beside the shipped one: Lantern v2, which adds four rules to the design
+        A separate contract on Preprod, beside the shipped one: Lantern v2, which adds four rules to the design
         (<a href={DOCS}>what v2 changes, and why</a>). <strong>It is not the shipped contract</strong>, and the recovery at
         the top of this page does not run on it. Its run deployed it as compiled, froze its rules, then exercised each
         rule once with real proofs: {s.steps} steps, {s.accepted} calls the contract accepted and {s.refused} its circuit

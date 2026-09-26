@@ -33,6 +33,7 @@ const COMMANDS = [
   ['npm run devnet:verify', 're-check that chain against the record'],
   ['LANTERN_NETWORK=preprod npm run devnet:verify', 're-check the whole story’s Preprod run against the public chain, with no wallet'],
   ['LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify', 're-check the shipped contract’s Preprod run the same way'],
+  ['LANTERN_NETWORK=preprod npm run devnet:verify:v2', 're-check Lantern v2’s Preprod run the same way'],
 ];
 
 // The table's cells carry their column's name for the phone layout, where each row is a card that
@@ -70,6 +71,7 @@ export default function About() {
             <tr className="chain"><th scope="row"><code>npm run devnet</code></th><Cells values={['the same source, compiled with one constant changed: a 60-second timelock instead of 72 hours', 'a local Midnight node and indexer', 'real, from a local proof server', 'real DUST']} /></tr>
             <tr className="chain"><th scope="row"><code>npm run devnet</code>, on Preprod</th><Cells values={['the same source, with the same 60-second timelock', 'Midnight Preprod, a public test network', 'real, from a local proof server', 'real DUST']} /></tr>
             <tr className="chain"><th scope="row">The shipped contract, on Preprod</th><Cells values={['the shipped build, unchanged: a 72-hour timelock', 'Midnight Preprod, a public test network', 'real, from a local proof server', 'real DUST']} /></tr>
+            <tr className="chain"><th scope="row">Lantern v2, on Preprod</th><Cells values={['contracts/v2/lantern2.compact, unchanged: a separate contract beside the shipped one, with a 24-hour delay the run never waits out', 'Midnight Preprod, a public test network', 'real, from a local proof server', 'real DUST']} /></tr>
           </tbody>
         </table>
       </div>
