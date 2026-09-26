@@ -44,7 +44,7 @@ secret. Here is exactly what that is worth.
 | Guardians survive a recovery, so an identity can be recovered again | **Held** | stable `idRoot`; leaves bind a guardian context, not the rotating commitment |
 | A downstream contract keeps working across a key loss | **Held, in-contract** | `hostGatedAction` reads `retiredIdentities` directly |
 | An *independently deployed* contract keeps working | **Held, but strictly less sound** | `requireCurrentOwnerAttested` proves the caller holds the current identity secret, against a committee-signed canonical snapshot — but it accepts a retired owner's secret until a snapshot built after the recovery seals, for at most 24 h after the latest seal. §4.4 |
-| The rules of a deployed instance cannot change | **Held on the recorded deployments**, local and on Preprod — not a property of the source | each recorded run replaced its maintenance authority with an empty committee. `npm run devnet:verify` (against the local chain while it runs, or with `LANTERN_NETWORK=preprod` against Preprod at any time) and `LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify` (on Preprod, at any time) re-check this and that every verifier key on the chain matches a fresh compile; offline, `test/record.test.js` checks the committed records (`deployments/`), and `devnet/test/v2-record.test.mjs` the v2 record. Any other deployer can keep the key: check before you trust an instance |
+| The rules of a deployed instance cannot change | **Held on the recorded deployments**, local and on Preprod — not a property of the source | each recorded run replaced its maintenance authority with an empty committee. `npm run devnet:verify` (against the local chain while it runs, or with `LANTERN_NETWORK=preprod` against Preprod at any time), `LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify` and, for Lantern v2, `LANTERN_NETWORK=preprod npm run devnet:verify:v2` (both on Preprod, at any time) re-check this and that every verifier key on the chain matches a fresh compile; offline, `test/record.test.js` checks the committed records (`deployments/`), and `test/v2-record.test.js` and `devnet/test/v2-record.test.mjs` the v2 records. Any other deployer can keep the key: check before you trust an instance |
 | Nothing trusts the fee payer | **Held** | no circuit uses the caller's coin key or any token operation; every check is a commitment opening or a signature. `test/authentication.test.js` |
 | Guardian *count* and *threshold* stay private | **Not held** | `thresholds` is public; `n` is recoverable from transaction history |
 | t colluding guardians cannot take the identity | **Not held.** Nothing here claims otherwise. Until your recovery finalizes they can also act as you | §4.3 |
@@ -487,14 +487,14 @@ identity secret is exactly what a lost device leaks.
 *Confidentiality: **Lost** for that identity · Integrity: **Held**, if the device erased every guardian kit after dealing · Availability: **Held***
 
 **Can.** Act as the owner at every host until the owner's recovery finalizes:
-`hostGatedAction` and `proveHeadOwnership` accept the secret, because until then it
-*is* the current owner's secret. That window is the honest cost of any recovery
-scheme, and it closes the moment `finalizeRecovery` retires the commitment. Open
-recoveries (anyone can, §5). Lantern v2, built and tested but not deployed, adds an
-emergency lock that lets the veto card close the window sooner at every DApp that
-reads Lantern's ledger; an independently deployed DApp would also need a snapshot
-that leaves locked identities out, which is not built ([`docs/v2.md` §4](docs/v2.md#4-emergency-lock)). The
-shipped contract has no lock.
+`hostGatedAction` and `proveHeadOwnership` accept the secret, because until then it *is*
+the current owner's secret. That window is the honest cost of any recovery scheme, and
+it closes the moment `finalizeRecovery` retires the commitment. Open recoveries (anyone
+can, §5). Lantern v2, a separate contract deployed on Preprod beside the shipped one and
+not in its place, adds an emergency lock that lets the veto card close the window sooner
+at every DApp that reads Lantern's ledger; an independently deployed DApp would also
+need a snapshot that leaves locked identities out, which is not built ([`docs/v2.md`
+§4](docs/v2.md#4-emergency-lock)). The shipped contract has no lock.
 
 With guardian tokens the device kept after dealing (§2, §6.16), open, approve and
 finalize a recovery of its own. `addGuardian` refuses this thief, but kept tokens need no
@@ -616,7 +616,9 @@ consequence.
    guardian set, which cancels every open recovery at once, your own included, and needs
    the veto card; an attacker can then open again, one fee each.
    **v2, not shipped:** [`contracts/v2/lantern2.compact`](contracts/v2/lantern2.compact)
-   closes it in a separate, undeployed contract ([`docs/v2.md` §3](docs/v2.md#3-rate-limited-opens)):
+   closes it in a separate contract, deployed on Preprod beside the shipped one and not
+   in its place ([`docs/v2.md` §3](docs/v2.md#3-rate-limited-opens);
+   `LANTERN_NETWORK=preprod npm run devnet:verify:v2` checks it):
    only a current guardian can open, each at most once per head per quarter; one
    recovery may be in flight per identity; and after each veto the wait before the
    next open doubles, from 1 day to at most 32, except for the owner's next device,
@@ -957,23 +959,25 @@ after reading §4.4. The contract checks none of the following, so check it your
   are in the shipped contract, but v1's suite would still pass with any of them removed;
   tests that name them are future work. **v2, not shipped:** each equivalent check in
   `contracts/v2/lantern2.compact` has a test that fails when the check is disabled (the
-  second review of v2, [docs/v2.md §14.2](docs/v2.md#142-built-tested-not-deployed)).
+  second review of v2, [docs/v2.md §14.2](docs/v2.md#142-built-tested-and-deployed-on-preprod)).
 - The site's checks of Preprod, in the browser on `/live` and in the terminal, read the
   chain through Preprod's public indexer and trust its answers. We have not run either
   against a node and indexer of our own. The site's `connect-src` allows that indexer on
   every route, and `/kit` and `/rehearse` generate secrets in the page (§4.2).
 
-**If this continued past the hackathon, we would fix, in order:** deploy the
-rate-limited opens Lantern v2 builds (§6.4); reconstruct in a disposable worker (§6.5);
-make the committee size a constructor parameter, and let the members who can still vote
-replace a slot that cannot (§8).
+**If this continued past the hackathon, we would fix, in order:** put the rate-limited
+opens of Lantern v2, on Preprod beside the shipped contract, in front of real users
+(§6.4); reconstruct in a disposable worker (§6.5); make the committee size a constructor
+parameter, and let the members who can still vote replace a slot that cannot (§8).
 
-The fixes that need a new contract are built and tested, not deployed, in Lantern v2
-([`docs/v2.md`](docs/v2.md)): rate-limited opens (§6.4), an emergency lock that lets the
-veto card stop a stolen identity secret acting as the owner at every DApp that reads
-Lantern's ledger (§4.5), a recovery delay chosen at enrolment, and private guardian
-check-ins; it also answers §6.12, §6.13, §6.14 and §6.15. The shipped contract on Preprod is
-frozen and unchanged, and nothing in this document claims v2's properties for it.
+The fixes that need a new contract are built and tested in Lantern v2
+([`docs/v2.md`](docs/v2.md)), a separate contract deployed on Preprod beside the shipped
+one (`LANTERN_NETWORK=preprod npm run devnet:verify:v2` checks it): rate-limited opens
+(§6.4), an emergency lock that lets the veto card stop a stolen identity secret acting
+as the owner at every DApp that reads Lantern's ledger (§4.5), a recovery delay chosen
+at enrolment, and private guardian check-ins; it also answers §6.12, §6.13, §6.14 and
+§6.15. The shipped contract on Preprod is frozen and unchanged, and nothing in this
+document claims v2's properties for it.
 
 ---
 
