@@ -35,6 +35,8 @@
     "web:e2e": "npm run build --prefix web && npm run e2e --prefix web",
     "devnet": "bash devnet/run.sh",
     "devnet:verify": "node devnet/src/verify.mjs",
+    "devnet:v2": "bash devnet/run.sh v2",
+    "devnet:verify:v2": "bash devnet/compile.sh --v2 && node devnet/src/verify-v2.mjs",
     "devnet:down": "docker compose -f devnet/compose.yml down -v",
     "devnet:bench": "bash devnet/run.sh bench",
     "watch": "node devnet/src/watch.mjs",

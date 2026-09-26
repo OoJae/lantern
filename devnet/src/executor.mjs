@@ -22,8 +22,8 @@ const CALL_TIMEOUT_MS = 180_000;
 const ACTOR = 'actor';
 const secs = (ms) => Math.round(ms / 100) / 10;
 
-/** Wrap the providers so every phase of a transaction is timed. */
-function timedProviders(base, current) {
+/** Wrap the providers so every phase of a transaction is timed. (Also the v2 runner's: v2-executor.mjs.) */
+export function timedProviders(base, current) {
   const mark = (k) => { const t = current(); if (t) t[k] = Date.now(); };
   const around = (start, end, fn) => async (...a) => { mark(start); try { return await fn(...a); } finally { mark(end); } };
   const walletProvider = {
@@ -40,7 +40,7 @@ function timedProviders(base, current) {
   };
 }
 
-function phases(t) {
+export function phases(t) {
   const d = (a, b) => (t[a] && t[b] ? secs(t[b] - t[a]) : null);
   return {
     execute: d('start', 'proveStart'), prove: d('proveStart', 'proveEnd'), balance: d('balanceStart', 'balanceEnd'),

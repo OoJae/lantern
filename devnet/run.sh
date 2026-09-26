@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # npm run devnet [-- --quick]: preflight, build, start the local chain, run the story.
 # With LANTERN_NETWORK=preprod the story runs on Midnight's public test network instead.
+# `run.sh v2` (npm run devnet:v2): the same, for Lantern v2's chain story (src/v2-run.mjs).
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -16,7 +17,10 @@ docker info >/dev/null 2>&1 || { echo "devnet: Docker is not running" >&2; exit 
 [ -d ../node_modules ] || { echo "devnet: run 'npm install' at the repo root first" >&2; exit 1; }
 [ -d node_modules ] || npm ci --no-audit --no-fund
 
-bash compile.sh
+# `run.sh v2`: build Lantern v2 alone (compile.sh --v2), not v1's three builds.
+v2=""
+if [ "${1:-}" = "v2" ]; then v2=1; shift; fi
+if [ -n "$v2" ]; then bash compile.sh --v2; else bash compile.sh; fi
 # On Preprod only the proof server, which always runs locally, is started here.
 if [ "${LANTERN_NETWORK:-undeployed}" = "undeployed" ]; then
   echo "devnet: starting the local chain (node, indexer, proof server)…"
@@ -27,4 +31,5 @@ else
 fi
 # `run.sh bench`: prove the SHIPPED finalizeRecovery (72 h lock) without submitting it.
 if [ "${1:-}" = "bench" ]; then shift; exec node src/bench.mjs "$@"; fi
+if [ -n "$v2" ]; then exec node src/v2-run.mjs "$@"; fi
 exec node src/main.mjs "$@"
