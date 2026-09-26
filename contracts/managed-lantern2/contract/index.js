@@ -684,21 +684,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('approveRecovery',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 423 char 1',
+                                     'lantern2.compact line 428 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('approveRecovery',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 423 char 1',
+                                     'lantern2.compact line 428 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
         if (!(rid_0.buffer instanceof ArrayBuffer && rid_0.BYTES_PER_ELEMENT === 1 && rid_0.length === 32)) {
           __compactRuntime.typeError('approveRecovery',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 423 char 1',
+                                     'lantern2.compact line 428 char 1',
                                      'Bytes<32>',
                                      rid_0)
         }
@@ -728,14 +728,14 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('vetoRecovery',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 453 char 1',
+                                     'lantern2.compact line 458 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(rid_0.buffer instanceof ArrayBuffer && rid_0.BYTES_PER_ELEMENT === 1 && rid_0.length === 32)) {
           __compactRuntime.typeError('vetoRecovery',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 453 char 1',
+                                     'lantern2.compact line 458 char 1',
                                      'Bytes<32>',
                                      rid_0)
         }
@@ -764,28 +764,28 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('finalizeRecovery',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 481 char 1',
+                                     'lantern2.compact line 486 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(rid_0.buffer instanceof ArrayBuffer && rid_0.BYTES_PER_ELEMENT === 1 && rid_0.length === 32)) {
           __compactRuntime.typeError('finalizeRecovery',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 481 char 1',
+                                     'lantern2.compact line 486 char 1',
                                      'Bytes<32>',
                                      rid_0)
         }
         if (!(newIdCommit_0.buffer instanceof ArrayBuffer && newIdCommit_0.BYTES_PER_ELEMENT === 1 && newIdCommit_0.length === 32)) {
           __compactRuntime.typeError('finalizeRecovery',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 481 char 1',
+                                     'lantern2.compact line 486 char 1',
                                      'Bytes<32>',
                                      newIdCommit_0)
         }
         if (!(newVetoCommit_0.buffer instanceof ArrayBuffer && newVetoCommit_0.BYTES_PER_ELEMENT === 1 && newVetoCommit_0.length === 32)) {
           __compactRuntime.typeError('finalizeRecovery',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'lantern2.compact line 481 char 1',
+                                     'lantern2.compact line 486 char 1',
                                      'Bytes<32>',
                                      newVetoCommit_0)
         }
@@ -817,21 +817,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('proveSuccession',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 531 char 1',
+                                     'lantern2.compact line 536 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idRoot_0.buffer instanceof ArrayBuffer && idRoot_0.BYTES_PER_ELEMENT === 1 && idRoot_0.length === 32)) {
           __compactRuntime.typeError('proveSuccession',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 531 char 1',
+                                     'lantern2.compact line 536 char 1',
                                      'Bytes<32>',
                                      idRoot_0)
         }
         if (!(head_0.buffer instanceof ArrayBuffer && head_0.BYTES_PER_ELEMENT === 1 && head_0.length === 32)) {
           __compactRuntime.typeError('proveSuccession',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 531 char 1',
+                                     'lantern2.compact line 536 char 1',
                                      'Bytes<32>',
                                      head_0)
         }
@@ -862,21 +862,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('proveHeadOwnership',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 539 char 1',
+                                     'lantern2.compact line 544 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idRoot_0.buffer instanceof ArrayBuffer && idRoot_0.BYTES_PER_ELEMENT === 1 && idRoot_0.length === 32)) {
           __compactRuntime.typeError('proveHeadOwnership',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 539 char 1',
+                                     'lantern2.compact line 544 char 1',
                                      'Bytes<32>',
                                      idRoot_0)
         }
         if (!(head_0.buffer instanceof ArrayBuffer && head_0.BYTES_PER_ELEMENT === 1 && head_0.length === 32)) {
           __compactRuntime.typeError('proveHeadOwnership',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 539 char 1',
+                                     'lantern2.compact line 544 char 1',
                                      'Bytes<32>',
                                      head_0)
         }
@@ -908,28 +908,28 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('hostGatedAction',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 552 char 1',
+                                     'lantern2.compact line 557 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(rootIdCommit_0.buffer instanceof ArrayBuffer && rootIdCommit_0.BYTES_PER_ELEMENT === 1 && rootIdCommit_0.length === 32)) {
           __compactRuntime.typeError('hostGatedAction',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 552 char 1',
+                                     'lantern2.compact line 557 char 1',
                                      'Bytes<32>',
                                      rootIdCommit_0)
         }
         if (!(currentIdCommit_0.buffer instanceof ArrayBuffer && currentIdCommit_0.BYTES_PER_ELEMENT === 1 && currentIdCommit_0.length === 32)) {
           __compactRuntime.typeError('hostGatedAction',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 552 char 1',
+                                     'lantern2.compact line 557 char 1',
                                      'Bytes<32>',
                                      currentIdCommit_0)
         }
         if (!(nonce_0.buffer instanceof ArrayBuffer && nonce_0.BYTES_PER_ELEMENT === 1 && nonce_0.length === 32)) {
           __compactRuntime.typeError('hostGatedAction',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'lantern2.compact line 552 char 1',
+                                     'lantern2.compact line 557 char 1',
                                      'Bytes<32>',
                                      nonce_0)
         }
@@ -960,14 +960,14 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('lockIdentity',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 585 char 1',
+                                     'lantern2.compact line 590 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('lockIdentity',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 585 char 1',
+                                     'lantern2.compact line 590 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
@@ -996,14 +996,14 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('unlockIdentity',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 596 char 1',
+                                     'lantern2.compact line 601 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('unlockIdentity',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 596 char 1',
+                                     'lantern2.compact line 601 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
@@ -1033,21 +1033,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('checkIn',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 615 char 1',
+                                     'lantern2.compact line 620 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('checkIn',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 615 char 1',
+                                     'lantern2.compact line 620 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
         if (!(typeof(period_0) === 'bigint' && period_0 >= 0n && period_0 <= 4294967295n)) {
           __compactRuntime.typeError('checkIn',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 615 char 1',
+                                     'lantern2.compact line 620 char 1',
                                      'Uint<0..4294967296>',
                                      period_0)
         }
@@ -3083,11 +3083,13 @@ export class Contract {
                                                                                                            alignment: _descriptor_0.alignment() } }] } },
                                                                                 { popeq: { cached: true,
                                                                                            result: undefined } }]).value);
-    __compactRuntime.assert(this._blockTimeGte_0(context,
+    __compactRuntime.assert(this._equal_13(vetoes_0, 0n)
+                            ||
+                            this._blockTimeGte_0(context,
                                                  partialProofData,
                                                  ((t1) => {
                                                    if (t1 > 18446744073709551615n) {
-                                                     throw new __compactRuntime.CompactError('lantern2.compact line 395 char 23: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                                                     throw new __compactRuntime.CompactError('lantern2.compact line 400 char 26: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                                                    }
                                                    return t1;
                                                  })(_descriptor_4.fromValue(__compactRuntime.queryLedgerState(context,
@@ -3161,7 +3163,7 @@ export class Contract {
                             'a recovery is already live for this identity');
     const unlockAt_0 = ((t1) => {
                          if (t1 > 18446744073709551615n) {
-                           throw new __compactRuntime.CompactError('lantern2.compact line 403 char 20: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                           throw new __compactRuntime.CompactError('lantern2.compact line 408 char 20: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                          }
                          return t1;
                        })(hi_0
@@ -3197,14 +3199,14 @@ export class Contract {
                     approveBy:
                       ((t1) => {
                         if (t1 > 18446744073709551615n) {
-                          throw new __compactRuntime.CompactError('lantern2.compact line 412 char 25: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                          throw new __compactRuntime.CompactError('lantern2.compact line 417 char 25: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                         }
                         return t1;
                       })(hi_0 + this._approvalWindowSeconds_0()),
                     expiresAt:
                       ((t1) => {
                         if (t1 > 18446744073709551615n) {
-                          throw new __compactRuntime.CompactError('lantern2.compact line 413 char 25: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                          throw new __compactRuntime.CompactError('lantern2.compact line 418 char 25: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                         }
                         return t1;
                       })(unlockAt_0 + this._finalizeWindowSeconds_0()) };
@@ -3312,7 +3314,7 @@ export class Contract {
                                                                                                         alignment: _descriptor_0.alignment() } }] } },
                                                                              { popeq: { cached: false,
                                                                                         result: undefined } }]).value);
-    __compactRuntime.assert(this._equal_13(rec_0.idCommit, idCommit_0),
+    __compactRuntime.assert(this._equal_14(rec_0.idCommit, idCommit_0),
                             'recovery is not for this identity');
     __compactRuntime.assert(!_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                        partialProofData,
@@ -3363,7 +3365,7 @@ export class Contract {
                                                                                                          alignment: _descriptor_0.alignment() } }] } },
                                                                               { popeq: { cached: false,
                                                                                          result: undefined } }]).value));
-    __compactRuntime.assert(this._equal_14(path_0.leaf,
+    __compactRuntime.assert(this._equal_15(path_0.leaf,
                                            this._guardianLeafOf_0(secret_0,
                                                                   ctx_0,
                                                                   this._leafSalt_0(context,
@@ -3505,7 +3507,7 @@ export class Contract {
                                                                                         result: undefined } }]).value);
     const vs_0 = this._vetoSecret_0(context, partialProofData);
     let tmp_0;
-    __compactRuntime.assert(this._equal_15((tmp_0 = rec_0.idCommit,
+    __compactRuntime.assert(this._equal_16((tmp_0 = rec_0.idCommit,
                                             _descriptor_0.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                                       partialProofData,
                                                                                                       [
@@ -3635,7 +3637,7 @@ export class Contract {
     const lo_0 = this._claimedNow_0(context, partialProofData);
     const hi_0 = ((t1) => {
                    if (t1 > 18446744073709551615n) {
-                     throw new __compactRuntime.CompactError('lantern2.compact line 470 char 14: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                     throw new __compactRuntime.CompactError('lantern2.compact line 475 char 14: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                    }
                    return t1;
                  })(lo_0 + this._openSlackSeconds_0());
@@ -3778,7 +3780,7 @@ export class Contract {
                                                                                                    result: undefined } }]).value),
                             'identity already retired');
     let tmp_0;
-    __compactRuntime.assert(this._equal_16((tmp_0 = rec_0.idRoot,
+    __compactRuntime.assert(this._equal_17((tmp_0 = rec_0.idRoot,
                                             _descriptor_0.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                                       partialProofData,
                                                                                                       [
@@ -3802,7 +3804,7 @@ export class Contract {
                                                                                                                   result: undefined } }]).value)),
                                            rec_0.ctx),
                             'guardian set was rotated since this recovery opened');
-    __compactRuntime.assert(this._equal_17(this._ephemeralPkOf_0(this._ephemeralSk_0(context,
+    __compactRuntime.assert(this._equal_18(this._ephemeralPkOf_0(this._ephemeralSk_0(context,
                                                                                      partialProofData)),
                                            rec_0.ephemeralPk),
                             'not the device the guardians approved');
@@ -3860,7 +3862,7 @@ export class Contract {
                                                                                          { popeq: { cached: true,
                                                                                                     result: undefined } }]).value)),
                             'not enough approvals');
-    __compactRuntime.assert(this._equal_18(this._idCommitOf_1(this._identitySecret_0(context,
+    __compactRuntime.assert(this._equal_19(this._idCommitOf_1(this._identitySecret_0(context,
                                                                                      partialProofData),
                                                               this._idSalt_0(context,
                                                                              partialProofData)),
@@ -4069,7 +4071,7 @@ export class Contract {
   }
   _proveSuccession_0(context, partialProofData, idRoot_0, head_0) {
     const path_0 = this._lineagePath_0(context, partialProofData);
-    __compactRuntime.assert(this._equal_19(path_0.leaf,
+    __compactRuntime.assert(this._equal_20(path_0.leaf,
                                            this._lineageLeafOf_0(idRoot_0,
                                                                  head_0)),
                             'path does not bind to this lineage leaf');
@@ -4144,7 +4146,7 @@ export class Contract {
     return [];
   }
   _proveHeadOwnership_0(context, partialProofData, idRoot_0, head_0) {
-    __compactRuntime.assert(this._equal_20(this._idCommitOf_1(this._identitySecret_0(context,
+    __compactRuntime.assert(this._equal_21(this._idCommitOf_1(this._identitySecret_0(context,
                                                                                      partialProofData),
                                                               this._idSalt_0(context,
                                                                              partialProofData)),
@@ -4182,7 +4184,7 @@ export class Contract {
                      nonce_0)
   {
     const path_0 = this._lineagePath_0(context, partialProofData);
-    __compactRuntime.assert(this._equal_21(path_0.leaf,
+    __compactRuntime.assert(this._equal_22(path_0.leaf,
                                            this._lineageLeafOf_0(rootIdCommit_0,
                                                                  currentIdCommit_0)),
                             'path does not bind to this lineage leaf');
@@ -4275,7 +4277,7 @@ export class Contract {
                                                                                         { popeq: { cached: false,
                                                                                                    result: undefined } }]).value),
                             'identity is locked');
-    __compactRuntime.assert(this._equal_22(this._idCommitOf_1(this._identitySecret_0(context,
+    __compactRuntime.assert(this._equal_23(this._idCommitOf_1(this._identitySecret_0(context,
                                                                                      partialProofData),
                                                               this._idSalt_0(context,
                                                                              partialProofData)),
@@ -4385,7 +4387,7 @@ export class Contract {
                                                                                         { popeq: { cached: true,
                                                                                                    result: undefined } }]).value),
                             'identity retired');
-    __compactRuntime.assert(this._equal_23(_descriptor_0.fromValue(__compactRuntime.queryLedgerState(context,
+    __compactRuntime.assert(this._equal_24(_descriptor_0.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                                      partialProofData,
                                                                                                      [
                                                                                                       { dup: { n: 0 } },
@@ -4455,7 +4457,7 @@ export class Contract {
     return [];
   }
   _unlockIdentity_0(context, partialProofData, idCommit_0) {
-    __compactRuntime.assert(this._equal_24(this._idCommitOf_1(this._identitySecret_0(context,
+    __compactRuntime.assert(this._equal_25(this._idCommitOf_1(this._identitySecret_0(context,
                                                                                      partialProofData),
                                                               this._idSalt_0(context,
                                                                              partialProofData)),
@@ -4501,7 +4503,7 @@ export class Contract {
                                                                                         { popeq: { cached: true,
                                                                                                    result: undefined } }]).value),
                             'identity retired');
-    __compactRuntime.assert(this._equal_25(_descriptor_0.fromValue(__compactRuntime.queryLedgerState(context,
+    __compactRuntime.assert(this._equal_26(_descriptor_0.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                                      partialProofData,
                                                                                                      [
                                                                                                       { dup: { n: 0 } },
@@ -4636,7 +4638,7 @@ export class Contract {
     this._assertCurrentPeriod_0(context, partialProofData, period_0);
     const secret_0 = this._guardianSecret_0(context, partialProofData);
     const path_0 = this._guardianPath_0(context, partialProofData);
-    __compactRuntime.assert(this._equal_26(path_0.leaf,
+    __compactRuntime.assert(this._equal_27(path_0.leaf,
                                            this._guardianLeafOf_0(secret_0,
                                                                   ctx_0,
                                                                   this._leafSalt_0(context,
@@ -4833,7 +4835,7 @@ export class Contract {
     return true;
   }
   _equal_13(x0, y0) {
-    if (!x0.every((x, i) => y0[i] === x)) { return false; }
+    if (x0 !== y0) { return false; }
     return true;
   }
   _equal_14(x0, y0) {
@@ -4885,6 +4887,10 @@ export class Contract {
     return true;
   }
   _equal_26(x0, y0) {
+    if (!x0.every((x, i) => y0[i] === x)) { return false; }
+    return true;
+  }
+  _equal_27(x0, y0) {
     if (!x0.every((x, i) => y0[i] === x)) { return false; }
     return true;
   }

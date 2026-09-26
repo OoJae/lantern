@@ -391,8 +391,13 @@ export circuit openRecovery(idCommit: Bytes<32>, ephemeralPk: Bytes<32>, period:
   openNullifiers.insert(disclose(onul));
 
   // NEW: the doubling cooldown after vetoes, from the last veto's later bound.
+  // With no vetoes there is no wait at all, and lastVetoAt is not even read.
+  // The `vetoes == 0` clause is what makes a rotation's reset complete: the
+  // rotation zeroes the count but leaves lastVetoAt, which is the last veto's
+  // LATER bound and so may sit up to the slack in the future.
   const vetoes = vetoCounts.lookup(disclose(idRoot)).read();
-  assert(blockTimeGte((lastVetoAt.lookup(disclose(idRoot)) + cooldownSecondsOf(vetoes)) as Uint<64>),
+  assert(vetoes == 0
+         || blockTimeGte((lastVetoAt.lookup(disclose(idRoot)) + cooldownSecondsOf(vetoes)) as Uint<64>),
          "cooling down after a veto");
 
   // NEW: one live recovery per root.
