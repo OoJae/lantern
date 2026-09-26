@@ -963,10 +963,10 @@ after reading §4.4. The contract checks none of the following, so check it your
   against a node and indexer of our own. The site's `connect-src` allows that indexer on
   every route, and `/kit` and `/rehearse` generate secrets in the page (§4.2).
 
-**If this continued past the hackathon, we would fix, in order:** rate-limit
-`openRecovery` (§6.4); reconstruct in a disposable worker (§6.5); make the committee
-size a constructor parameter, and let the members who can still vote replace a slot
-that cannot (§8).
+**If this continued past the hackathon, we would fix, in order:** deploy the
+rate-limited opens Lantern v2 builds (§6.4); reconstruct in a disposable worker (§6.5);
+make the committee size a constructor parameter, and let the members who can still vote
+replace a slot that cannot (§8).
 
 The fixes that need a new contract are built and tested, not deployed, in Lantern v2
 ([`docs/v2.md`](docs/v2.md)): rate-limited opens (§6.4), an emergency lock that lets the
