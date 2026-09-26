@@ -283,7 +283,7 @@ The other changes, by circuit:
 These go in `test/v2-ratelimit.test.js`. The refusal messages are the circuit's own.
 
 1. A second open while one is live is refused (`a recovery is already live`), from a *different* guardian and with a different device key.
-2. A stranger with no leaf cannot open. A guardian of another identity cannot open for this one: its leaf binds a different context (`does not bind`). A forged secret against a real path fails the same way.
+2. A stranger cannot open. With no leaf, a forged secret against a real guardian's path fails (`does not bind`). With a leaf of her own that binds this context, a path the tree never held fails (`guardian not in tree`). A guardian of another identity cannot open for this one: its leaf binds a different context (`does not bind`).
 3. A guardian evicted by rotation cannot open (`does not bind`: the current context changed).
 4. A guardian opens at most once per head per period (`already opened a recovery this period`), even with a new device key. In the next period (`advance(P)`) it can. After a successful finalize, the same guardian can open for the successor in the same period (a new head).
 5. A future period (`has not started`) and a past period (`has ended`) are refused.

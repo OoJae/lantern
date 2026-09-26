@@ -484,8 +484,8 @@ consequence.
    guardian check-ins. Its design, its own limits and its measured cost are in
    [docs/v2-spec.md](docs/v2-spec.md); `npm run test:v2` runs its tests. Apart from one
    note in §2 (the dealt guardian secrets), one in §4.3 (never reuse an identity
-   secret across v1 and v2) and one in item 13 below, nothing in this document's
-   other sections describes v2.
+   secret across v1 and v2), one in item 13 below and one in §9 (the v1 tests'
+   unnamed refusals), nothing in this document's other sections describes v2.
 
 5. **A reconstructed secret cannot be zeroised.** `reconstruct()` returns a
    JavaScript `BigInt`, which is immutable. The secret stays in the recovering
@@ -641,6 +641,15 @@ build-to-seal time, and only after reading §4.4.
   same); across machines and operating systems it is not proven.
 - Every role in the recorded runs, local and on Preprod, shares one local proof server,
   which sees each prover's witnesses. That is a demo convenience, not the deployment model (§4.2b).
+- Three of `contracts/src/lantern.compact`'s refusals have no v1 test that expects them
+  by name: `guardian not in tree` (the tree-root check in `approveRecovery`); `not a
+  known lineage root` and the gate's `descends` (no v1 test uses a forged lineage path);
+  and `successor already enrolled`, which `test/lantern.test.js` accepts as an
+  alternative to `already retired`, the refusal that test actually reaches. The checks
+  are in the shipped contract; a test that removed one would still pass. The v1 tests
+  are frozen with the contract, so this stays future work. **v2, not shipped:** each
+  equivalent check in `contracts/v2/lantern2.compact` has a test that fails when the
+  check is disabled (the second review of v2, [docs/v2-spec.md §14.2](docs/v2-spec.md#142-built-tested-not-deployed)).
 
 **If this continued past the hackathon, we would fix, in order:** rate-limit
 `openRecovery` (§6.4); reconstruct in a disposable worker (§6.5); make the committee
