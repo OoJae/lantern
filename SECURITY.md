@@ -461,6 +461,14 @@ consequence.
    per-identity open counter, no escalating delay. One fee buys one more recovery
    the owner must veto within 72 hours; an owner offline for three days loses.
    Designed, not shipped — this is the largest gap between this and a production system.
+   **v2, not shipped:** [`contracts/v2/lantern2.compact`](contracts/v2/lantern2.compact)
+   closes it in a separate, undeployed contract: only a current guardian can open,
+   once per head per quarter, one recovery may be in flight per identity, and each
+   veto doubles the wait before the next open, to a 32-day bound. It also adds an
+   emergency lock, a delay chosen at enrolment (24 h to 90 days) and private
+   guardian check-ins. Its design, its own limits and its measured cost are in
+   [docs/v2.md](docs/v2.md); `npm run test:v2` runs its tests. Nothing in this
+   document's other sections describes v2.
 
 5. **A reconstructed secret cannot be zeroised.** `reconstruct()` returns a
    JavaScript `BigInt`, which is immutable. The secret stays in the recovering

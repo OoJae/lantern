@@ -437,7 +437,7 @@ All 21 are in [SECURITY.md §7](SECURITY.md#7-found-and-fixed-in-review).
 
 ## Roadmap
 
-1. **Rate-limit `openRecovery`**, with a bond or an escalating delay. Today one fee buys one more recovery the owner must veto; this is the largest gap between Lantern and a production system ([SECURITY.md §6.4](SECURITY.md#6-known-limitations)).
+1. **Rate-limit `openRecovery`**, with a bond or an escalating delay. Today one fee buys one more recovery the owner must veto; this is the largest gap between Lantern and a production system ([SECURITY.md §6.4](SECURITY.md#6-known-limitations)). **Built and tested, not deployed:** [Lantern v2](docs/v2.md) is a separate contract, [`contracts/v2/lantern2.compact`](contracts/v2/lantern2.compact), with guardian-only opens, one recovery in flight per identity and a doubling wait after each veto, plus an emergency lock, a delay chosen at enrolment and private guardian check-ins. All 13 of its circuits fit k ≤ 14 (`npm run cost:check:v2`), and `npm run test:v2` runs its tests. The contract above is unchanged.
 2. **Reconstruct in a disposable worker**, so a rebuilt secret cannot linger in the heap (§6.5).
 3. **Make the committee size a constructor parameter**; it is fixed at three.
 4. **A delegation-safe gate.** Every owner and guardian gate today takes its secret as a witness, so a remote prover learns it. A signature gate would not; today only the host committee's votes are signature checks.
