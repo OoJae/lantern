@@ -511,6 +511,26 @@ describe('F3: unlocking replaces the card, so whoever copied it cannot lock agai
     expect(sim.ledger.killed.member(rid)).toBe(false);
   });
 
+  it('adv-v2 round 2: a killed recovery stays killed after the card is replaced, so the new card cannot count it again', () => {
+    // The veto nullifier hashes the card's secret with the rid, so a NEW card is
+    // a new nullifier: once unlocking can install one, only `recovery already
+    // killed` stops a second veto of a dead recovery from counting again,
+    // doubling the cooldown and replacing the reservation (no test reached it).
+    const { sim, id, idRoot, guardians } = world({ n: 3 });
+    const rid = openAs(sim, guardians[0], id, EPH_A);
+    sim.call('vetoRecovery', rid, NO_RESERVATION);
+    expect(() => sim.call('vetoRecovery', rid, NO_RESERVATION)).toThrow(/veto already used for this recovery/);
+    const at = sim.ledger.lastVetoAt.lookup(idRoot);
+    const card2 = { vetoSecret: fieldOf(6161), vetoSalt: bytes32(6162) };
+    sim.call('unlockIdentity', id, P.vetoCommitOf(card2.vetoSecret, card2.vetoSalt));
+    Object.assign(sim.ps, card2);
+    sim.advance(60);
+    expect(() => sim.call('vetoRecovery', rid, P.recoveryIdOf(id, EPH_B))).toThrow(/recovery already killed/);
+    expect(sim.ledger.vetoCounts.lookup(idRoot).read()).toBe(1n);
+    expect(sim.ledger.lastVetoAt.lookup(idRoot)).toBe(at);
+    expect(hex(sim.ledger.reservedRecovery.lookup(idRoot))).toBe(hex(NO_RESERVATION));
+  });
+
   it('src/v2/sim.js unlocks with a new card when given one, and keeps the card otherwise', () => {
     const L = createLantern2Sim({ rt, mod: Lantern2 });
     const owner = newIdentity();
