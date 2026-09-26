@@ -2,13 +2,14 @@
 // /live compares each verifier key on Preprod with a SHA-256 pinned in web/src/live/keys.js. The key
 // files themselves are not committed (contracts/managed*/keys is gitignored; `npm run compile` makes
 // them), so this checks the pins against a compile: every key file must have its hash pinned, and
-// every pin must have its key file. Run it after `npm run compile`; CI's compile job does.
+// every pin must have its key file. That is the shipped build's 17 and Lantern v2's 13 (/live checks
+// deployments/preprod-v2.json too). Run it after `npm run compile`; CI's compile job does.
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 
 const root = new URL('..', import.meta.url);
 const { COMMITTED_KEYS } = await import(new URL('web/src/live/keys.js', root));
-const DIRS = { lantern: 'contracts/managed/keys/', host: 'contracts/managed-host/keys/' };
+const DIRS = { lantern: 'contracts/managed/keys/', host: 'contracts/managed-host/keys/', lantern2: 'contracts/managed-lantern2/keys/' };
 
 const problems = [];
 let checked = 0;

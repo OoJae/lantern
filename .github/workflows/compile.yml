@@ -126,29 +126,10 @@ jobs:
         run: node scripts/check-cost-v2.mjs
 
       # /live compares the verifier keys on Preprod with the SHA-256 pinned in web/src/live/keys.js.
-      # The keys are not committed, so the pins must be this fresh compile's: all 17, none extra.
+      # The keys are not committed, so the pins must be this fresh compile's, none extra: the shipped
+      # build's 17 and Lantern v2's 13 (/live checks deployments/preprod-v2.json too).
       - name: Assert /live's pinned key hashes are a fresh compile's
         run: node scripts/check-live-keys.mjs
-
-      # /live also checks Lantern v2 on Preprod (deployments/preprod-v2.json) against keys.js, whose
-      # COMMITTED_KEYS.lantern2 pins its 13 keys: every one this compile made, none extra, each equal.
-      - name: Assert /live's pinned Lantern v2 key hashes are a fresh compile's
-        run: |
-          node --input-type=module -e '
-            import { createHash } from "node:crypto";
-            import { readdirSync, readFileSync } from "node:fs";
-            const { COMMITTED_KEYS } = await import(`${process.cwd()}/web/src/live/keys.js`);
-            const dir = "contracts/managed-lantern2/keys/";
-            const files = readdirSync(dir).filter((f) => f.endsWith(".verifier")).map((f) => f.slice(0, -9)).sort();
-            const pins = COMMITTED_KEYS.lantern2 ?? {};
-            const bad = [
-              ...files.filter((n) => !(n in pins)).map((n) => `${n}: compiled, but not pinned`),
-              ...Object.keys(pins).filter((n) => !files.includes(n)).map((n) => `${n}: pinned, but not compiled`),
-              ...files.filter((n) => n in pins && createHash("sha256").update(readFileSync(dir + n + ".verifier")).digest("hex") !== pins[n]).map((n) => `${n}: the pin is not this compile'"'"'s key`),
-            ];
-            if (bad.length) { for (const b of bad) console.error(`::error::web/src/live/keys.js lantern2.${b}`); process.exit(1); }
-            console.log(`web/src/live/keys.js pins all ${files.length} of Lantern v2'"'"'s verifier keys as this compile makes them`);
-          '
 
       # /live checks the whole story's contract on Preprod against web/src/live/keys.js, which pins the
       # one key that run does not share with the committed build: the 60-second flavour's
