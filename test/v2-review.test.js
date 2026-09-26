@@ -451,9 +451,14 @@ describe('F7: a guardian\'s client sends the check-in at a random moment, never 
 });
 
 describe('F8: every check-in names the root, whoever sends it', () => {
-  it('src/v2/sim.js normalises a successor\'s commitment to the root, and the count goes up', () => {
+  // The circuit's first argument, decoded as the node decodes it. The proof's
+  // `input.value` is the runtime's ALIGNED encoding, which drops a Bytes<32>'s
+  // trailing zero bytes: a root ending in 0x00 is carried as 31 bytes. Comparing
+  // that raw atom with the 32-byte root failed about one run in 256, whenever a
+  // random root happened to end in 0x00 -- this suite's one unexplained flake.
+  const firstArg = (pd) => new rt.CompactTypeBytes(32).fromValue([pd.input.value[0]]);
+  function checkInFromSuccessor(owner) {
     const L = createLantern2Sim({ rt, mod: Lantern2 });
-    const owner = newIdentity();
     const root = L.enrol(owner);
     const rand32 = () => globalThis.crypto.getRandomValues(new Uint8Array(32));
     const gs = [0, 1].map(() => L.addGuardian(owner, root, { guardianSecret: rand32(), leafSalt: rand32() }));
@@ -465,8 +470,23 @@ describe('F8: every check-in names the root, whoever sends it', () => {
     L.finalize({ ephemeralSk: deviceSk, identitySecret: owner.identitySecret, idSalt: owner.idSalt }, rid, commitmentsOf(P, next));
     const successor = commitmentsOf(P, next).idCommit;
     expect(() => L.checkIn(gs[1], successor)).not.toThrow();
-    expect(hex(L.lastProofData.input.value[0])).toBe(hex(root));
+    expect(hex(firstArg(L.lastProofData))).toBe(hex(root));
+    expect(hex(firstArg(L.lastProofData))).not.toBe(hex(successor));
     expect(L.checkInCount(root)).toBe(1n);
+    return { root, pd: L.lastProofData };
+  }
+
+  it('src/v2/sim.js normalises a successor\'s commitment to the root, and the count goes up', () => {
+    checkInFromSuccessor(newIdentity());
+  });
+
+  it('regression: a root that ends in 0x00 is still named, though its aligned atom is 31 bytes', () => {
+    // A fixed owner whose v2 root ends in 0x00, so the case the random test hit
+    // one run in 256 is exercised on every run.
+    const seq = (...xs) => { let i = 0; return () => xs[i++]; };
+    const { root, pd } = checkInFromSuccessor(newIdentity(seq(1072n, 101072n)));
+    expect(root[31]).toBe(0);
+    expect(pd.input.value[0]).toHaveLength(31);
   });
 });
 

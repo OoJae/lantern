@@ -7,6 +7,7 @@
 // while a lock lands, a lock while a finalize lands, the period's first
 // check-in), the conflict is proved here, and so is the retry.
 import { describe, it, expect } from 'vitest';
+import * as rt from '@midnight-ntwrk/compact-runtime';
 import {
   world, asGuardian, openAs, openAndApprove, toUnlock, loadLineage, periodOf, ephSkFor,
   snapshot, proveAgainst, replay, land, pureCircuits, bytes32, fieldOf, EPH_A, EPH_B, hex, NO_RESERVATION,
@@ -15,7 +16,11 @@ import {
 const READ_MISMATCH = (expected, actual) =>
   new RegExp(`mismatch between expected \\(<\\[${expected}\\]: b\\d+>\\) and actual \\(<\\[${actual}\\]: b\\d+>\\) read`);
 const ANY_READ_MISMATCH = /mismatch between expected .* and actual .* read/;
-const isRid = (rid) => (cell) => Buffer.from(cell?.value?.[0] ?? []).equals(Buffer.from(rid));
+// A transcript cell names `rid` when its first atom DECODES to it: the aligned
+// atom drops a Bytes<32>'s trailing zero bytes. A missing cell never matches,
+// not even an all-zero rid.
+const isRid = (rid) => (cell) => cell?.value?.[0] !== undefined
+  && Buffer.from(new rt.CompactTypeBytes(32).fromValue([cell.value[0]])).equals(Buffer.from(rid));
 const NEW_ID = () => pureCircuits.idCommitOf(fieldOf(701), bytes32(111));
 const NEW_VETO = () => pureCircuits.vetoCommitOf(fieldOf(801), bytes32(141));
 

@@ -1,6 +1,7 @@
 // Private guardian check-ins (docs/v2.md §6). The cases of §6.4, in its order.
 // Case 9, the first-check-in race, is in test/v2-concurrency.test.js.
 import { describe, it, expect } from 'vitest';
+import * as rt from '@midnight-ntwrk/compact-runtime';
 import {
   pureCircuits, bytes32, fieldOf,
   world, asGuardian, openAs, succeed, periodOf, EPH_A, hex,
@@ -32,7 +33,9 @@ describe('§6.4.1 the count', () => {
     const input = sim.lastProofData.input;
     // Two arguments: a Bytes<32> and a Uint<32>. Nothing about the guardian.
     expect(input.alignment).toHaveLength(2);
-    expect(hex(input.value[0])).toBe(hex(id));
+    // Decoded as the node decodes it: the aligned atom drops a Bytes<32>'s
+    // trailing zero bytes, so the raw atom only equals an id that ends in non-zero.
+    expect(hex(new rt.CompactTypeBytes(32).fromValue([input.value[0]]))).toBe(hex(id));
     expect(flatten(input.value[1])).toContain(p.toString(16));
   });
 });
