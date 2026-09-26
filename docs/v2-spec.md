@@ -778,7 +778,7 @@ Thirteen circuits with proving keys, all at k ≤ 14. The derivations and consta
 | **A delay chosen at enrolment** (§5), 24 h to 90 days, inherited by every successor | `v2-delay` (14) |
 | **The inheritance profile** (§5.2), as a *configuration* of the above: a 90-day delay, guardians as heirs, the owner watching `recoveries` and the check-in count. The watcher's logic is built as `src/v2/timeline.js` (`recoveryStatus`, `slotOf`, `timelineOf`); the end-to-end case is §5.5 case 7 | `v2-delay`, `v2-client` |
 | **Private guardian check-ins** (§6): a count per root, guardian set and quarter, never who to the public (an owner's device that kept the dealt credentials can tell, §6.2) | `v2-checkin` (15), `v2-adversarial` |
-| **The review's hardening** (§3.10), F0 to F8 | `v2-review` (37) |
+| **The review's hardening** (§3.10), F0 to F8, and the second review's two contract fixes | `v2-review` (37) |
 | **Every v1 property**, ported (§10) | `v2-lantern` (35), `v2-succession` (31), `v2-shamir`, `v2-domains`, `v2-authentication`, `v2-adversarial` |
 | **Build and CI**: `npm run compile:v2`, `compile:check:v2`, `cost:v2`, `cost:check:v2`, `test:v2`; `compile.yml` checks the module, the keys, purity and cost | `.github/workflows/compile.yml` |
 
