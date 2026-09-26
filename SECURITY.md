@@ -646,7 +646,7 @@ build-to-seal time, and only after reading §4.4.
   known lineage root` and the gate's `descends` (no v1 test uses a forged lineage path);
   and `successor already enrolled`, which `test/lantern.test.js` accepts as an
   alternative to `already retired`, the refusal that test actually reaches. The checks
-  are in the shipped contract; a test that removed one would still pass. The v1 tests
+  are in the shipped contract, but v1's suite would still pass with any of them removed. The v1 tests
   are frozen with the contract, so this stays future work. **v2, not shipped:** each
   equivalent check in `contracts/v2/lantern2.compact` has a test that fails when the
   check is disabled (the second review of v2, [docs/v2-spec.md §14.2](docs/v2-spec.md#142-built-tested-not-deployed)).
