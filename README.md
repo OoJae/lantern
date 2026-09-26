@@ -120,6 +120,8 @@ npm run devnet -- --quick   # the core recovery: about 15 min
 npm run devnet              # all 74 steps: about 23 min
 npm run devnet:verify       # while the chain runs: re-check the full run's record against it (after --quick, add -- --quick)
 npm run devnet:bench        # prove the shipped 72-hour finalizeRecovery, without submitting it
+npm run devnet:v2           # Lantern v2 (docs/v2.md): deploy it as compiled, freeze it, exercise each v2 rule once
+npm run devnet:verify:v2    # while the chain runs: re-check the v2 run's record against it, with no wallet
 npm run devnet:down
 ```
 
@@ -222,7 +224,7 @@ Every private-to-public crossing is a `disclose()`. What the public fields still
 ## Measured
 
 <!-- facts:tests:start -->
-**Tests.** 542 Vitest tests in 31 files. Shipped Lantern's 293 are in 18: kit 46, lantern 33, succession 33, record 32, adversarial 28, host 26, words 21, devnet 10, identity 10, shamir 9, leakscan 8, story 8, concurrency 6, portable 6, authentication 5, limits 5, host-snapshot 4, device 3. Lantern v2's 249 are in 13 ([docs/v2.md §13](docs/v2.md#13-implementation)). Three node:test tests of the sponsor's policy, and 62 of the other devnet scripts. 209 Playwright tests, twelve of them for the "Try to break it" panel and 97 for `/live`, `/rehearse` and `/kit`, run in CI in Chromium at desktop size and as an emulated Pixel 7, and before release in WebKit, as an emulated iPhone 15, and in Firefox.
+**Tests.** 542 Vitest tests in 31 files. Shipped Lantern's 293 are in 18: kit 46, lantern 33, succession 33, record 32, adversarial 28, host 26, words 21, devnet 10, identity 10, shamir 9, leakscan 8, story 8, concurrency 6, portable 6, authentication 5, limits 5, host-snapshot 4, device 3. Lantern v2's 249 are in 13 ([docs/v2.md §13](docs/v2.md#13-implementation)). Three node:test tests of the sponsor's policy, and 85 of the other devnet scripts. 209 Playwright tests, twelve of them for the "Try to break it" panel and 97 for `/live`, `/rehearse` and `/kit`, run in CI in Chromium at desktop size and as an emulated Pixel 7, and before release in WebKit, as an emulated iPhone 15, and in Firefox.
 <!-- facts:tests:end -->
 
 **Circuits.** All 17 are ZKIR v2, the deployable ledger-8 path. `npm run cost:check` measures them, and fails if any exceeds k = 14 or if this table differs from the measurement.
@@ -513,7 +515,7 @@ src/v2/                 Lantern v2's client helpers: timeline and watcher logic,
 test/                   the unit tests, shipped Lantern's and v2's: npm test runs them with no toolchain and no Docker
 web/                    the site (React and Vite): the landing's three.js lantern, the browser demo, /live, /rehearse, /kit, /brand, and the Playwright tests
 brand/                  the brand guide; the kit's files are in web/public/brand-kit/
-devnet/                 the chain runner, local and on Preprod: flavour, sponsor, verify, bench, the shipped run and the watcher
+devnet/                 the chain runner, local and on Preprod: flavour, sponsor, verify, bench, the shipped run, the watcher, and v2's runner
 deployments/            the records of the local-chain runs, the two Preprod runs and the bench
 scripts/                compile, cost, attack, story and the README's generated facts
 docs/spikes.md          nine assumptions, each tested before anything was built on it

@@ -1,0 +1,700 @@
+{
+  "what": "A real run of Lantern v2's chain story on a local Midnight chain: the v2 contract deployed as compiled and frozen, then each v2 rule exercised once. Every accepted step is a proved, balanced, finalized transaction; every refusal is the circuit's own assert, raised before anything was proved.",
+  "network": "undeployed (local, single node)",
+  "recordedAt": "2026-09-26T21:44:25.948Z",
+  "mode": "v2",
+  "machine": {
+    "platform": "darwin arm64",
+    "cpus": 10,
+    "cpuModel": "Apple M5",
+    "node": "v26.0.0"
+  },
+  "images": [
+    "midnightntwrk/midnight-node:1.0.0",
+    "midnightntwrk/indexer-standalone:4.3.3",
+    "midnightntwrk/proof-server:8.1.0"
+  ],
+  "toolchain": {
+    "compact": "0.31.1",
+    "compact-runtime": "0.16.0",
+    "midnight-js": "4.1.1",
+    "wallet-sdk": "1.2.0"
+  },
+  "compiler": {
+    "compact": "0.31.1",
+    "language": "0.23.0",
+    "runtime": "0.16.0"
+  },
+  "source": {
+    "what": "contracts/v2/lantern2.compact exactly as committed, with the two v1 modules it imports: no flavour, no line changed. v2's delay is chosen at enrolment, so the story needs none.",
+    "sha256": {
+      "contracts/v2/lantern2.compact": "190783a2faa09840c8d255f62838711a6670eb43e15a2348fe2c403658dca3e1",
+      "contracts/src/identity.compact": "0b13a3578c6c5a0529562c053f1f9ee1351f5471fbc70b02bb2d043f25e65b19",
+      "contracts/src/ownergate.compact": "2800452965d77c8d01d6990675b6c8734f5f97dfabe5b23f15034b4579a7e4f8"
+    }
+  },
+  "delay": {
+    "chosenSeconds": 86400,
+    "what": "the delay the owner chose at enrolment: v2's minimum, 24 h. Nothing in the story waits it out; no recovery is finalized."
+  },
+  "payer": "the genesis wallet paid every transaction",
+  "contracts": {
+    "lantern2": {
+      "name": "Lantern v2",
+      "address": "908267e84077dc61401ccd1f9afe754c739c8c11c16225ed8a603724a37a2536",
+      "txId": "00a3ddc6fabff3299e396eb23b0b9a54a347bb86fbe21bfd0927cafc8f1f893bb4",
+      "txHash": "56596b30d93cdf19cfb9938fe0359cf8ae275ccebbfa5957f162bcd68d83ce70",
+      "blockHeight": 128,
+      "status": "SucceedEntirely",
+      "timings": {
+        "total": 39.3
+      },
+      "operationsAtDeploy": [
+        "addGuardian",
+        "approveRecovery",
+        "checkIn",
+        "enrollIdentity",
+        "finalizeRecovery",
+        "hostGatedAction",
+        "lockIdentity",
+        "openRecovery"
+      ],
+      "verifierKeysInsertedBy": [
+        {
+          "operations": [
+            "proveHeadOwnership",
+            "proveSuccession",
+            "rotateGuardianSet",
+            "unlockIdentity",
+            "vetoRecovery"
+          ],
+          "txId": "00310290052f65066ef8d21ee94c4786407fad9076c8b4ec48ffc8972256e7bae5",
+          "txHash": "2d3025c9fb6398d571b5b643d0bab547a04822f2675d37df5dab7d57f224d1e9",
+          "blockHeight": 131,
+          "status": "SucceedEntirely"
+        }
+      ],
+      "maintenanceAuthority": {
+        "committee": 0,
+        "threshold": 1,
+        "counter": 2,
+        "frozenBy": {
+          "txId": "009b0cc89e7a749f6dc17b12a574bb3cf31084aa942258b4aa3cb4e77377d5e09e",
+          "txHash": "889a808e38c5a76c992d6390898aee73ab778a74c47c243c3e8e2096e47e69d6",
+          "blockHeight": 134,
+          "status": "SucceedEntirely"
+        }
+      }
+    }
+  },
+  "timingNotes": "seconds. execute: the circuit run locally; prove: the local proof server; balance: adding DUST; submit: until the node included the transaction in a block; finalize: until midnight-js saw it finalized. The first proof of a run is marked cold.",
+  "steps": [
+    {
+      "id": "1.1",
+      "rule": 1,
+      "kind": "call",
+      "actor": "the owner",
+      "say": "The owner enrols with a delay she chooses: 24 h, v2's minimum. Threshold 2. The delay is stored for the lineage and every open reads it.",
+      "contract": "lantern2",
+      "circuit": "enrollIdentity",
+      "args": [
+        "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26",
+        "30a9a3dddf6bf94c4fc2de95611ad8e445cf897d258a40306402a3f16b4bb931",
+        "2",
+        "86400"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "0059c0d2242f79aeed796879b7bf0c7c1ad1da43508a939c8a6a33335196bd6840",
+        "txHash": "b409e589e5f0bfb47eb18115bfc58a25d568d4ba4ef7fb2de3e77e316f4a0cd9",
+        "blockHeight": 138,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 1.8,
+        "balance": 1.6,
+        "submit": 18,
+        "finalize": 1,
+        "total": 22.6,
+        "cold": true,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "enrolled": 1,
+        "lineage": 1,
+        "guardianSets": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "1.2",
+      "rule": 1,
+      "kind": "call",
+      "actor": "the owner",
+      "say": "The owner adds guardian 1, with both of her secrets. The leaf is public; the secret inside it is guardian 1's.",
+      "contract": "lantern2",
+      "circuit": "addGuardian",
+      "args": [
+        "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00bc89719ccf4e09aa8e2f8617878b5721038966155ef8cbd721b00618c14d3373",
+        "txHash": "ec963c7bb355e23a17969afa2f295a7856066ba0da105ecb1adf9c7554a44d8f",
+        "blockHeight": 142,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 3.6,
+        "balance": 1.1,
+        "submit": 18.2,
+        "finalize": 1,
+        "total": 24,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": "7284f42737526d1116821fd466a0e1d7c4007a714c76819f4e5fea7253e35194",
+      "publicChange": {
+        "guardianLeaves": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "1.3",
+      "rule": 1,
+      "kind": "call",
+      "actor": "the owner",
+      "say": "The owner adds guardian 2, with both of her secrets. The leaf is public; the secret inside it is guardian 2's.",
+      "contract": "lantern2",
+      "circuit": "addGuardian",
+      "args": [
+        "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00a1bd93e111adab6e913b2b04ffc83972e53555424fda594ecb16ee1cfde6fcbb",
+        "txHash": "b83bcf14a554a344dfaf7f910d9294bdf6e113a61656b13700d327ded4b1df52",
+        "blockHeight": 145,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 1.3,
+        "balance": 0.5,
+        "submit": 15.6,
+        "finalize": 1,
+        "total": 18.7,
+        "cold": false,
+        "firstOfCircuit": false
+      },
+      "outcome": "accepted",
+      "result": "105664babbc6ef2b8fc1192798f2df5a52e5611b3485f7e68d5c7572573ee50a",
+      "publicChange": {
+        "guardianLeaves": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "1.4",
+      "rule": 1,
+      "kind": "call",
+      "actor": "the owner",
+      "say": "The owner adds guardian 3, with both of her secrets. The leaf is public; the secret inside it is guardian 3's.",
+      "contract": "lantern2",
+      "circuit": "addGuardian",
+      "args": [
+        "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00c21be0722c2bad5355cc00248b2815ed0efbc69637e04c773ff154ab02fb0371",
+        "txHash": "2eafac3181949648726e32cdc129aaf1c3e470792a3a503ad5f61b16a4a0fec5",
+        "blockHeight": 148,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 1.4,
+        "balance": 0.6,
+        "submit": 14,
+        "finalize": 1,
+        "total": 17.3,
+        "cold": false,
+        "firstOfCircuit": false
+      },
+      "outcome": "accepted",
+      "result": "f1dd60d6b0697908468b160b6e697b3e5ea0236fa3ed859fbb280db7c0720a76",
+      "publicChange": {
+        "guardianLeaves": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "2.1",
+      "rule": 2,
+      "kind": "call",
+      "actor": "a stranger",
+      "say": "A stranger tries to open a recovery. Her leaf binds the public context, on a real path's shape, but the tree never held it: v2 opens are for guardians only.",
+      "contract": "lantern2",
+      "circuit": "openRecovery",
+      "args": [
+        "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26",
+        "c2b744c147f5ffe0863c269894dfeb69d2a20988486d20026aad79232fe35700",
+        "227"
+      ],
+      "expect": "refused: guardian not in tree",
+      "outcome": "refused",
+      "message": "guardian not in tree",
+      "ok": true
+    },
+    {
+      "id": "2.2",
+      "rule": 2,
+      "kind": "call",
+      "actor": "guardian 1",
+      "say": "Guardian 1 opens a recovery for a new device, proving membership of the current set. One open per guardian, per head, per period.",
+      "contract": "lantern2",
+      "circuit": "openRecovery",
+      "args": [
+        "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26",
+        "c2b744c147f5ffe0863c269894dfeb69d2a20988486d20026aad79232fe35700",
+        "227"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "0076ec88a385875c363a2e0c654874b325e937d5df2bf2608d52ade36e8861cc45",
+        "txHash": "34c76be9c0c73535afaa340532812f47a7f45b73539d24d0bc1e33191af33842",
+        "blockHeight": 152,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.2,
+        "prove": 4,
+        "balance": 1,
+        "submit": 17.6,
+        "finalize": 1,
+        "total": 23.8,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": "f25c57fa906e8bc8eea64e5f99d0cce19573132f65c77bcc8b0cef19c6b1a419",
+      "publicChange": {
+        "recoveries": 1,
+        "opens": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "2.3",
+      "rule": 2,
+      "kind": "call",
+      "actor": "guardian 2",
+      "say": "Guardian 2 approves it: one of the two approvals it needs.",
+      "contract": "lantern2",
+      "circuit": "approveRecovery",
+      "args": [
+        "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26",
+        "f25c57fa906e8bc8eea64e5f99d0cce19573132f65c77bcc8b0cef19c6b1a419"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "003f60c2b1cb7811f18a87849066c1e5d2492da9de9449d22cf3f2e933eead48dc",
+        "txHash": "d587703b8fc24470110a434960b1edfc7c9a0b67e98ab78736cf80d0489f79dd",
+        "blockHeight": 156,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 2.5,
+        "balance": 0.5,
+        "submit": 19.9,
+        "finalize": 1,
+        "total": 24,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "approvals": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "2.4",
+      "rule": 2,
+      "kind": "call",
+      "actor": "the owner",
+      "say": "The owner, who never lost anything, vetoes with her card, and reserves the one recovery that may open during the cooldown: her own next device's.",
+      "contract": "lantern2",
+      "circuit": "vetoRecovery",
+      "args": [
+        "f25c57fa906e8bc8eea64e5f99d0cce19573132f65c77bcc8b0cef19c6b1a419",
+        "5d989a44fbdeac27f9602ce8e34c2a238c1f8919fece33b14df5ac1d7033759d"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "001dce7f08fcbe2cd48b9b26ac10b965164e85ccd52ad1bc7b55c1ceef6e626794",
+        "txHash": "06d242723072284236baf44fc70c9814c40b5386be977ae934007e1e1ae3babc",
+        "blockHeight": 159,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 1.9,
+        "balance": 0.5,
+        "submit": 15.1,
+        "finalize": 1,
+        "total": 18.7,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "vetoes": 1,
+        "killed": 1,
+        "vetoCount": 1,
+        "reserved": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "2.5",
+      "rule": 2,
+      "kind": "call",
+      "actor": "guardian 2",
+      "say": "Guardian 2 tries to open a recovery for another device. After one veto, the next open waits a day: refused.",
+      "contract": "lantern2",
+      "circuit": "openRecovery",
+      "args": [
+        "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26",
+        "c1af72f5f42da80441593c559b4f03d563391381d89883e9a87fb00142cf7900",
+        "227"
+      ],
+      "expect": "refused: cooling down after a veto",
+      "outcome": "refused",
+      "message": "cooling down after a veto",
+      "ok": true
+    },
+    {
+      "id": "2.6",
+      "rule": 2,
+      "kind": "call",
+      "actor": "guardian 3",
+      "say": "Guardian 3 opens the recovery the veto reserved, for the owner's next device. It opens during the cooldown: no race at its end.",
+      "contract": "lantern2",
+      "circuit": "openRecovery",
+      "args": [
+        "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26",
+        "636fcdc4cd1339c69fd171d1db25a6ad20b2ab15db04412a30f1f8c423809a00",
+        "227"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "0015b2b166e25bd6c902b5377a4b9cbc3df23b0cee32137e899dd7ac9f59b9f563",
+        "txHash": "14274d573d34804ff5db860a89d3a32db92f897d85835688765eda01c934ef0f",
+        "blockHeight": 163,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 1.5,
+        "balance": 0.6,
+        "submit": 20.7,
+        "finalize": 1,
+        "total": 23.9,
+        "cold": false,
+        "firstOfCircuit": false
+      },
+      "outcome": "accepted",
+      "result": "5d989a44fbdeac27f9602ce8e34c2a238c1f8919fece33b14df5ac1d7033759d",
+      "publicChange": {
+        "recoveries": 1,
+        "opens": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "3.1",
+      "rule": 3,
+      "kind": "call",
+      "actor": "the owner",
+      "say": "The owner fears her device is in someone else's hands, and locks the identity with her veto card.",
+      "contract": "lantern2",
+      "circuit": "lockIdentity",
+      "args": [
+        "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00cdbef692b92b666f3ca2cca432a8e7a252214976382f3cef80fe0fe10ee4db42",
+        "txHash": "b9a541a4edfb3cb1f7c720504bcec90755c7ed5a81c0aa51782ee4edea14142f",
+        "blockHeight": 166,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 1.1,
+        "balance": 0.6,
+        "submit": 14.5,
+        "finalize": 1,
+        "total": 17.3,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "locked": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "3.2",
+      "rule": 3,
+      "kind": "call",
+      "actor": "the owner",
+      "say": "The identity secret alone no longer passes the gate: whoever holds it, the gate refuses while the identity is locked.",
+      "contract": "lantern2",
+      "circuit": "hostGatedAction",
+      "args": [
+        "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26",
+        "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26",
+        "f66fb238aeab8a0f30bfdf1ddcece2a48cf0b8a0a1f991b315ad756c362767f6"
+      ],
+      "expect": "refused: identity is locked",
+      "outcome": "refused",
+      "message": "identity is locked",
+      "ok": true
+    },
+    {
+      "id": "3.3",
+      "rule": 3,
+      "kind": "call",
+      "actor": "the owner",
+      "say": "She unlocks, which needs both secrets, and installs a new veto card in the same transaction, so a copy of the old card is worthless.",
+      "contract": "lantern2",
+      "circuit": "unlockIdentity",
+      "args": [
+        "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26",
+        "9233923acdf6ea7e206eb918972d36429e5b28b583fd047b590d09dafe504f9c"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "0067a8288c3e7d0a4f7c61cd6d396a3eec364090561e24e0047018b21cd7dbc749",
+        "txHash": "bebfe963680dfca0eaee04bfce6831256f0702d5828d46bb60e348abfc61e886",
+        "blockHeight": 169,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 1.7,
+        "balance": 0.6,
+        "submit": 15.2,
+        "finalize": 1,
+        "total": 18.6,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "locked": -1
+      },
+      "ok": true
+    },
+    {
+      "id": "3.4",
+      "rule": 3,
+      "kind": "call",
+      "actor": "the owner",
+      "say": "The same gate call, with the same nonce, now passes: the refused one consumed nothing.",
+      "contract": "lantern2",
+      "circuit": "hostGatedAction",
+      "args": [
+        "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26",
+        "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26",
+        "f66fb238aeab8a0f30bfdf1ddcece2a48cf0b8a0a1f991b315ad756c362767f6"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "008fb78ac7887264eb4457aae973a9d507357269ca8d9c161d3572e27bb328e118",
+        "txHash": "d161d9eeed23af2dc88f045f26c82f2f120c73c0002b0467b74344b164121fc5",
+        "blockHeight": 173,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 1.6,
+        "balance": 0.5,
+        "submit": 20.7,
+        "finalize": 1,
+        "total": 24,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "gateActions": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "4.1",
+      "rule": 4,
+      "kind": "call",
+      "actor": "guardian 1",
+      "say": "Guardian 1 checks in for this period. The count goes up by one; the ledger never says which guardian.",
+      "contract": "lantern2",
+      "circuit": "checkIn",
+      "args": [
+        "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26",
+        "227"
+      ],
+      "expect": "accepted",
+      "tx": {
+        "txId": "00215cde9ad040328828cff6b42ec79e2569ccdb5c4d079c18667f831e37cdfd58",
+        "txHash": "12e562dba38feb98849d462f36af7f003a5155db7497a2b38e6499a007365028",
+        "blockHeight": 177,
+        "status": "SucceedEntirely"
+      },
+      "payer": "the genesis wallet",
+      "timings": {
+        "execute": 0.1,
+        "prove": 1.9,
+        "balance": 0.7,
+        "submit": 19,
+        "finalize": 1,
+        "total": 22.7,
+        "cold": false,
+        "firstOfCircuit": true
+      },
+      "outcome": "accepted",
+      "result": [],
+      "publicChange": {
+        "checkIns": 1
+      },
+      "ok": true
+    },
+    {
+      "id": "4.2",
+      "rule": 4,
+      "kind": "call",
+      "actor": "guardian 1",
+      "say": "Guardian 1 checks in again in the same period: refused. Each guardian counts once per period.",
+      "contract": "lantern2",
+      "circuit": "checkIn",
+      "args": [
+        "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26",
+        "227"
+      ],
+      "expect": "refused: guardian already checked in this period",
+      "outcome": "refused",
+      "message": "guardian already checked in this period",
+      "ok": true
+    }
+  ],
+  "finalPublicRecord": {
+    "enrolled": 1,
+    "guardianLeaves": 3,
+    "recoveries": 2,
+    "approvals": 1,
+    "vetoes": 1,
+    "killed": 1,
+    "retired": 0,
+    "lineage": 1,
+    "guardianSets": 1,
+    "gateActions": 1,
+    "opens": 2,
+    "vetoCount": 1,
+    "reserved": 1,
+    "locked": 0,
+    "checkIns": 1
+  },
+  "finalIdentity": {
+    "idCommit": "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26",
+    "root": "01e3b8face8e53136a587b00b7d9c88be92f4015b1568278e3b5b7675c756e26",
+    "delaySeconds": 86400,
+    "threshold": 2,
+    "locked": false,
+    "vetoCommit": "9233923acdf6ea7e206eb918972d36429e5b28b583fd047b590d09dafe504f9c",
+    "vetoCount": 1,
+    "lastVetoAt": 1790462508,
+    "liveRecovery": "5d989a44fbdeac27f9602ce8e34c2a238c1f8919fece33b14df5ac1d7033759d",
+    "reservedRecovery": "5d989a44fbdeac27f9602ce8e34c2a238c1f8919fece33b14df5ac1d7033759d",
+    "recoveries": [
+      {
+        "rid": "f25c57fa906e8bc8eea64e5f99d0cce19573132f65c77bcc8b0cef19c6b1a419",
+        "device": "c2b744c147f5ffe0863c269894dfeb69d2a20988486d20026aad79232fe35700",
+        "approvals": 1,
+        "killed": true,
+        "openedAtHi": 1790459460,
+        "unlockAt": 1790545860,
+        "approveBy": 1791064260,
+        "expiresAt": 1791150660
+      },
+      {
+        "rid": "5d989a44fbdeac27f9602ce8e34c2a238c1f8919fece33b14df5ac1d7033759d",
+        "device": "636fcdc4cd1339c69fd171d1db25a6ad20b2ab15db04412a30f1f8c423809a00",
+        "approvals": 0,
+        "killed": false,
+        "openedAtHi": 1790459526,
+        "unlockAt": 1790545926,
+        "approveBy": 1791064326,
+        "expiresAt": 1791150726
+      }
+    ],
+    "checkIns": {
+      "period": 227,
+      "count": 1
+    }
+  },
+  "summary": {
+    "steps": 16,
+    "accepted": 12,
+    "refused": 4,
+    "transactions": 15,
+    "circuitsProved": [
+      "addGuardian",
+      "approveRecovery",
+      "checkIn",
+      "enrollIdentity",
+      "hostGatedAction",
+      "lockIdentity",
+      "openRecovery",
+      "unlockIdentity",
+      "vetoRecovery"
+    ],
+    "proveSeconds": {
+      "min": 1.1,
+      "median": 1.8,
+      "max": 4,
+      "coldFirst": 1.8
+    },
+    "callToFinalizedSeconds": {
+      "min": 17.3,
+      "median": 22.7,
+      "max": 24
+    },
+    "wallClockMinutes": 5.3
+  }
+}
