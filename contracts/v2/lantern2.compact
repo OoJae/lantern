@@ -506,8 +506,8 @@ export circuit approveRecovery(idCommit: Bytes<32>, rid: Bytes<32>): [] {
 //    cannot bring back the cooldown the rotation reset;
 //  - reserves `nextRid`, recoveryIdOf(head, the owner's next device key), which
 //    may then open during the cooldown (review F0). Pass zeros to reserve none.
-// It reads no rate-limit state: only the context, which only the owner's own
-// rotation can change.
+// It reads no rate-limit state, only the context, which only the owner rotates.
+// A card an unlock installs (F3) is a new nullifier: only `killed` stops a recount.
 export circuit vetoRecovery(rid: Bytes<32>, nextRid: Bytes<32>): [] {
   assert(recoveries.member(disclose(rid)), "no such recovery");
   const rec = recoveries.lookup(disclose(rid));
@@ -574,12 +574,12 @@ export circuit finalizeRecovery(
   lineage.insert(disclose(lineageLeafOf(rec.idRoot, newIdCommit)));
 
   // NEW (second review): the device proves it can OPEN its successor, as an
-  // enrolment does. In v1 newIdCommit is a bare argument, so anyone holding a
-  // finalizable recovery of their OWN identity could finalize to a PENDING
-  // enrolment's idCommit, or to an honest device's pending successor, first:
-  // that enrolment would fail with "identity already enrolled", that finalize
-  // with the assert after this one. Witness-derived, like the core: nothing
-  // about the successor's secret is revealed.
+  // enrolment does (v1 took newIdCommit bare, so a recovery of the caller's OWN
+  // identity could take a PENDING enrolment's or successor's idCommit first).
+  // Witness-derived: nothing about the successor's secret is revealed. It does
+  // NOT make the next assert redundant: a device thief, or t colluding guardians,
+  // CAN open an enrolled identity, and without it could finalize onto it, taking
+  // its card and root with no delay (test/v2-review.test.js F1, adv-v2 round 2).
   assert(idCommitOf(successorSecret(), successorSalt()) == newIdCommit,
          "successor commitment is not opened");
   assert(!enrolled.member(disclose(newIdCommit)), "successor already enrolled");
