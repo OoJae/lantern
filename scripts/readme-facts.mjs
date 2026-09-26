@@ -8,15 +8,17 @@
 // The circuit-size table (<!-- facts:circuits -->) needs the Compact toolchain, so
 // scripts/check-cost.mjs maintains and checks that one.
 //
-// The test counts are taken from the runners' own lists (no test runs): vitest's, and Playwright's
+// The test counts are taken from the runners' own lists, with no test run: vitest's, and Playwright's
 // for the browser tests, which needs web/ installed. Where it is not (CI's clean-clone job), the
 // browser counts are skipped, and said to be; CI's web job checks them, and runs on every change
-// to README.md (.github/workflows/web.yml). Every count the README and docs/v2.md state (the total,
+// to README.md (.github/workflows/web.yml). node:test has no list, so each devnet test file is run
+// and its own count read (a few seconds). Every count the README and docs/v2.md state (the total,
 // the v1/v2 split, the per-file counts) must equal those lists; --write rewrites the README's block
 // and the counts in its prose and in docs/v2.md's, and says which per-file counts in docs/v2.md it
 // cannot rewrite.
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { RULES } from '../devnet/src/v2-story.mjs';
 
 const root = new URL('..', import.meta.url);
@@ -154,8 +156,8 @@ function preprodStory() {
 }
 
 // Lantern v2 on Preprod: a separate contract, deployed beside the shipped one (never in its place),
-// in parts because its verifier keys exceed one block's write limit, then frozen; then each v2 rule
-// run once. Every step is shown, with its transaction or its refusal.
+// in parts because the node refuses a deploy carrying all its verifier keys, then frozen; then each
+// v2 rule run once. Every step is shown, with its transaction or its refusal.
 function preprodV2() {
   const r = v2;
   const x = r.summary;
@@ -190,7 +192,7 @@ function preprodV2() {
   return [
     `Lantern v2 is a separate contract, [\`contracts/v2/lantern2.compact\`](contracts/v2/lantern2.compact) as compiled, deployed on Preprod beside the shipped contract and not in its place: [\`${c.address.slice(0, 16)}…\`](${r.explorer}/contracts/${c.address}). Recorded on ${r.recordedAt.slice(0, 10)} ([\`preprod-v2.json\`](deployments/preprod-v2.json)): each v2 rule run once, ${x.steps} steps, ${x.accepted} accepted and ${x.refused} refused by the circuit's own asserts, in ${x.transactions} transactions (the deploy, ${inWords(inserts.length)} key insert${inserts.length === 1 ? '' : 's'} and the freeze, then ${x.accepted} steps).`,
     '',
-    `Its ${keys} verifier keys exceed what one block can write, so the deploy carried ${c.operationsAtDeploy.length} and ${inserts.length === 1 ? 'one maintenance update' : `${inserts.length} maintenance updates`} added the other ${keys - c.operationsAtDeploy.length} before the freeze:`,
+    `The node refuses a deploy carrying all ${keys} verifier keys ("Transaction would exhaust the block limits"), so the deploy carried ${c.operationsAtDeploy.length} and ${inserts.length === 1 ? 'one maintenance update' : `${inserts.length} maintenance updates`} added the other ${keys - c.operationsAtDeploy.length} before the freeze:`,
     '',
     '| Deploy | Verifier keys added | Maintenance authority frozen |',
     '|---|---|---|',
@@ -202,7 +204,7 @@ function preprodV2() {
     '',
     `The owner chose v2's minimum delay at enrolment, ${hours} hours; nothing in the run waits it out, so no v2 recovery is finalized. The operator wallet, the run's own funded wallet, paid for every transaction. Proof time: ${p.min} / ${p.median} / ${p.max} s (min / median / max). Call to finalized: median ${s(f.median)}, ${f.min}–${f.max} s. The run took ${x.wallClockMinutes} min. Machine: ${m.cpuModel} (${m.cpus} cores), Node ${m.node}; ${r.images.map((i) => i.replace('midnightntwrk/', '')).join(', ')}, with Preprod's public node and indexer.${local}`,
     '',
-    `\`LANTERN_NETWORK=preprod npm run devnet:verify:v2\` checks this record against Preprod at any time, with no wallet: the record is consistent and was compiled from the sources committed here; the contract exists, with its maintenance authority frozen; all ${keys} verifier keys are byte-identical to a fresh compile of \`contracts/v2/lantern2.compact\`; the ledger and the story's identity end where the record says, read in the block of its last transaction; and all ${x.transactions} transactions are on the chain at their recorded blocks, each carrying the recorded action on this contract. Offline, [\`test/v2-record.test.js\`](test/v2-record.test.js) checks both v2 records on every \`npm test\`.`,
+    `\`LANTERN_NETWORK=preprod npm run devnet:verify:v2\` checks this record against Preprod at any time, with no wallet: the record is consistent and was compiled from the sources committed here; the contract exists, with its maintenance authority frozen, and its counter shows no maintenance update but the recorded ${inserts.length === 1 ? 'key insert' : 'key inserts'} and the freeze; all ${keys} verifier keys are byte-identical to a fresh compile of \`contracts/v2/lantern2.compact\`; the ledger and the story's identity end where the record says, read in the block of its last transaction; and all ${x.transactions} transactions are on the chain at their recorded blocks, each carrying the recorded action on this contract. Offline, [\`test/v2-record.test.js\`](test/v2-record.test.js) checks both v2 records on every \`npm test\`.`,
   ].join('\n');
 }
 
@@ -246,13 +248,18 @@ const sum = (m, keys = [...m.keys()]) => keys.reduce((n, k) => n + (m.get(k) ?? 
 const WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
 const inWords = (n) => WORDS[n] ?? String(n);
 const capital = (w) => w.charAt(0).toUpperCase() + w.slice(1);
-/** The node:test tests in devnet/test (dependency-free; CI runs them with `node --test`): each test()
- *  or it() call, counted apart for the sponsor's policy (policy.test.mjs) and for the other devnet scripts. */
+/** The node:test tests in devnet/test (dependency-free; CI runs them with `node --test`), counted apart
+ *  for the sponsor's policy (policy.test.mjs) and for the other devnet scripts. node:test has no list,
+ *  and some files make their tests in a loop, so each file is run and its own count read ("# tests",
+ *  which counts a skipped test too): a few seconds in all. */
 function nodeTests() {
   const count = { policy: 0, scripts: 0 };
-  for (const f of readdirSync(new URL('devnet/test/', root)).filter((x) => x.endsWith('.test.mjs'))) {
-    const n = (readFileSync(new URL(`devnet/test/${f}`, root), 'utf8').match(/^\s*(?:test|it)\(/gm) ?? []).length;
-    count[f === 'policy.test.mjs' ? 'policy' : 'scripts'] += n;
+  for (const f of readdirSync(new URL('devnet/test/', root)).filter((x) => x.endsWith('.test.mjs')).sort()) {
+    const out = spawnSync(process.execPath, ['--test', '--test-reporter=tap', `devnet/test/${f}`],
+      { cwd: fileURLToPath(root), encoding: 'utf8', maxBuffer: 64 << 20 }).stdout ?? '';
+    const n = out.match(/^# tests (\d+)$/m);
+    if (!n) throw new Error(`devnet/test/${f}: node --test printed no "# tests" line`);
+    count[f === 'policy.test.mjs' ? 'policy' : 'scripts'] += Number(n[1]);
   }
   return count;
 }
