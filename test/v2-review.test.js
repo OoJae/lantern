@@ -178,6 +178,37 @@ describe('F0: the veto reserves the owner\'s next device, so colluders cannot wi
     sim.setTime(cooldownUntil(sim, id));
     expect(() => openAs(sim, guardians[1], NEW_ID(), EPH_A)).not.toThrow();
   });
+
+  it('src/v2/sim.js reserves recoveryIdOf(HEAD, next device): after a recovery, the head is not the root', () => {
+    // The owner's client path, veto(owner, rid, { nextDevice }), on a successor:
+    // a reservation built from the root, or from the device's secret key, would
+    // name a recovery no guardian can open, and undo F0 without any test failing.
+    const L = createLantern2Sim({ rt, mod: Lantern2 });
+    const rand32 = () => globalThis.crypto.getRandomValues(new Uint8Array(32));
+    const owner = newIdentity();
+    const root = L.enrol(owner, { delay: DAY });
+    const gs = [0, 1, 2].map(() => L.addGuardian(owner, root, { guardianSecret: rand32(), leafSalt: rand32() }));
+    const sk1 = rand32();
+    const r1 = L.open(gs[0], root, P.ephemeralPkOf(sk1));
+    L.approve(gs[0], root, r1); L.approve(gs[1], root, r1);
+    L.setTime(L.status(root).holder.unlockAt);
+    const next = newIdentity();
+    L.finalize({ ephemeralSk: sk1, identitySecret: owner.identitySecret, idSalt: owner.idSalt }, r1, commitmentsOf(P, next));
+    const head = commitmentsOf(P, next).idCommit;
+
+    const bad = L.open(gs[2], head, rand32());
+    const phoneSk = rand32();
+    const phone = P.ephemeralPkOf(phoneSk);
+    L.veto(next, bad, { nextDevice: phone });
+    const reserved = hex(L.ledger.reservedRecovery.lookup(root));
+    expect(reserved).toBe(hex(P.recoveryIdOf(head, phone)));
+    expect(reserved).not.toBe(hex(P.recoveryIdOf(root, phone)));
+    expect(reserved).not.toBe(hex(P.recoveryIdOf(head, phoneSk)));
+    expect(L.status(root).slot).toMatchObject({ canOpen: false, canOpenReserved: true });
+    // During the cooldown, a guardian opens exactly the reserved recovery.
+    expect(() => L.open(gs[1], head, P.ephemeralPkOf(rand32()))).toThrow(/cooling down after a veto/);
+    expect(hex(L.open(gs[1], head, phone))).toBe(reserved);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -219,6 +250,20 @@ describe('F1: the rotation\'s context is derived from the root, so nobody watchi
     expect(sim.ledger.usedGuardianCtx.member(carolId)).toBe(false);
     expect(() => land(sim, pending)).not.toThrow();
     expect(sim.ledger.enrolled.member(carolId)).toBe(true);
+  });
+
+  it('src/v2/sim.js rotates with a fresh random seed by default, and returns the context it installed', () => {
+    // Twice: a constant default seed would pass once, then be refused as a
+    // context already used.
+    const L = createLantern2Sim({ rt, mod: Lantern2 });
+    const owner = newIdentity();
+    const root = L.enrol(owner);
+    const c1 = L.rotate(owner, root);
+    expect(hex(c1)).toBe(hex(L.ledger.guardianCtx.lookup(root)));
+    expect(hex(c1)).not.toBe(hex(root));
+    const c2 = L.rotate(owner, root);
+    expect(hex(c2)).not.toBe(hex(c1));
+    expect(hex(c2)).toBe(hex(L.ledger.guardianCtx.lookup(root)));
   });
 });
 
