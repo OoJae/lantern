@@ -41,6 +41,15 @@ for (const r of rows) if (!(r.k >= 1 && r.k <= MAX_K)) problems.push(`${r.name}:
 // docs/v2.md §8: | `name` | v1 rows (k) | v2 rows (k) | share |
 const docUrl = new URL('../docs/v2.md', import.meta.url);
 const whole = readFileSync(docUrl, 'utf8');
+// The rows are measured at the contract's tree depth, so every circuit excerpt in the
+// document must show that depth too: after F5 deepened the trees, two excerpts kept 20.
+const depthsOf = (s) => [...s.matchAll(/(?:merkleTreePathRoot|MerkleTreePath|HistoricMerkleTree)<(\d+),/g)]
+  .map((m) => Number(m[1]));
+const built = [...new Set(depthsOf(readFileSync(new URL('../contracts/v2/lantern2.compact', import.meta.url), 'utf8')))];
+if (built.length !== 1) problems.push(`lantern2.compact uses tree depths ${built.join(', ')}; expected one`);
+for (const d of depthsOf(whole)) {
+  if (d !== built[0]) problems.push(`docs/v2.md shows a tree of depth ${d}; lantern2.compact's is ${built[0]}`);
+}
 // Only §8: other tables in the document name the same circuits.
 const at = whole.indexOf('\n## 8. Cost');
 const end = whole.indexOf('\n## 9.', at);
