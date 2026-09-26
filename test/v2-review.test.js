@@ -16,7 +16,7 @@ import {
 import {
   slotOf, periodBounds, checkInAt, checkInSlot, cryptoUniform, vetoAdvice, cooldownOf, PERIOD, CHECKIN_MARGIN,
 } from '../src/v2/timeline.js';
-import { newIdentity, commitmentsOf } from '../src/v2/identity.js';
+import { newIdentity, commitmentsOf, dealShares, recoverFromShares } from '../src/v2/identity.js';
 import { createLantern2Sim } from '../src/v2/sim.js';
 
 const NEW_ID = () => P.idCommitOf(fieldOf(70), bytes32(71));
@@ -314,6 +314,56 @@ describe('F1: the rotation\'s context is derived from the root, so nobody watchi
     const L = createLantern2Sim({ rt, mod: Lantern2 });
     expect(() => L.finalize({ ephemeralSk: bytes32(1) }, rid, commitmentsOf(P, newIdentity())))
       .toThrow(/needs the successor from newIdentity\(\), not only its commitments/);
+  });
+
+  it('adv-v2 round 2: a finalize never takes an ENROLLED commitment, even one the device can open', () => {
+    // The opening proof above stops a finalize to a commitment the attacker
+    // cannot open. It does not make `successor already enrolled` redundant:
+    // whoever holds V's device holds V's secret, and the v2 salt is derived from
+    // it; t colluding guardians rebuild both from their shares. Either one, with a
+    // finalizable recovery of a throwaway identity M of their own, could finalize
+    // it ONTO V: V's veto card and root would be theirs, with no recovery of V
+    // ever opened, so no delay and nothing for V's owner to veto. Only that
+    // assert stops it (no test reached it before: a mutant without it passed).
+    const L = createLantern2Sim({ rt, mod: Lantern2 });
+    const rand32 = () => globalThis.crypto.getRandomValues(new Uint8Array(32));
+    const V = newIdentity();
+    const vRoot = L.enrol(V, { threshold: 3 });
+    const vg = [0, 1, 2].map(() => L.addGuardian(V, vRoot, { guardianSecret: rand32(), leafSalt: rand32() }));
+    const M = newIdentity();
+    const mRoot = L.enrol(M, { delay: DAY });
+    const mg = [0, 1].map(() => L.addGuardian(M, mRoot, { guardianSecret: rand32(), leafSalt: rand32() }));
+    const sk = rand32();
+    const rid = L.open(mg[0], mRoot, P.ephemeralPkOf(sk));
+    for (const g of mg) L.approve(g, mRoot, rid);
+    L.setTime(L.status(mRoot).holder.unlockAt);
+    const device = { ephemeralSk: sk, identitySecret: M.identitySecret, idSalt: M.idSalt };
+
+    const card = newIdentity();
+    const theirCard = { vetoSecret: card.vetoSecret, vetoSalt: card.vetoSalt };
+    const thief = { identitySecret: V.identitySecret, idSalt: V.idSalt, ...theirCard };            // V's device
+    const pooled = { ...recoverFromShares(dealShares(V.identitySecret, 3, 2).slice(0, 2)), ...theirCard };
+    expect(hex(commitmentsOf(P, pooled).idCommit)).toBe(hex(vRoot));   // the shares do open V
+    const before = {
+      veto: hex(L.ledger.vetoCommits.lookup(vRoot)), root: hex(L.ledger.idRoots.lookup(vRoot)),
+      threshold: L.ledger.thresholds.lookup(vRoot),
+    };
+    for (const target of [thief, pooled, M]) {   // ... and M's own head, which the device opens too
+      expect(() => L.finalize(device, rid, target)).toThrow(/successor already enrolled/);
+    }
+    expect(hex(L.ledger.vetoCommits.lookup(vRoot))).toBe(before.veto);
+    expect(hex(L.ledger.idRoots.lookup(vRoot))).toBe(before.root);
+    expect(L.ledger.thresholds.lookup(vRoot)).toBe(before.threshold);
+    expect(L.ledger.retiredIdentities.member(mRoot)).toBe(false);
+    // V's owner still holds V: the card locks and unlocks, and V's guardians still bind to V.
+    expect(() => L.lock(thief, vRoot)).toThrow(/locking requires the veto secret/);
+    expect(() => L.lock(V, vRoot)).not.toThrow();
+    expect(() => L.unlock(V, vRoot)).not.toThrow();
+    expect(() => L.checkIn(vg[0], vRoot)).not.toThrow();
+    // M's recovery is untouched, and finalizes to a fresh successor.
+    const next = newIdentity();
+    expect(() => L.finalize(device, rid, next)).not.toThrow();
+    expect(hex(L.ledger.idRoots.lookup(commitmentsOf(P, next).idCommit))).toBe(hex(mRoot));
   });
 
   it('src/v2/sim.js rotates with a fresh random seed by default, and returns the context it installed', () => {

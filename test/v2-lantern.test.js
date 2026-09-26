@@ -265,7 +265,7 @@ describe('v2 finalize', () => {
     const rid = openAndApprove(sim, id, guardians, 2);
     toUnlock(sim, rid);
     finalize(sim, rid);
-    expect(() => finalize(sim, rid)).toThrow(/already retired|successor already enrolled/);
+    expect(() => finalize(sim, rid)).toThrow(/identity already retired/);
   });
 });
 
