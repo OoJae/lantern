@@ -17,11 +17,14 @@ import FingerprintWords from '../components/FingerprintWords.jsx';
 import Cmd from './Cmd.jsx';
 import { Link } from '../lib/router.jsx';
 import { fingerprintWords } from '../../../src/words.js';
-import { CONTRACTS, DEMO_IDENTITY, RECORDED_TXS, SETUP, SHIPPED_RECOVERY } from './records.js';
+import { CONTRACTS, DEMO_IDENTITY, RECORDED_TXS, SETUP, SHIPPED_RECOVERY, V2_RUN } from './records.js';
 import { alertFor, CHIP, ENDED, keepNews, lineageOf, orderForWatch, parseIdCommit, recoveriesFor, recoveryState, shortHex, spanWords, STATE_WORDS, utc, utcClock, utcDay, utcHM } from './status.js';
 import { POLL_MS, useNow } from './useChain.js';
 
+// The two v1 Lantern contracts: the shipped one and the whole story's. Lantern v2's recoveries follow
+// other rules (a delay each owner chooses, a lock); its card lists them, and the watch leaves it out.
 const LANTERNS = CONTRACTS.filter((c) => c.kind === 'lantern');
+const NOT_ENROLLED = 'Neither the shipped contract nor the whole story’s Lantern has enrolled this identity, and no recovery names it.';
 const STORE = 'lantern.watch.id';
 const STORE_SW = 'lantern.watch.sw-only';
 // Recoveries drawn at most beyond every open one with an approval, most urgent first (status.js
@@ -78,6 +81,7 @@ function whatIsIt(id) {
   if (c) return `That is the address of a contract (${c.inline}), not an identity commitment.`;
   if (id === SHIPPED_RECOVERY.rid) return `That is the shipped recovery’s id. The identity it recovers is ${shortHex(SHIPPED_RECOVERY.idCommit)}: use the demo identity.`;
   if (RECORDED_TXS.some((t) => t.tx.txHash === id)) return 'That is a transaction’s hash, not an identity commitment.';
+  if (id === V2_RUN.identity.idCommit) return 'That is the identity Lantern v2’s run enrolled. This watch reads the shipped contract and the whole story’s Lantern, not Lantern v2: its recoveries are in its card below.';
   return null;
 }
 
@@ -212,17 +216,17 @@ export default function Watch({ chain, onWatching }) {
   const who = id ? `Watching ${shortHex(id)}` : '';
   const settled = id && !reading && !failed.length;
   const fresh = !id ? ''
-    : reading && !all.length ? `${who}. Reading both Lantern contracts…`
+    : reading && !all.length ? `${who}. Reading the shipped contract and the whole story’s Lantern…`
     : all.length ? `${who}: ${all.length} recover${all.length === 1 ? 'y' : 'ies'} found.`
     : known ? `${who}: enrolled, and no recovery opened yet.`
     : failed.length ? `${who}: ${names(failed)} could not be read from the indexer yet.`
     : undecoded.length ? `${who}: this browser could not run the contract’s reader, so no recovery can be listed here.`
-    : `${who}. ${whatIsIt(id) ?? 'Neither Lantern contract on Preprod has enrolled this identity, and no recovery names it.'}`;
+    : `${who}. ${whatIsIt(id) ?? NOT_ENROLLED}`;
   const [kept, setKept] = useState(null);
   useEffect(() => { if (settled && kept?.id !== id) setKept({ id, text: fresh }); }, [settled, kept, id, fresh]);
   const said = id && kept?.id === id ? kept.text : fresh;
 
-  // When both Lantern contracts last answered, and whether a later check went unanswered.
+  // When both v1 Lantern contracts last answered, and whether a later check went unanswered.
   const states = LANTERNS.map((c) => chain.byKey[c.key]);
   const lastOk = states.every((s) => s.okAt) ? Math.min(...states.map((s) => s.okAt)) : null;
   const stale = states.filter((s) => s.pollError && s.okAt);
@@ -264,7 +268,7 @@ export default function Watch({ chain, onWatching }) {
               : `${lastOk ? `Checked at ${utcClock(lastOk)}. ` : ''}Checked again every ${POLL_MS / 1000}\u00a0s while this tab stays open; in the background, as often as the browser allows (about once a minute).`}
           </p>
 
-          {reading && !recs.length ? <p className="lv-pending">Reading both Lantern contracts…</p> : null}
+          {reading && !recs.length ? <p className="lv-pending">Reading the shipped contract and the whole story’s Lantern…</p> : null}
           {failed.length ? (
             <p className="lv-error-note">
               {capital(names(failed))} could not be read from the indexer yet, so this list may be missing recoveries there. Alerts for {failed.length === 1 ? 'it' : 'them'} are paused until {failed.length === 1 ? 'it' : 'they'} can be read.
@@ -279,7 +283,7 @@ export default function Watch({ chain, onWatching }) {
 
           {!reading && !known && !failed.length && !undecoded.length ? (
             <p className="lv-none" data-testid="watch-none">
-              {whatIsIt(id) ?? 'Neither Lantern contract on Preprod has enrolled this identity, and no recovery names it. Check that you pasted the identity commitment itself.'}
+              {whatIsIt(id) ?? `${NOT_ENROLLED} Check that you pasted the identity commitment itself.`}
             </p>
           ) : null}
 

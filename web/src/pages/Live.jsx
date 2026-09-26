@@ -6,7 +6,9 @@
 //  3. "Watch an identity": every recovery for an identity commitment, checked every 30 s (in the
 //     background too, as often as the browser allows), with a browser notification on anything new
 //     (only if asked, with a click);
-//  4. the whole story's run: its two contracts and every call they took.
+//  4. the whole story's run: its two contracts and every call they took;
+//  5. Lantern v2: a separate contract beside the shipped one, its run of 16 steps, its counts and every
+//     call it took. Labelled as what it is: not the shipped contract.
 //
 // The page draws what the repository's records say at once, with no loading line of its own (so a
 // route change here is never held on the indexer), then reads the chain: the indexer over HTTPS, the
@@ -22,6 +24,7 @@ import Recovery from '../live/Recovery.jsx';
 import Story from '../live/Story.jsx';
 import Timeline from '../live/Timeline.jsx';
 import { useChain } from '../live/useChain.js';
+import V2 from '../live/V2.jsx';
 import Watch from '../live/Watch.jsx';
 import { contractByKey, SETUP } from '../live/records.js';
 import { utcClock } from '../live/status.js';
@@ -130,6 +133,7 @@ export default function Live() {
         <a href="#check">Check it in your browser</a>
         <a href="#watch">Watch an identity</a>
         <a href="#story">The whole story</a>
+        <a href="#v2">Lantern v2</a>
       </nav>
 
       <Reach chain={chain} />
@@ -152,8 +156,9 @@ export default function Live() {
         <h2 id="lv-check-title" className="section">Check it in your browser</h2>
         <div>
           <p className="lv-intro">
-            Both records in the repository against the chain, one fact at a time: every transaction, at its block, carrying
-            its call; each contract, its frozen rules and its verifier keys; the recovery; the story’s last counts.
+            The three records in the repository against the chain, one fact at a time: every transaction, at its block,
+            carrying its call; each contract, its frozen rules and its verifier keys; the shipped recovery; the story’s last
+            counts; Lantern v2’s last counts and identity.
           </p>
           <Check />
           <div className="lv-full meta">
@@ -169,6 +174,10 @@ export default function Live() {
               <div>
                 <dt>The shipped contract, <code>deployments/preprod-shipped.json</code></dt>
                 <dd><Cmd>LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify</Cmd></dd>
+              </div>
+              <div>
+                <dt>Lantern v2, <code>deployments/preprod-v2.json</code></dt>
+                <dd><Cmd>LANTERN_NETWORK=preprod npm run devnet:verify:v2</Cmd></dd>
               </div>
             </dl>
           </div>
@@ -190,6 +199,11 @@ export default function Live() {
       <section className="spread lv-section" id="story" aria-labelledby="lv-story-title">
         <h2 id="lv-story-title" className="section">The whole story, on Preprod</h2>
         <Story chain={chain} />
+      </section>
+
+      <section className="spread lv-section" id="v2" aria-labelledby="lv-v2-title">
+        <h2 id="lv-v2-title" className="section">Lantern v2, a separate contract</h2>
+        <V2 chain={chain} />
       </section>
 
       <p className="lv-onward">

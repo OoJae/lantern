@@ -12,6 +12,7 @@ import { alertFor, isFrozen, keepNews, lineageOf, orderForWatch, parseIdCommit, 
 const FIX = JSON.parse(readFileSync(new URL('./fixtures/indexer.json', import.meta.url), 'utf8'));
 const SHIPPED = JSON.parse(readFileSync(new URL('../../deployments/preprod-shipped.json', import.meta.url), 'utf8'));
 const STORY = JSON.parse(readFileSync(new URL('../../deployments/preprod.json', import.meta.url), 'utf8'));
+const V2 = JSON.parse(readFileSync(new URL('../../deployments/preprod-v2.json', import.meta.url), 'utf8'));
 const INDEXER = 'https://indexer.preprod.midnight.network/api/v4/graphql';
 const INDEXER_WS = 'wss://indexer.preprod.midnight.network/api/v4/graphql/ws';
 const NOW = new Date('2026-09-26T12:00:00Z');
@@ -22,9 +23,19 @@ const STORY_LANTERN = STORY.contracts.lantern.address;
 // shipped.mjs after 15:03 UTC on 27 Sep) needs a re-record of the fixture, not an edit here.
 // Transactions on the shipped contract: its deploy, the update that froze its rules, and each call.
 const SHIPPED_TXS = 2 + SHIPPED.steps.filter((s) => s.tx?.txId).length; // 9 while it waits
-// Across both records: the story's two deploys and two freezes, and each of its calls (23 + 26).
-const RECORDED = SHIPPED_TXS + 4 + STORY.steps.filter((s) => s.tx?.txId).length; // 58 while it waits
-const FACTS = 3 * 3 + 5 + 2 + RECORDED;
+// Lantern v2: its deploy, the updates that inserted the keys its deploy could not carry, its freeze,
+// and each accepted call (a refused step has no transaction).
+const V2C = V2.contracts.lantern2;
+const V2_ADDRESS = V2C.address;
+const V2_INSERTS = V2C.verifierKeysInsertedBy ?? [];
+const V2_CALLS = V2.steps.filter((s) => s.tx?.txId);
+const V2_TXS = 2 + V2_INSERTS.length + V2_CALLS.length; // 15
+// Across the three records: the story's two deploys and two freezes, and each of its calls (23 + 26),
+// and v2's.
+const RECORDED = SHIPPED_TXS + 4 + STORY.steps.filter((s) => s.tx?.txId).length + V2_TXS; // 73 while it waits
+// Each contract's existence, frozen rules and keys (4 x 3); the shipped recovery (5); the story's two
+// counts; v2's counts and identity.
+const FACTS = 4 * 3 + 5 + 2 + 2 + RECORDED;
 // Whether the shipped recovery's finalize is in the record: the tests of its wait then skip, and the
 // finalized ones run (on a fixture recorded after it: node e2e/fixtures/record.mjs).
 const FINAL = Boolean(SHIPPED.finalize);
@@ -37,6 +48,8 @@ const SHIPPED_ADDRESS = SHIPPED.contract.address;
 const lastBlock = (steps, keep) => Math.max(...steps.filter((s) => s.tx?.blockHeight && keep(s)).map((s) => s.tx.blockHeight));
 const STORY_LAST = lastBlock(STORY.steps, (s) => s.contract !== 'host'); // 2,704,954
 const HOST_LAST = lastBlock(STORY.steps, (s) => s.contract === 'host'); // 2,704,983
+const V2_LAST = lastBlock(V2.steps, () => true); // 2,723,880
+const V2_REFUSED = V2.steps.filter((s) => s.outcome === 'refused');
 
 /** A contract call the records do not hold, made after them: its action, as the indexer sends it. */
 function laterCall(address, entryPoint, height, time) {
@@ -200,6 +213,71 @@ test.describe('/live on recorded Preprod data', () => {
     await expect(rows.first()).toContainText('block 2,690,632');
   });
 
+  test('Lantern v2: a card that says what it is, not the shipped contract, with its rules, its 16 steps and their 4 refusals, frozen', async ({ page }) => {
+    await serveIndexer(page);
+    await openLive(page);
+    await expect(page.locator('.lv-jump').getByRole('link', { name: 'Lantern v2' })).toHaveAttribute('href', '#v2');
+    const section = page.locator('#v2');
+    await expect(section.getByRole('heading', { level: 2 })).toHaveText('Lantern v2, a separate contract');
+    await expect(section.locator('.lv-intro')).toContainText('It is not the shipped contract, and the recovery at the top of this page does not run on it.');
+    await expect(section.locator('.lv-intro')).toContainText(`${V2.summary.steps} steps, ${V2.summary.accepted} calls the contract accepted and ${V2.summary.refused} its circuit refused with its own assert`);
+    const card = page.getByTestId('contract-v2');
+    await expect(card.getByRole('heading', { level: 3 })).toHaveText('Lantern v2');
+    await expect(card.locator('.lv-v2-head .tag')).toHaveText('not the shipped contract');
+    await expect(card.getByRole('link', { name: /6ed46d5d…1fa4/ })).toHaveAttribute('href', `https://preprod.midnightexplorer.com/contracts/${V2_ADDRESS}`);
+    // read from the chain: frozen, deployed where the record says, its counts as the run ended
+    await expect(page.getByTestId('v2-where')).toContainText(`deployed in block ${V2C.blockHeight.toLocaleString('en-GB')}`);
+    await expect(page.getByTestId('v2-where')).toContainText('rules frozen');
+    await expect(page.getByTestId('v2-counts-said')).toHaveText('now on chain, and exactly as the run ended');
+    await expect(card.locator('.lv-counts > div')).toHaveCount(Object.keys(V2.finalPublicRecord).length);
+    await expect(card.locator('.lv-v2-facts')).toContainText(`${V2C.operationsAtDeploy.length} in its deploy, ${V2_INSERTS.flatMap((u) => u.operations).length} inserted after it`);
+    await expect(card.locator('.lv-v2-facts')).toContainText('24 h, chosen by the owner at enrolment');
+    await expect(card.locator('.lv-v2-facts')).toContainText('no v2 recovery has been finalized');
+    // the four rules, and every step under its rule, in the record's order
+    await expect(card.locator('.lv-v2-rule h4')).toHaveText(['1 Enrolment with a chosen delay', '2 Guardian-gated, rate-limited opens', '3 The emergency lock', '4 Private check-ins']);
+    const steps = card.locator('.lv-v2-step');
+    await expect(steps).toHaveCount(V2.steps.length);
+    expect(await steps.evaluateAll((els) => els.map((e) => e.dataset.step))).toEqual(V2.steps.map((s) => s.id));
+    // the refusals: the circuit's own words, and no transaction
+    const refused = card.locator('.lv-v2-step[data-outcome="refused"]');
+    await expect(refused).toHaveCount(4);
+    await expect(refused.locator('.chip.no')).toHaveText(V2_REFUSED.map((s) => `Refused: ${s.message}`));
+    await expect(refused.locator('a')).toHaveCount(0);
+    expect(V2_REFUSED.map((s) => s.message)).toEqual(['guardian not in tree', 'cooling down after a veto', 'identity is locked', 'guardian already checked in this period']);
+    // each accepted call: linked to its transaction on the explorer
+    const accepted = card.locator('.lv-v2-step[data-outcome="accepted"]');
+    await expect(accepted).toHaveCount(V2.summary.accepted);
+    expect(await accepted.locator('a.lv-hash').evaluateAll((els) => els.map((a) => a.getAttribute('href'))))
+      .toEqual(V2_CALLS.map((s) => `https://preprod.midnightexplorer.com/transactions/${s.tx.txHash}`));
+    // every action on it, at its block: the deploy, the key insert, the freeze, then each call
+    await card.locator('details.lv-more summary').click();
+    await expect(card.locator('details.lv-more summary')).toHaveText(`Every action on it · ${V2_TXS} transactions`);
+    await expect(card.locator('.lv-timeline-note')).toHaveText(`${V2_TXS} of ${V2_TXS} on chain, each at the block below.`);
+    const rows = card.locator('.lv-timeline li');
+    await expect(rows).toHaveCount(V2_TXS);
+    await expect(rows.and(page.locator('.seen'))).toHaveCount(V2_TXS);
+    expect(await rows.evaluateAll((els) => els.map((e) => e.dataset.circuit))).toEqual(['deploy', 'update', 'update', ...V2_CALLS.map((s) => s.circuit)]);
+    await expect(rows.nth(0)).toContainText(`The contract is deployed, with ${V2C.operationsAtDeploy.length} of its 13 verifier keys`);
+    await expect(rows.nth(1)).toContainText(`Its other ${V2_INSERTS[0].operations.length} verifier keys are inserted, before its rules are frozen.`);
+    await expect(rows.nth(1)).toContainText(`block ${V2_INSERTS[0].blockHeight.toLocaleString('en-GB')}`);
+    await expect(rows.nth(2)).toContainText('no one can change its rules again');
+    await expect(card.locator('.lv-timeline li.extra')).toHaveCount(0);
+  });
+
+  test('Lantern v2 at 320px: every step and its outcome inside the card, nothing sideways', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await serveIndexer(page);
+    await openLive(page);
+    const card = page.getByTestId('contract-v2');
+    await card.scrollIntoViewIfNeeded();
+    await card.locator('details.lv-more summary').click();
+    const box = await card.boundingBox();
+    const outside = await card.locator('.lv-v2-step, .lv-v2-step .chip, .lv-v2-step code, .lv-counts > div, .lv-timeline li').evaluateAll((els, right) => els
+      .filter((e) => e.getBoundingClientRect().right > right + 0.5).map((e) => e.className || e.tagName), box.x + box.width);
+    expect(outside).toEqual([]);
+    await expectNoSideScroll(page);
+  });
+
   test('"Check it in your browser" ticks every fact, one by one, against the chain', async ({ page }) => {
     await serveIndexer(page);
     await openLive(page);
@@ -212,10 +290,19 @@ test.describe('/live on recorded Preprod data', () => {
     await expect(contracts).toContainText('10 of 10 identical to a compile of lantern.compact (npm run compile), by SHA-256');
     await expect(contracts).toContainText('10 of 10 as expected, by SHA-256: 9 identical to a compile of lantern.compact (npm run compile), and finalizeRecovery to the 60-second build (devnet/compile.sh)');
     await expect(contracts).toContainText('7 of 7 identical to a compile of host.compact (npm run compile), by SHA-256');
+    await expect(contracts).toContainText('13 of 13 identical to a compile of lantern2.compact (npm run compile), by SHA-256');
     await expect(contracts).not.toContainText('contracts/managed');
-    await expect(contracts.getByText('holds no keys and needs 1 signature: its rules can never change')).toHaveCount(3);
+    await expect(contracts.getByText('holds no keys and needs 1 signature: its rules can never change')).toHaveCount(4);
+    await expect(contracts.locator('.lv-check-label')).toContainText(['The shipped contract is on Preprod', 'The whole story’s Lantern is on Preprod', 'The independent host is on Preprod', 'Lantern v2 is on Preprod']);
     // the transactions, contract by contract
-    await expect(page.locator('.lv-tx-contract h4')).toHaveText([`The shipped contract · ${SHIPPED_TXS}`, 'The whole story’s Lantern · 23', 'The independent host · 26']);
+    await expect(page.locator('.lv-tx-contract h4')).toHaveText([`The shipped contract · ${SHIPPED_TXS}`, 'The whole story’s Lantern · 23', 'The independent host · 26', `Lantern v2 · ${V2_TXS}`]);
+    const v2Txs = page.locator('.lv-tx-contract').nth(3).locator('.lv-check-label code');
+    await expect(v2Txs).toHaveText(['deploy', `insert ${V2_INSERTS[0].operations.length} verifier keys`, 'freeze the rules', ...V2_CALLS.map((s) => s.circuit)]);
+    // Lantern v2's run: its counts and its identity, in the block of its last recorded call
+    const v2 = page.locator('.lv-check-group.v2');
+    await expect(v2.locator('.lv-check[data-state="pass"]')).toHaveCount(2);
+    await expect(v2.locator('.lv-check').nth(0)).toContainText(`after its last recorded call, in block ${V2_LAST.toLocaleString('en-GB')}`);
+    await expect(v2.locator('.lv-check').nth(1)).toContainText(`not locked · veto count ${V2.finalIdentity.vetoCount} · ${V2.finalIdentity.recoveries.length} recoveries`);
     // the story's counts, in the block of each contract's last recorded call
     const story = page.locator('.lv-check-group.story');
     await expect(story).toContainText(`after its last recorded call, in block ${STORY_LAST.toLocaleString('en-GB')}`);
@@ -223,11 +310,16 @@ test.describe('/live on recorded Preprod data', () => {
     await expect(story).not.toContainText('Called since');
     // the full check: one command per record, each named with the record it checks
     const full = page.locator('.lv-full');
-    await expect(full.locator('.lv-cmds > div')).toHaveCount(2);
+    await expect(full.locator('.lv-cmds > div')).toHaveCount(3);
     await expect(full.locator('.lv-cmds > div').nth(0)).toContainText('deployments/preprod.json');
     await expect(full.locator('.lv-cmds > div').nth(0)).toContainText('LANTERN_NETWORK=preprod npm run devnet:verify');
     await expect(full.locator('.lv-cmds > div').nth(1)).toContainText('deployments/preprod-shipped.json');
     await expect(full.locator('.lv-cmds > div').nth(1)).toContainText('LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify');
+    await expect(full.locator('.lv-cmds > div').nth(2)).toContainText('deployments/preprod-v2.json');
+    await expect(full.locator('.lv-cmds > div').nth(2)).toContainText('LANTERN_NETWORK=preprod npm run devnet:verify:v2');
+    // before the click it said what it would look up, and from which files
+    await page.goto('/live');
+    await expect(page.getByTestId('check-summary')).toHaveText(`${RECORDED} transactions and ${FACTS - RECORDED} facts about the four contracts, the shipped recovery and Lantern v2’s run, from deployments/preprod-shipped.json, deployments/preprod.json and deployments/preprod-v2.json, each looked up on the public indexer.`);
   });
 
   test('the story\'s counts are read in the block of its last recorded call: a call anyone makes later is news, not a mismatch', async ({ page }) => {
@@ -246,7 +338,7 @@ test.describe('/live on recorded Preprod data', () => {
     const counts = page.locator('.lv-check-group.story .lv-check').first();
     await expect(counts).toHaveAttribute('data-state', 'pass');
     await expect(counts).toContainText(`after its last recorded call, in block ${STORY_LAST.toLocaleString('en-GB')}. Called since the run: now`);
-    expect(asked.at.sort()).toEqual([[STORY_LANTERN, STORY_LAST], [STORY.contracts.host.address, HOST_LAST]].sort());
+    expect(asked.at.sort()).toEqual([[STORY_LANTERN, STORY_LAST], [STORY.contracts.host.address, HOST_LAST], [V2_ADDRESS, V2_LAST]].sort());
   });
 
   test('the counts check fails when the state after the run\'s last call is not the recorded one', async ({ page }) => {
@@ -386,10 +478,15 @@ test.describe('/live on recorded Preprod data', () => {
     await expect(page.getByTestId('watch-none')).toContainText('That is the address of a contract');
     await box.fill('ab'.repeat(32));
     await watch.click();
-    await expect(page.getByTestId('watch-none')).toContainText('Neither Lantern contract on Preprod has enrolled this identity');
+    await expect(page.getByTestId('watch-none')).toContainText('Neither the shipped contract nor the whole story’s Lantern has enrolled this identity');
     await expect(page.getByTestId('watch-recovery')).toHaveCount(0);
     // and a screen reader hears it, from a status region outside the block that just appeared
-    await expect(page.getByTestId('watch-said')).toHaveText('Watching abababab…abab. Neither Lantern contract on Preprod has enrolled this identity, and no recovery names it.');
+    await expect(page.getByTestId('watch-said')).toHaveText('Watching abababab…abab. Neither the shipped contract nor the whole story’s Lantern has enrolled this identity, and no recovery names it.');
+    // Lantern v2's identity: the watch reads the two v1 contracts, and says where v2's recoveries are
+    await box.fill(V2.finalIdentity.idCommit);
+    await watch.click();
+    await expect(page.getByTestId('watch-none')).toContainText('That is the identity Lantern v2’s run enrolled.');
+    await expect(page.getByTestId('watch-none')).toContainText('its recoveries are in its card below');
   });
 
   test('watch: a new approval, seen on the 30-second check, is written into the page and notified', async ({ page }) => {
@@ -656,7 +753,10 @@ test.describe('/live on recorded Preprod data', () => {
     // the check: what needs the state is not checked, and never counted as a mismatch
     await page.getByRole('button', { name: 'Check it against the chain' }).click();
     await expect(page.locator('.lv-checker')).toHaveAttribute('data-phase', 'done');
-    await expect(page.getByTestId('check-summary')).toHaveText(`${FACTS - 13} of ${FACTS} checks match the chain; 13 could not be checked (the reader did not run in this browser).`);
+    // each contract's frozen rules and keys (4 x 2), the shipped recovery (5), the story's counts (2),
+    // v2's counts and identity (2)
+    await expect(page.getByTestId('check-summary')).toHaveText(`${FACTS - 17} of ${FACTS} checks match the chain; 17 could not be checked (the reader did not run in this browser).`);
+    await expect(page.getByTestId('contract-v2')).toContainText('this browser could not run the contract’s reader: shown as recorded');
     await expect(page.getByTestId('contract-story')).toContainText('this browser could not run the contract’s reader: shown as recorded');
     await expect(page.locator('.lv-check[data-state="fail"]')).toHaveCount(0);
     await expect(page.locator('.lv-check[data-state="error"]').first()).toContainText('could not be checked: this browser could not run the contract’s reader');
@@ -818,8 +918,9 @@ test.describe('/live on recorded Preprod data', () => {
 
 /** A contract's recorded state, read with the page's own reader (web/src/live/decode.js). */
 async function decodeRecorded(address) {
-  const { decodeHost, decodeLantern } = await import('../src/live/decode.js');
+  const { decodeHost, decodeLantern, decodeLantern2 } = await import('../src/live/decode.js');
   const hexState = FIX.state[address].contractAction.state;
+  if (address === V2_ADDRESS) return decodeLantern2(hexState, { idCommit: V2.finalIdentity.idCommit, period: V2.finalIdentity.checkIns.period });
   return address === STORY.contracts.host.address ? decodeHost(hexState) : decodeLantern(hexState);
 }
 const pageActions = async (address) => {
@@ -1063,10 +1164,11 @@ test.describe('the pure parts', () => {
     expect(spanWords(-5 * m)).toBe('under a minute');
   });
 
-  test('rules are frozen only with no keys AND a threshold of at least 1, and all three contracts are', async () => {
+  test('rules are frozen only with no keys AND a threshold of at least 1, and all four contracts are', async () => {
     expect(isFrozen(0, 1)).toBe(true);
     expect(isFrozen(0, 0)).toBe(false); // no keys, no signature needed: a change could pass unsigned
     expect(isFrozen(1, 1)).toBe(false);
+    expect(Object.keys(FIX.state).sort()).toEqual([SHIPPED_ADDRESS, STORY_LANTERN, STORY.contracts.host.address, V2_ADDRESS].sort());
     for (const address of Object.keys(FIX.state)) {
       const d = await decodeRecorded(address);
       expect([d.frozen, d.committee, d.threshold >= 1], address).toEqual([true, 0, true]);
@@ -1080,6 +1182,12 @@ test.describe('the pure parts', () => {
     expect(compareKeys(shipped.keys, 'lantern', 'shipped')).toMatchObject({ ok: true, pinned: [], wrong: [], extra: [] });
     expect(compareKeys(shipped.keys, 'lantern', 'shipped').same).toHaveLength(10);
     expect(compareKeys(host.keys, 'host', 'host').same).toHaveLength(7);
+    // Lantern v2, deployed as compiled: all 13 keys the compiled ones, none pinned apart, none extra
+    const v2 = await decodeRecorded(V2_ADDRESS);
+    expect(compareKeys(v2.keys, 'lantern2', 'v2')).toMatchObject({ ok: true, pinned: [], wrong: [], extra: [] });
+    expect(compareKeys(v2.keys, 'lantern2', 'v2').same).toHaveLength(13);
+    expect(Object.keys(COMMITTED_KEYS.lantern2).sort()).toEqual([...V2C.operationsAtDeploy, ...V2_INSERTS.flatMap((u) => u.operations)].sort());
+    expect(compareKeys({ ...v2.keys, checkIn: COMMITTED_KEYS.lantern.approveRecovery }, 'lantern2', 'v2').wrong).toEqual(['checkIn']);
     const k = compareKeys(story.keys, 'lantern', 'story');
     expect(k).toMatchObject({ ok: true, pinned: ['finalizeRecovery'], wrong: [], extra: [] });
     expect(k.same).toHaveLength(9);
@@ -1097,8 +1205,8 @@ test.describe('the pure parts', () => {
     // wherever `npm run compile` has made them. CI's compile job runs the same check on a fresh compile
     // (scripts/check-live-keys.mjs), so a clean checkout skips it here rather than failing.
     const keysDir = (d) => new URL(`../../contracts/${d}/keys/`, import.meta.url);
-    test.skip(!existsSync(keysDir('managed')) || !existsSync(keysDir('managed-host')), 'the keys are not committed: run npm run compile (CI\'s compile job checks these hashes)');
-    for (const [kind, dir] of [['lantern', 'managed'], ['host', 'managed-host']]) {
+    test.skip(!existsSync(keysDir('managed')) || !existsSync(keysDir('managed-host')) || !existsSync(keysDir('managed-lantern2')), 'the keys are not committed: run npm run compile (CI\'s compile job checks these hashes)');
+    for (const [kind, dir] of [['lantern', 'managed'], ['host', 'managed-host'], ['lantern2', 'managed-lantern2']]) {
       for (const [op, sha] of Object.entries(COMMITTED_KEYS[kind])) {
         const file = readFileSync(new URL(`../../contracts/${dir}/keys/${op}.verifier`, import.meta.url));
         expect(createHash('sha256').update(file).digest('hex'), `${dir}/keys/${op}.verifier`).toBe(sha);
@@ -1113,9 +1221,28 @@ test.describe('the pure parts', () => {
       SHIPPED.contract.txId, SHIPPED.contract.maintenanceAuthority.frozenBy.txId, ...SHIPPED.steps.filter((s) => s.tx?.txId).map((s) => s.tx.txId),
       ...['lantern', 'host'].flatMap((k) => [STORY.contracts[k].txId, STORY.contracts[k].maintenanceAuthority.frozenBy.txId]),
       ...STORY.steps.filter((s) => s.tx?.txId).map((s) => s.tx.txId),
+      V2C.txId, ...V2_INSERTS.map((u) => u.txId), V2C.maintenanceAuthority.frozenBy.txId, ...V2_CALLS.map((s) => s.tx.txId),
     ];
     expect(ids).toHaveLength(RECORDED);
     expect(ids.filter((id) => !FIX.tx[id]?.transactions?.length), 'deployments/ changed since e2e/fixtures/indexer.json was recorded: run node e2e/fixtures/record.mjs from web/').toEqual([]);
+  });
+
+  test('Lantern v2\'s reader, on its state after its last recorded call, ends where the record says: its counts and its identity', async () => {
+    const d = await decodeRecorded(V2_ADDRESS);
+    expect(FIX.state[V2_ADDRESS].contractAction.transaction.block.height).toBe(V2_LAST);
+    expect(d.counts).toEqual(V2.finalPublicRecord);
+    expect(d.identity).toEqual(V2.finalIdentity);
+    // an identity it never enrolled: none
+    const none = await (await import('../src/live/decode.js')).decodeLantern2(FIX.state[V2_ADDRESS].contractAction.state, { idCommit: 'ab'.repeat(32), period: 1 });
+    expect(none.identity).toBeNull();
+  });
+
+  test('Lantern v2\'s rules on the page are the ones its run names', async () => {
+    const { RULES } = await import('../../devnet/src/v2-story.mjs');
+    const { V2_RULES } = await import('../src/live/v2rules.js');
+    expect(V2_RULES).toEqual(RULES);
+    // and every step of the run belongs to one of them
+    expect(V2.steps.every((s) => V2_RULES[s.rule])).toBe(true);
   });
 
   test('the story\'s counts are compared in the blocks of its last recorded calls', () => {
@@ -1134,6 +1261,7 @@ test.describe('the pure parts', () => {
       [SHIPPED_ADDRESS]: hashes(SHIPPED.contract, [...SHIPPED.steps.map((s) => s.tx), SHIPPED.finalize?.tx]),
       [STORY_LANTERN]: hashes(STORY.contracts.lantern, STORY.steps.filter((s) => s.contract !== 'host').map((s) => s.tx)),
       [STORY.contracts.host.address]: hashes(STORY.contracts.host, STORY.steps.filter((s) => s.contract === 'host').map((s) => s.tx)),
+      [V2_ADDRESS]: hashes(V2C, [...V2_INSERTS, ...V2.steps.map((s) => s.tx)]),
     };
     for (const [address, mine] of Object.entries(own)) {
       const last = FIX.state[address].contractAction.transaction.hash;
@@ -1166,6 +1294,9 @@ test('the real indexer: the recovery reads from the chain and every recorded fac
   await page.getByRole('button', { name: 'Check it against the chain' }).click();
   await expect(page.locator('.lv-checker')).toHaveAttribute('data-phase', 'done', { timeout: 180_000 });
   await expect(page.getByTestId('check-summary')).toHaveText(`All ${FACTS} checks match the chain.`);
+  // Lantern v2's card, read from the chain: frozen, and its counts there
+  await expect(page.getByTestId('v2-where')).toContainText('rules frozen');
+  await expect(page.getByTestId('v2-counts-said')).toContainText('now on chain');
   await page.getByRole('button', { name: 'Use the demo identity' }).click();
   await expect(page.getByTestId('watch-recovery')).toHaveCount(1);
 });

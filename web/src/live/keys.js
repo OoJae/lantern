@@ -1,16 +1,17 @@
 // The SHA-256 of each verifier key a compile of this repository produces (`npm run compile`, Compact
-// 0.31.1: lantern.compact into contracts/managed/keys, host.compact into contracts/managed-host/keys).
-// The keys themselves are not committed (.gitignore keeps only each compile's contract/ module), so
-// the hashes are pinned here. The browser check hashes each key the chain holds and compares: a
-// matching hash means the contract on chain checks proofs against exactly the circuits this
-// repository compiles.
+// 0.31.1: lantern.compact into contracts/managed/keys, host.compact into contracts/managed-host/keys,
+// and Lantern v2, contracts/v2/lantern2.compact, into contracts/managed-lantern2/keys). The keys
+// themselves are not committed (.gitignore keeps only each compile's contract/ module), so the hashes
+// are pinned here. The browser check hashes each key the chain holds and compares: a matching hash
+// means the contract on chain checks proofs against exactly the circuits this repository compiles.
 //
 // Hashes, not the 2 KB keys, so the check fetches nothing from this site. CI's compile job recompiles
 // and fails if any hash here differs from that compile, or if the set of circuits does; and
 // web/e2e/live.spec.js checks them too wherever a compile is present. That the keys on chain match a
 // fresh compile is what the terminal checks, with the compiler, one command per record:
-// `LANTERN_NETWORK=preprod npm run devnet:verify` (the whole story, preprod.json) and
-// `LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify` (preprod-shipped.json). This page does
+// `LANTERN_NETWORK=preprod npm run devnet:verify` (the whole story, preprod.json),
+// `LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify` (preprod-shipped.json) and
+// `LANTERN_NETWORK=preprod npm run devnet:verify:v2` (Lantern v2, preprod-v2.json). This page does
 // not run a compiler.
 export const COMMITTED_KEYS = {
   lantern: {
@@ -34,6 +35,22 @@ export const COMMITTED_KEYS = {
     sealEpoch: 'e50147d26c7806244f193ecef1154dc240a1e8521d009f390f5b74547c6afc66',
     sealRotation: '47a7fabfa5611e735767d2d47b56b967f678ad2732fc58c7195a98879fc387c9',
   },
+  // Lantern v2: a separate contract beside the shipped one, deployed as compiled (no line changed).
+  lantern2: {
+    addGuardian: '29930bc8f3a8d1969f169eb21e34cb87c3a70da3e464c06aece3d4b15c7412be',
+    approveRecovery: '58be250bc80ac3b67bbc4e9d365d883377c009ae561dad4e9c4f8f165df8ee30',
+    checkIn: '909f6e577418c7f959cc14b7967488a84051b840fcfc986f690304aff97fc791',
+    enrollIdentity: '4c7a801570b32f4e5a02b0a60a161bffcdc9c669e795ac2390e4f02250bd4109',
+    finalizeRecovery: '022e33673646b7cbfdd2fa1f31a8570b2d07098b2dcaf4b8d7411fed8a589abb',
+    hostGatedAction: '654926070c0ce7642b5b0adca50fd5a52af4fce1bf630d9307bc08562dbd9c34',
+    lockIdentity: '0ac1117d782f96712895442ba182b148f22c22f328cb1cc3201478aaf5485c98',
+    openRecovery: '2987213ce87260821f8dd71defc150bd32a10ec6945bf1e50aca6ae29545f828',
+    proveHeadOwnership: '1f156ec6090abccbd7f8b0fa10a94324ae724b99f4194e08de5fed40ee77ddb6',
+    proveSuccession: '3a9d9dbbf6ce6e624d90aeb819a967e25c5d450c59584ee101996c09dfb84789',
+    rotateGuardianSet: '93e277cbb6867fd40b12c01bca41249bf49168be66e585e53c7a932af991b6ff',
+    unlockIdentity: '2a0833802362b0538e7ceb42c5c31a2959a900ee9cc7ab44c1a1de03646f2365',
+    vetoRecovery: '8f5f96bd45fdd21699249160fce4cd4a7c5b1df754b1593dae89eeda2664601f',
+  },
 };
 
 // The one key the whole story's Lantern does NOT share with the compiled build, pinned rather than
@@ -51,6 +68,7 @@ export const FLAVOUR_KEYS = {
     },
   },
   host: {},
+  v2: {},
 };
 
 /**
@@ -58,8 +76,8 @@ export const FLAVOUR_KEYS = {
  * repository expects of it: the compiled key for every circuit, but the pinned one where FLAVOUR_KEYS
  * names one. No circuit missing, none extra.
  * @param {Record<string, string|null>} onChain
- * @param {'lantern'|'host'} kind
- * @param {string} key the contract's key in records.js (shipped, story, host)
+ * @param {'lantern'|'host'|'lantern2'} kind
+ * @param {string} key the contract's key in records.js (shipped, story, host, v2)
  */
 export function compareKeys(onChain, kind, key) {
   const committed = COMMITTED_KEYS[kind];

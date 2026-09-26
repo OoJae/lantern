@@ -1,4 +1,4 @@
-// What /live knows about the three contracts on Preprod, kept fresh while the tab is open.
+// What /live knows about the four contracts on Preprod, kept fresh while the tab is open.
 //
 // On mount: each contract's latest action (a small query), and at once, over one WebSocket that closes
 // once caught up, every action from its deploy to that latest one. Beside it, each contract's state
@@ -15,7 +15,7 @@
 // check the indexer did not answer.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { catchUpActions, contractState, latestAction } from '../lib/indexer.js';
-import { CONTRACTS } from './records.js';
+import { CONTRACTS, V2_RUN } from './records.js';
 
 export const POLL_MS = 30_000;
 const SLOW_MS = 6_000;
@@ -60,14 +60,21 @@ let decoder = null;
 /** The contract's reader (./decode.js, with the runtime): loaded once, on first use. */
 export const loadDecoder = () => (decoder ??= import('./decode.js').catch((e) => { decoder = null; throw e; }));
 
+/** A contract's state, read with its own reader: Lantern v2's with the identity its run enrolled. */
+export async function decodeState(c, stateHex) {
+  const d = await loadDecoder();
+  if (c.kind === 'host') return d.decodeHost(stateHex);
+  if (c.kind === 'lantern2') return d.decodeLantern2(stateHex, { idCommit: V2_RUN.identity.idCommit, period: V2_RUN.identity.checkIns.period });
+  return d.decodeLantern(stateHex);
+}
+
 async function readContract(c, signal) {
   const s = await contractState(c.address, { signal });
   if (!s) return { status: 'missing', latest: null, decoded: null, decodeError: null };
   let decoded = null;
   let decodeError = null;
   try {
-    const d = await loadDecoder();
-    decoded = c.kind === 'host' ? await d.decodeHost(s.state) : await d.decodeLantern(s.state);
+    decoded = await decodeState(c, s.state);
   } catch (e) {
     if (signal?.aborted) throw e;
     decodeError = 'This browser could not run the contract’s reader, so the state is not shown; the history still is.';

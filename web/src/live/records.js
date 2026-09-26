@@ -1,5 +1,5 @@
-// The two Preprod runs as the repository records them (deployments/*.json, committed with each run),
-// in the one shape /live reads. The page shows what the record says at once, then asks the chain
+// The three Preprod runs as the repository records them (deployments/*.json, committed with each
+// run), in the one shape /live reads. The page shows what the record says at once, then asks the chain
 // whether it agrees: every transaction here is one the browser check looks up.
 //
 //  - preprod-shipped.json: the SHIPPED contract, contracts/src/lantern.compact unchanged, with its
@@ -7,12 +7,22 @@
 //    the record names. `finalize` stays null in the record until that finalize is written into it.
 //  - preprod.json: the whole story, 74 steps, on a Lantern built with one line changed (a 60-second
 //    timelock, so it could be waited out) and the independent host, unchanged.
+//  - preprod-v2.json: Lantern v2, contracts/v2/lantern2.compact as compiled, deployed beside the
+//    shipped contract and frozen, then each of its four rules exercised once: 16 steps, the refused
+//    ones the circuit's own asserts, raised before any proof. It is NOT the shipped contract, and the
+//    shipped recovery does not run on it.
 import shippedRecord from '../../../deployments/preprod-shipped.json';
 // Only the keys this page reads, by name, so the build leaves the rest of the record (its notes on the
 // machine, the toolchain and the timings) out of the page's chunk.
 import { contracts, finalHostRecord, finalPublicRecord, flavour, recordedAt, steps, summary } from '../../../deployments/preprod.json';
+import {
+  contracts as v2Contracts, delay as v2Delay, finalIdentity as v2FinalIdentity, finalPublicRecord as v2FinalPublicRecord,
+  recordedAt as v2RecordedAt, steps as v2Steps, summary as v2Summary,
+} from '../../../deployments/preprod-v2.json';
+import { V2_RULES } from './v2rules.js';
 
 const storyRecord = { contracts, flavour, steps };
+const v2 = v2Contracts.lantern2;
 
 const txOf = (t) => (t?.txId && t?.txHash ? { txId: t.txId, txHash: t.txHash, blockHeight: t.blockHeight } : null);
 
@@ -28,6 +38,9 @@ export const DOES = {
   finalizeRecovery: 'finalizes the recovery',
   proveSuccession: 'proves which commitment is current',
   proveHeadOwnership: 'proves it owns the current commitment',
+  lockIdentity: 'locks the identity with the veto card',
+  unlockIdentity: 'unlocks the identity and installs a new veto card',
+  checkIn: 'checks in for this period',
   hostGatedAction: 'acts in the DApp as the identity’s owner',
   openEpoch: 'opens a snapshot epoch',
   attestVote: 'votes for a snapshot',
@@ -41,14 +54,16 @@ export const DOES = {
 // Each contract's last recorded transaction. The whole story's counts are compared at its block, not
 // with the state now: enrolling and opening a recovery need no permission, so anyone may call the
 // story's contracts after the run, and that is not a disagreement with the record.
-const lastOf = (c) => [c.deploy, c.freeze, ...c.calls.map((x) => x.tx)].filter(Boolean)
+const lastOf = (c) => [c.deploy, ...(c.inserts ?? []).map((u) => u.tx), c.freeze, ...c.calls.map((x) => x.tx)].filter(Boolean)
   .reduce((a, b) => (b.blockHeight >= a.blockHeight ? b : a));
 
 const callsOf = (steps, keep) => steps
   .filter((s) => s.tx?.txId && keep(s))
   .map((s) => ({ stepId: s.id, actor: s.actor, circuit: s.circuit, say: s.say ?? null, payer: s.payer ?? null, tx: txOf(s.tx) }));
 
-/** The three contracts, each with the transactions the record says it took. */
+/** The four contracts, each with the transactions the record says it took. Lantern v2's deploy
+ *  carried only some of its verifier keys; `inserts` are the updates that added the rest, before the
+ *  freeze. */
 export const CONTRACTS = [
   {
     key: 'shipped',
@@ -86,15 +101,30 @@ export const CONTRACTS = [
     freeze: txOf(storyRecord.contracts.host.maintenanceAuthority?.frozenBy),
     calls: callsOf(storyRecord.steps, (s) => s.kind === 'call' && s.contract === 'host'),
   },
+  {
+    key: 'v2',
+    kind: 'lantern2',
+    name: 'Lantern v2',
+    inline: 'Lantern v2',
+    detail: 'contracts/v2/lantern2.compact, as compiled: a separate contract, not the shipped one',
+    address: v2.address,
+    delaySeconds: v2Delay.chosenSeconds,
+    deploy: txOf(v2),
+    deployKeys: v2.operationsAtDeploy.length,
+    inserts: (v2.verifierKeysInsertedBy ?? []).map((u) => ({ operations: u.operations, tx: txOf(u) })),
+    freeze: txOf(v2.maintenanceAuthority?.frozenBy),
+    calls: callsOf(v2Steps, (s) => s.kind === 'call'),
+  },
 ].map((c) => ({ ...c, last: lastOf(c) }));
 export const contractByKey = Object.fromEntries(CONTRACTS.map((c) => [c.key, c]));
 
 /** Which file records each contract, for the check's labels. */
-export const FILE_OF = { shipped: 'deployments/preprod-shipped.json', story: 'deployments/preprod.json', host: 'deployments/preprod.json' };
+export const FILE_OF = { shipped: 'deployments/preprod-shipped.json', story: 'deployments/preprod.json', host: 'deployments/preprod.json', v2: 'deployments/preprod-v2.json' };
 
-/** Every transaction either file records, with what it should carry on chain. */
+/** Every transaction the three files record, with what it should carry on chain. */
 export const RECORDED_TXS = CONTRACTS.flatMap((c) => [
   c.deploy && { contract: c.key, address: c.address, action: 'deploy', circuit: null, label: 'deploy', tx: c.deploy },
+  ...(c.inserts ?? []).map((u) => ({ contract: c.key, address: c.address, action: 'update', circuit: null, label: `insert ${u.operations.length} verifier keys`, tx: u.tx })),
   c.freeze && { contract: c.key, address: c.address, action: 'update', circuit: null, label: 'freeze the rules', tx: c.freeze },
   ...c.calls.map((x) => ({ contract: c.key, address: c.address, action: 'call', circuit: x.circuit, label: x.circuit, actor: x.actor, tx: x.tx })),
 ].filter(Boolean));
@@ -120,10 +150,30 @@ export const COUNT_LABEL = {
   approvals: 'approval nullifiers', vetoes: 'veto nullifiers', killed: 'vetoed recoveries',
   retired: 'retired commitments', lineage: 'lineage leaves', guardianSets: 'guardian sets', gateActions: 'DApp actions',
   sealedEpochs: 'sealed snapshots', committeeGen: 'committee generation', committeeVotes: 'committee votes', hostActions: 'DApp actions',
+  opens: 'open nullifiers', vetoCount: 'veto count', reserved: 'reserved recoveries', locked: 'locked identities', checkIns: 'check-in nullifiers',
 };
 
 /** The whole story's last public counts, as the record wrote them. */
 export const STORY_FINAL = { lantern: finalPublicRecord, host: finalHostRecord, summary, recordedAt };
+
+/** Lantern v2's run as the record states it: every step, the refused ones included (a refusal is the
+ *  circuit's own assert, raised before anything is proved, so it has no transaction), grouped by the
+ *  rule it exercises; its last public counts and its identity, in the block of its last transaction. */
+export const V2_RUN = {
+  rules: Object.entries(V2_RULES).map(([n, name]) => ({
+    n: Number(n),
+    name,
+    steps: v2Steps.filter((s) => s.rule === Number(n)).map((s) => ({
+      id: s.id, actor: s.actor, circuit: s.circuit, say: s.say ?? null, outcome: s.outcome, message: s.message ?? null, tx: txOf(s.tx),
+    })),
+  })),
+  steps: v2Steps.length,
+  summary: v2Summary,
+  final: v2FinalPublicRecord,
+  identity: v2FinalIdentity,
+  recordedAt: v2RecordedAt,
+  delaySeconds: v2Delay.chosenSeconds,
+};
 
 /** Where the README sets up the terminal's tools (the full check and the watcher). */
 export const SETUP = 'https://github.com/OoJae/lantern#on-midnights-public-test-network';

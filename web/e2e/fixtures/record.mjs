@@ -5,7 +5,7 @@
 //   node e2e/fixtures/record.mjs          # writes e2e/fixtures/indexer.json
 //   OUT=<file> node e2e/fixtures/record.mjs   # writes it elsewhere (to compare with the committed one)
 //
-// The fixture is the chain AS THE RECORDS END, not as it is when this runs. All three contracts take
+// The fixture is the chain AS THE RECORDS END, not as it is when this runs. All four contracts take
 // calls from anyone (enrollIdentity and openRecovery need no owner secret), so a call someone else
 // makes after the records must not become the fixture's "latest": live.spec would then find the
 // story's counts missing from the block of its last call and its own transactions no longer the last.
@@ -18,7 +18,7 @@
 //    (LanternStateAt), served as its latest (LanternState; LanternLatest is the same answer without
 //    the state, so the fixture server derives it; so is LanternStateAt, the state in one block, from
 //    the states recorded here with their blocks);
-//  - every transaction both records name, by identifier (LanternTx);
+//  - every transaction the three records name, by identifier (LanternTx): Lantern v2's key insert too;
 //  - each contract's actions from its deploy, over the WebSocket (LanternActions);
 //  - and two earlier states of the whole story's Lantern (after one approval, then two), so a test
 //    can show the watch noticing an approval land.
@@ -38,6 +38,8 @@ const root = new URL('../../../', import.meta.url);
 const read = (f) => JSON.parse(readFileSync(new URL(`deployments/${f}`, root), 'utf8'));
 const shipped = read('preprod-shipped.json');
 const story = read('preprod.json');
+const v2 = read('preprod-v2.json');
+const v2c = v2.contracts.lantern2;
 
 async function q(query, variables) {
   const res = await fetch(INDEXER, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query, variables }) });
@@ -52,11 +54,14 @@ const txsOf = (deploy, calls) => [deploy, deploy.maintenanceAuthority?.frozenBy,
 const shippedTxs = txsOf(shipped.contract, [...shipped.steps.map((s) => s.tx), shipped.finalize?.tx]);
 const storyTxs = txsOf(story.contracts.lantern, story.steps.filter((s) => s.contract !== 'host').map((s) => s.tx));
 const hostTxs = txsOf(story.contracts.host, story.steps.filter((s) => s.contract === 'host').map((s) => s.tx));
+// Lantern v2: its deploy, the updates that inserted the keys its deploy could not carry, the freeze, each call.
+const v2Txs = txsOf(v2c, [...(v2c.verifierKeysInsertedBy ?? []), ...v2.steps.map((s) => s.tx)]);
 const lastOf = (txs) => Math.max(...txs.map((t) => t.blockHeight));
 const contracts = [
   { address: shipped.contract.address, from: shipped.contract.blockHeight, last: lastOf(shippedTxs), hashes: new Set(shippedTxs.map((t) => t.txHash)) },
   { address: story.contracts.lantern.address, from: story.contracts.lantern.blockHeight, last: lastOf(storyTxs), hashes: new Set(storyTxs.map((t) => t.txHash)) },
   { address: story.contracts.host.address, from: story.contracts.host.blockHeight, last: lastOf(hostTxs), hashes: new Set(hostTxs.map((t) => t.txHash)) },
+  { address: v2c.address, from: v2c.blockHeight, last: lastOf(v2Txs), hashes: new Set(v2Txs.map((t) => t.txHash)) },
 ];
 const txIds = [
   shipped.contract.txId, shipped.contract.maintenanceAuthority.frozenBy.txId,
@@ -64,6 +69,8 @@ const txIds = [
   story.contracts.lantern.txId, story.contracts.lantern.maintenanceAuthority.frozenBy.txId,
   story.contracts.host.txId, story.contracts.host.maintenanceAuthority.frozenBy.txId,
   ...story.steps.filter((s) => s.tx?.txId).map((s) => s.tx.txId),
+  v2c.txId, ...(v2c.verifierKeysInsertedBy ?? []).map((u) => u.txId), v2c.maintenanceAuthority.frozenBy.txId,
+  ...v2.steps.filter((s) => s.tx?.txId).map((s) => s.tx.txId),
 ];
 
 const out = { recordedAt: new Date().toISOString(), note: 'Recorded from https://indexer.preprod.midnight.network by e2e/fixtures/record.mjs', state: {}, tx: {}, actions: {}, earlier: {} };

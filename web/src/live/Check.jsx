@@ -1,24 +1,26 @@
 // "Check it in your browser": the committed records against the public chain, one fact at a time,
-// on a click. Every transaction either file records is looked up by its identifier and must be there,
-// at its recorded block, with its recorded hash, carrying the recorded action on the recorded contract.
-// Each contract must exist, with its rules frozen and its verifier keys the ones this repository
-// compiled (the whole story's finalizeRecovery: the pinned 60-second build's); the shipped recovery
-// must be the recorded one; the whole story's counts, in the block of each contract's last recorded
-// call, must be the ones the record ends with. Calls anyone made after that (enrolling and opening a
-// recovery need no permission) are said beside them, never counted as a mismatch.
+// on a click. Every transaction the three files record is looked up by its identifier and must be
+// there, at its recorded block, with its recorded hash, carrying the recorded action on the recorded
+// contract. Each contract must exist, with its rules frozen and its verifier keys the ones this
+// repository compiled (the whole story's finalizeRecovery: the pinned 60-second build's); the shipped
+// recovery must be the recorded one; the whole story's counts, and Lantern v2's counts and identity,
+// in the block of each contract's last recorded call, must be the ones the record ends with. Calls
+// anyone made after that (enrolling and opening a recovery need no permission) are said beside them,
+// never counted as a mismatch.
 //
 // A fact is a match, a mismatch, or not checked, and never a mismatch it did not see: when the indexer
 // gives no usable answer, or this browser cannot run the contract's reader, the row says which.
 //
 // What it leaves out, said on the page: a fresh compile of the contracts, which only the terminal can
 // run, one command per record: `LANTERN_NETWORK=preprod npm run devnet:verify` (preprod.json, the
-// whole story) and `LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify` (preprod-shipped.json).
+// whole story), `LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify` (preprod-shipped.json)
+// and `LANTERN_NETWORK=preprod npm run devnet:verify:v2` (preprod-v2.json, Lantern v2).
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { contractState, contractStateAt, pool, transactionById } from '../lib/indexer.js';
 import { compareKeys } from './keys.js';
-import { CONTRACTS, contractByKey, COUNT_LABEL, FILE_OF, RECORDED_TXS, SHIPPED_RECOVERY, STORY_FINAL } from './records.js';
+import { CONTRACTS, contractByKey, COUNT_LABEL, FILE_OF, RECORDED_TXS, SHIPPED_RECOVERY, STORY_FINAL, V2_RUN } from './records.js';
 import { blockNo, shortHex, utc, utcClock, utcHM } from './status.js';
-import { loadDecoder } from './useChain.js';
+import { decodeState } from './useChain.js';
 
 const FAIL = (detail) => ({ ok: false, detail });
 const PASS = (detail) => ({ ok: true, detail });
@@ -48,12 +50,23 @@ const SILENT_MAX = 4;
 const NOT_ASKED = 'could not be checked: not asked, as the indexer had stopped answering';
 const whyNot = (e) => WHY[e?.kind] ?? (e?.kind === 'http' ? `could not be checked: ${e.message}` : 'could not be checked: this page failed while checking it');
 const plural = (n, one, many) => (n === 1 ? one : many);
+/** Where each kind's keys come from: a compile of this repository (keys.js pins their hashes). */
+const COMPILED = {
+  lantern: 'a compile of lantern.compact (npm run compile)',
+  host: 'a compile of host.compact (npm run compile)',
+  lantern2: 'a compile of lantern2.compact (npm run compile)',
+};
+/** The same value, whatever order its keys were written in. */
+const same = (a, b) => {
+  const canon = (v) => (Array.isArray(v) ? v.map(canon) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])])) : v);
+  return JSON.stringify(canon(a)) === JSON.stringify(canon(b));
+};
 
 /** The checks, in the order they are drawn. Each `run(ctx)` resolves { ok, detail }. */
 function buildChecks() {
   const contractChecks = CONTRACTS.flatMap((c) => {
     // the keys are not committed; a compile makes them (keys.js pins their hashes)
-    const where = c.kind === 'host' ? 'a compile of host.compact (npm run compile)' : 'a compile of lantern.compact (npm run compile)';
+    const where = COMPILED[c.kind];
     return [
       {
         id: `exists-${c.key}`, group: 'contracts',
@@ -155,12 +168,12 @@ function buildChecks() {
 
   // The counts in the block of the contract's last recorded call: the state right after the run.
   // What anyone did since is said after them, as news, not as a mismatch.
-  const countsCheck = (key, final, label) => {
+  const countsCheck = (key, final, label, group = 'story') => {
     const c = contractByKey[key];
     const block = blockNo(c.last.blockHeight);
     const name = (k) => COUNT_LABEL[k] ?? k;
     return {
-      id: `counts-${key}`, group: 'story',
+      id: `counts-${key}`, group,
       label,
       run: async (ctx) => {
         const r = decodedOf(await ctx.readAt(c, c.last.blockHeight));
@@ -182,6 +195,30 @@ function buildChecks() {
     countsCheck('host', STORY_FINAL.host, 'The host’s public counts are the ones the whole story ends with'),
   ];
 
+  // Lantern v2's run: its counts, and the identity it enrolled, as they were after its last recorded
+  // call (devnet/src/verify-v2.mjs compares the same two).
+  const v2 = contractByKey.v2;
+  const v2Block = blockNo(v2.last.blockHeight);
+  const I = V2_RUN.identity;
+  const idFields = { locked: 'the lock', vetoCount: 'the veto count', vetoCommit: 'the veto card', lastVetoAt: 'the last veto’s time', liveRecovery: 'the slot', reservedRecovery: 'the reservation', recoveries: 'the recoveries', checkIns: 'the check-ins', delaySeconds: 'the delay', threshold: 'the threshold', root: 'the root', idCommit: 'the commitment' };
+  const v2Checks = [
+    countsCheck('v2', V2_RUN.final, 'Lantern v2’s public counts are the ones its run ends with', 'v2'),
+    {
+      id: 'identity-v2', group: 'v2',
+      label: 'Its identity ends where the record says: the lock, the veto count and card, the reservation, the recoveries, the check-ins',
+      run: async (ctx) => {
+        const r = decodedOf(await ctx.readAt(v2, v2.last.blockHeight));
+        if (!r) return FAIL(`the indexer holds no action of it in block ${v2Block}, where the record’s last call is`);
+        const got = r.decoded.identity;
+        if (!got) return FAIL(`identity ${shortHex(I.idCommit)} is not enrolled on it in block ${v2Block}`);
+        const off = Object.keys(I).filter((k) => !same(got[k], I[k]));
+        if (off.length) return FAIL(`in block ${v2Block}, ${off.map((k) => idFields[k] ?? k).join(', ')} ${plural(off.length, 'is', 'are')} not the recorded ${plural(off.length, 'one', 'ones')}`);
+        const killed = I.recoveries.filter((x) => x.killed).length;
+        return PASS(`identity ${shortHex(I.idCommit)}: ${I.locked ? 'locked' : 'not locked'} · veto count ${I.vetoCount} · ${I.recoveries.length} ${plural(I.recoveries.length, 'recovery', 'recoveries')}, ${killed} vetoed · ${I.checkIns.count} ${plural(I.checkIns.count, 'check-in', 'check-ins')} in period ${I.checkIns.period}; after its last recorded call, in block ${v2Block}`);
+      },
+    },
+  ];
+
   const txChecks = RECORDED_TXS.map((x, i) => ({
     id: `tx-${i}`, group: 'txs', contract: x.contract,
     label: x.action === 'call' ? x.circuit : x.label,
@@ -197,18 +234,19 @@ function buildChecks() {
     },
   }));
 
-  return [...contractChecks, ...recoveryChecks, ...storyChecks, ...txChecks];
+  return [...contractChecks, ...recoveryChecks, ...storyChecks, ...v2Checks, ...txChecks];
 }
 
 const CHECKS = buildChecks();
 const FACTS = CHECKS.length - RECORDED_TXS.length;
 const GROUPS = [
-  ['contracts', 'The three contracts'],
+  ['contracts', 'The four contracts'],
   ['recovery', 'The shipped recovery'],
   ['story', 'The whole story’s last counts'],
+  ['v2', 'Lantern v2’s run'],
   ['txs', `Every recorded transaction · ${RECORDED_TXS.length}`],
 ];
-const FILES = Object.values(FILE_OF).filter((f, i, a) => a.indexOf(f) === i).join(' and ');
+const FILES = ((fs) => (fs.length > 1 ? `${fs.slice(0, -1).join(', ')} and ${fs.at(-1)}` : fs[0]))(Object.values(FILE_OF).filter((f, i, a) => a.indexOf(f) === i));
 const SAY = { pass: 'matches', fail: 'does not match', error: 'could not be checked', running: 'checking', todo: 'not checked yet' };
 
 function Row({ check, result }) {
@@ -282,8 +320,7 @@ export default function Check() {
       if (!s) return null;
       let decoded = null;
       try {
-        const d = await loadDecoder();
-        decoded = c.kind === 'host' ? await d.decodeHost(s.state) : await d.decodeLantern(s.state);
+        decoded = await decodeState(c, s.state);
       } catch { /* each row that needs the state says it could not be checked */ }
       return { action: s.action, decoded };
     };
@@ -328,7 +365,7 @@ export default function Check() {
         {/* One announcement as it starts and one with the summary: the running count is for the eye
             only, or a screen reader would hear it up to 74 times. */}
         <span className="lv-progress" role="status" data-testid="check-summary">
-          {phase === 'idle' ? `${RECORDED_TXS.length} transactions and ${FACTS} facts about the three contracts and the recovery, from ${FILES}, each looked up on the public indexer.`
+          {phase === 'idle' ? `${RECORDED_TXS.length} transactions and ${FACTS} facts about the four contracts, the shipped recovery and Lantern v2’s run, from ${FILES}, each looked up on the public indexer.`
             : running ? <><span aria-hidden="true">{doneCount} of {CHECKS.length} checked</span><span className="sr-only">Checking {RECORDED_TXS.length} transactions and {FACTS} facts against the chain…</span></>
             : summary(results)}
         </span>

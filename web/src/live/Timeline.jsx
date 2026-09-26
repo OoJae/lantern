@@ -1,5 +1,5 @@
-// Every action on one contract, oldest first: the deploy, the freeze of its rules, then each circuit
-// call. The record names who made each call (the story's people, fictional); the chain gives each one
+// Every action on one contract, oldest first: the deploy, any update that inserted the verifier keys
+// the deploy could not carry (Lantern v2's), the freeze of its rules, then each circuit call. The record names who made each call (the story's people, fictional); the chain gives each one
 // its block and its time. An action the chain holds that the record does not (a call made after the
 // record was written, such as the finalize that follows the 72 hours) is drawn too, and says so.
 //
@@ -13,6 +13,7 @@ import { blockNo, shortHex, utcShort } from './status.js';
 export function timelineRows(contract, actions) {
   const recorded = [
     contract.deploy && { key: contract.deploy.txHash, kind: 'deploy', circuit: null, actor: null, say: null, tx: contract.deploy },
+    ...(contract.inserts ?? []).map((u) => ({ key: u.tx.txHash, kind: 'update', insert: u.operations, circuit: null, actor: null, say: null, tx: u.tx })),
     contract.freeze && { key: contract.freeze.txHash, kind: 'update', circuit: null, actor: null, say: null, tx: contract.freeze },
     ...contract.calls.map((x) => ({ key: x.tx.txHash, kind: 'call', circuit: x.circuit, actor: x.actor, say: x.say, tx: x.tx })),
   ].filter(Boolean);
@@ -30,8 +31,15 @@ export function timelineRows(contract, actions) {
 const ONLY = { finalizeRecovery: 'The approved phone', approveRecovery: 'A guardian', vetoRecovery: 'The owner' };
 
 /** The row's sentence: the record's own, or one made from who called what. */
-function sentence(row) {
-  if (row.kind === 'deploy') return 'The contract is deployed.';
+function sentence(row, contract) {
+  if (row.kind === 'deploy') {
+    if (!row.extra && contract.inserts?.length) {
+      const all = contract.deployKeys + contract.inserts.reduce((n, u) => n + u.operations.length, 0);
+      return `The contract is deployed, with ${contract.deployKeys} of its ${all} verifier keys: all ${all} in one transaction would exhaust a block’s limits.`;
+    }
+    return 'The contract is deployed.';
+  }
+  if (row.insert) return `Its other ${row.insert.length} verifier keys are inserted, before its rules are frozen.`;
   if (row.kind === 'update') return 'Its maintenance authority is emptied: no one can change its rules again.';
   const does = DOES[row.circuit];
   if (row.say) return row.say;
@@ -40,7 +48,7 @@ function sentence(row) {
 }
 
 function What({ row, says }) {
-  const pill = row.kind === 'deploy' ? 'deploy' : row.kind === 'update' ? 'freeze' : row.circuit ?? 'a call';
+  const pill = row.kind === 'deploy' ? 'deploy' : row.insert ? 'verifier keys' : row.kind === 'update' ? 'freeze' : row.circuit ?? 'a call';
   return <><span className="circuit">{pill}</span><span className="lv-does">{says}</span></>;
 }
 
@@ -66,7 +74,7 @@ export default function Timeline({ contract, timeline, label }) {
           const lock = r.kind === 'call' && r.circuit === 'finalizeRecovery' && r.chain?.tx.status === 'success';
           const cls = ['lv-row', r.chain ? 'seen' : 'unseen', lock ? 'lock' : '', r.extra ? 'extra' : ''].filter(Boolean).join(' ');
           const hash = r.chain?.tx.hash ?? r.tx.txHash;
-          const says = sentence(r);
+          const says = sentence(r, contract);
           // the actor's name once: as a label only when the sentence does not already say it
           const who = r.actor && !says.includes(r.actor) ? r.actor : null;
           return (

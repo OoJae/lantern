@@ -362,6 +362,41 @@
 .lv-counts dd { margin: 0; font-family: var(--font-mono); color: var(--ink); font-variant-numeric: tabular-nums; text-align: right; }
 .lv-counts > div[data-differs] { border-top-style: dashed; border-top-color: var(--edge); }
 
+/* ---- Lantern v2 -----------------------------------------------------------------------------------
+   One card, as the story's contracts: its name with a tag saying it is not the shipped contract, three
+   facts, its public counts, then its run by rule, each step with its outcome: an accepted call's closed
+   seal and the block it landed in, a refusal's open seal and the circuit's own words. */
+.lv-v2-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-3); margin: 0 0 var(--space-1); }
+.lv-v2-head h3 { margin: 0; }
+.lv-v2-facts { display: grid; grid-template-columns: minmax(0, 1fr); margin: 0 0 var(--space-5); }
+.lv-v2-facts > div { display: grid; align-content: start; gap: 1px; padding: 8px 0; border-top: 1px solid var(--rib); font-size: var(--step--1); line-height: var(--leading--1); min-width: 0; }
+.lv-v2-facts dt { color: var(--muted); }
+.lv-v2-facts dd { margin: 0; min-width: 0; }
+@container (min-width: 44rem) { .lv-v2-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--space-5); } }
+.lv-v2-rules { display: grid; gap: var(--space-5); margin: var(--space-6) 0 0; }
+.lv-v2-rule h4 {
+  display: flex; align-items: baseline; gap: var(--space-2); margin: 0 0 var(--space-2);
+  font-family: var(--font-display); font-style: italic; font-weight: 400; font-size: var(--step-0); line-height: var(--leading-0);
+}
+.lv-v2-n { font-size: var(--step-1); color: var(--muted); }
+.lv-v2-steps { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid var(--rib); }
+.lv-v2-step {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-1) var(--space-4);
+  padding: 10px 0; border-top: 1px solid var(--rib); font-size: var(--step--1); line-height: var(--leading--1);
+}
+.lv-v2-step p { margin: 0; min-width: 0; }
+.lv-v2-step-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-2); }
+.lv-v2-id { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--muted); }
+.lv-v2-step-head code { color: var(--ink); overflow-wrap: anywhere; }
+.lv-v2-out { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); }
+.lv-v2-out .chip { flex: 0 1 auto; max-width: 100%; text-align: left; }
+.lv-v2-out .lv-hash { font-family: var(--font-mono); font-size: var(--step--2); font-variant-numeric: tabular-nums; color: var(--ink); }
+@container (min-width: 44rem) {
+  .lv-v2-step { grid-template-columns: 11rem minmax(0, 1fr) 13rem; align-items: baseline; }
+  .lv-v2-step-head { flex-direction: column; gap: 2px; }
+  .lv-v2-out { justify-content: flex-end; text-align: right; }
+}
+
 /* A disclosure the site's way: the summary is a text control with a drawn chevron, turning 90° once. */
 .lv-more { margin-top: var(--space-5); }
 .lv-more > summary {
