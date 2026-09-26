@@ -1,4 +1,4 @@
-// What Lantern v2 still leaks (docs/v2.md §9): v1's classification
+// What Lantern v2 still leaks (docs/v2-spec.md §9): v1's classification
 // (src/attack/leaks.mjs), with the entries v2 changes rewritten and its nine
 // new fields added. test/v2-adversarial.test.js asserts that every field of
 // v2's ledger appears here, so adding one without classifying it fails CI.

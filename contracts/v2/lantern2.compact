@@ -1,7 +1,7 @@
 pragma language_version >= 0.22;
 
 // LANTERN v2. The design, its reasoning and every adversarial case are in
-// docs/v2.md; section numbers below (§3.4 and so on) refer to it.
+// docs/v2-spec.md; section numbers below (§3.4 and so on) refer to it.
 //
 // v2 is a NEW contract. The shipped v1 (contracts/src/lantern.compact) is frozen
 // on Preprod and verified against a fresh compile of its sources, so no byte of

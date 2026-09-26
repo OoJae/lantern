@@ -1,4 +1,4 @@
-// v1's test/succession.test.js, ported to v2 (docs/v2.md §10): succession,
+// v1's test/succession.test.js, ported to v2 (docs/v2-spec.md §10): succession,
 // rotation, proveSuccession, proveHeadOwnership, the reference host gate, and
 // the two D5 regressions. Opens are made by a guardian; each generation is a
 // new head, so the same guardian may open every generation.
@@ -106,7 +106,7 @@ describe('v2 guardian-set rotation', () => {
   });
 
   // v1 refused a context another identity had claimed. v2 goes further: the
-  // context is DERIVED from the rotating identity's own root (docs/v2.md
+  // context is DERIVED from the rotating identity's own root (docs/v2-spec.md
   // §3.10), so another identity's context cannot even be named, and a reused
   // seed on the same root is still refused.
   it('rejects a context already claimed by another identity', () => {
@@ -124,7 +124,7 @@ describe('v2 guardian-set rotation', () => {
     expect(() => sim.call('rotateGuardianSet', bobId, id)).toThrow(/context already used/);
   });
 
-  // v2 addition: the rotation also resets the veto count (docs/v2.md §3.1 rule 4).
+  // v2 addition: the rotation also resets the veto count (docs/v2-spec.md §3.1 rule 4).
   it('the rotated context survives a recovery, and the rotation resets the veto count', () => {
     const { sim, id, guardians: old } = world();
     const vetoed = openAs(sim, old[0], id, EPH_C);
@@ -337,7 +337,7 @@ describe('v2 regression: holding the identity secret is not enough to rotate or 
   // one live recovery per identity, so the port runs the race the other way
   // round: the colluders open first and reach quorum; the owner's veto kills
   // theirs AND reserves the owner's new phone, which an honest guardian opens
-  // at once, inside the cooldown (docs/v2.md §3.10, review F0). Every v1
+  // at once, inside the cooldown (docs/v2-spec.md §3.10, review F0). Every v1
   // refusal is kept, and the colluders' second open is refused outright, at
   // the cooldown's public end as much as before it.
   it('colluders who pooled shares cannot stop the owner recovery finalizing', () => {

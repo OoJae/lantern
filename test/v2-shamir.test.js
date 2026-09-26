@@ -1,4 +1,4 @@
-// v1's "shamir x circuit (end to end)", ported to v2 (docs/v2.md §10). The claim
+// v1's "shamir x circuit (end to end)", ported to v2 (docs/v2-spec.md §10). The claim
 // "provably correct, not merely authorised" holds unchanged: a wrong
 // reconstruction is rejected by the chain. The shares now rebuild the secret
 // AND its salt under v2's own derivation (lantern2:idsalt:v1).

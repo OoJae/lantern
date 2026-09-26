@@ -100,12 +100,12 @@ For the owner's own identity that is harmless. As evidence to a third party that
 *t* independent people agreed, it is worth nothing, and no on-chain construction
 in this design can change that.
 
-**v2, not shipped:** the same holds in [Lantern v2](docs/v2.md), and there it also
+**v2, not shipped:** the same holds in [Lantern v2](docs/v2-spec.md), and there it also
 undoes the privacy of guardian check-ins toward the owner. A device that kept the
 dealt secrets can recompute every guardian's check-in, open and approval
 nullifiers, name who checked in, opened and approved, and forge check-ins. The
 owner's client must erase each guardian's secret and salt once the kit is dealt
-([docs/v2.md §6.2](docs/v2.md#62-what-becomes-public-and-what-does-not)); a
+([docs/v2-spec.md §6.2](docs/v2-spec.md#62-what-becomes-public-and-what-does-not)); a
 credential the owner never sees is designed there but not built.
 
 **That the identity was actually lost.** `openRecovery` is permissionless by
@@ -475,7 +475,7 @@ consequence.
    veto doubles the wait before the next open, to a 32-day bound. It also adds an
    emergency lock, a delay chosen at enrolment (24 h to 90 days) and private
    guardian check-ins. Its design, its own limits and its measured cost are in
-   [docs/v2.md](docs/v2.md); `npm run test:v2` runs its tests. Apart from one
+   [docs/v2-spec.md](docs/v2-spec.md); `npm run test:v2` runs its tests. Apart from one
    note in §2 (the dealt guardian secrets), nothing in this document's other
    sections describes v2.
 

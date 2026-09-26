@@ -1,4 +1,4 @@
-// The delay chosen at enrolment (docs/v2.md §5). The cases of §5.5, in its order.
+// The delay chosen at enrolment (docs/v2-spec.md §5). The cases of §5.5, in its order.
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {

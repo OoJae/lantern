@@ -45,7 +45,7 @@ The official criteria and their weights, and where each is evidenced:
 | Criterion | Weight | Where to look |
 |---|---:|---|
 | Engineering & Implementation | 40% | [`contracts/src/lantern.compact`](contracts/src/lantern.compact) and [`host.compact`](contracts/src/host.compact); [How Lantern uses Midnight](#how-lantern-uses-midnight): the dual ledger, private state and each primitive by file; `npm run compile:check` |
-| Quality Assurance & Reliability | 15% | 444 tests in [`test/`](test/) (210 for shipped Lantern, 234 for [Lantern v2](docs/v2.md)), including a leak scanner with a positive control and tests of the committed chain records; 97 browser tests, run in Chromium in CI and in WebKit and Firefox before release; CI on Node 20, 22 and 24; [21 defects found and fixed](#found-and-fixed-in-review) |
+| Quality Assurance & Reliability | 15% | 444 tests in [`test/`](test/) (210 for shipped Lantern, 234 for [Lantern v2](docs/v2-spec.md)), including a leak scanner with a positive control and tests of the committed chain records; 97 browser tests, run in Chromium in CI and in WebKit and Firefox before release; CI on Node 20, 22 and 24; [21 defects found and fixed](#found-and-fixed-in-review) |
 | Product & Vision | 15% | [Who it is for](#who-it-is-for-and-why-now), [Roadmap](#roadmap), [Limitations](#limitations) |
 | User Experience & Design | 15% | [The hosted demo](https://lantern-midnight.vercel.app/demo): every accept and refusal comes from the compiled contract, and each contract call shows how the same step went in the local-chain run. Below the story, [try to break it](https://lantern-midnight.vercel.app/demo#break): pick an attack, such as flipping a byte of a share, and the contract refuses it in its own words. Deep links (`/demo?beat=7`), a phone layout and automated accessibility checks |
 | Communication | 10% | This README and [SECURITY.md](SECURITY.md) |
@@ -190,7 +190,7 @@ Every private-to-public crossing is a `disclose()`. What the public fields still
 
 ## Measured
 
-**Tests.** 444 Vitest tests in 27 files. Shipped Lantern's 210 are in 14: lantern 33, record 32, succession 31, adversarial 27, host 22, identity 10, devnet 9, shamir 9, leakscan 8, story 8, concurrency 6, portable 6, authentication 5, host-snapshot 4. Lantern v2's 234 are in 13 ([docs/v2.md §13](docs/v2.md#13-implementation)). Three node:test tests of the sponsor's policy. Ninety-seven Playwright tests, twelve of them for the "Try to break it" panel, run in CI in Chromium at desktop size and as an emulated Pixel 7 (194 runs), and before release in WebKit, as an emulated iPhone 15, and in Firefox (291 runs).
+**Tests.** 444 Vitest tests in 27 files. Shipped Lantern's 210 are in 14: lantern 33, record 32, succession 31, adversarial 27, host 22, identity 10, devnet 9, shamir 9, leakscan 8, story 8, concurrency 6, portable 6, authentication 5, host-snapshot 4. Lantern v2's 234 are in 13 ([docs/v2-spec.md §13](docs/v2-spec.md#13-implementation)). Three node:test tests of the sponsor's policy. Ninety-seven Playwright tests, twelve of them for the "Try to break it" panel, run in CI in Chromium at desktop size and as an emulated Pixel 7 (194 runs), and before release in WebKit, as an emulated iPhone 15, and in Firefox (291 runs).
 
 **Circuits.** All 17 are ZKIR v2, the deployable ledger-8 path. `npm run cost:check` measures them, and fails if any exceeds k = 14 or if this table differs from the measurement.
 
@@ -437,7 +437,7 @@ All 21 are in [SECURITY.md §7](SECURITY.md#7-found-and-fixed-in-review).
 
 ## Roadmap
 
-1. **Rate-limit `openRecovery`**, with a bond or an escalating delay. Today one fee buys one more recovery the owner must veto; this is the largest gap between Lantern and a production system ([SECURITY.md §6.4](SECURITY.md#6-known-limitations)). **Built and tested, not deployed:** [Lantern v2](docs/v2.md) is a separate contract, [`contracts/v2/lantern2.compact`](contracts/v2/lantern2.compact), with guardian-only opens, one recovery in flight per identity and a doubling wait after each veto, plus an emergency lock, a delay chosen at enrolment and private guardian check-ins. All 13 of its circuits fit k ≤ 14 (`npm run cost:check:v2`), and `npm run test:v2` runs its tests. The contract above is unchanged.
+1. **Rate-limit `openRecovery`**, with a bond or an escalating delay. Today one fee buys one more recovery the owner must veto; this is the largest gap between Lantern and a production system ([SECURITY.md §6.4](SECURITY.md#6-known-limitations)). **Built and tested, not deployed:** [Lantern v2](docs/v2-spec.md) is a separate contract, [`contracts/v2/lantern2.compact`](contracts/v2/lantern2.compact), with guardian-only opens, one recovery in flight per identity and a doubling wait after each veto, plus an emergency lock, a delay chosen at enrolment and private guardian check-ins. All 13 of its circuits fit k ≤ 14 (`npm run cost:check:v2`), and `npm run test:v2` runs its tests. The contract above is unchanged.
 2. **Reconstruct in a disposable worker**, so a rebuilt secret cannot linger in the heap (§6.5).
 3. **Make the committee size a constructor parameter**; it is fixed at three.
 4. **A delegation-safe gate.** Every owner and guardian gate today takes its secret as a witness, so a remote prover learns it. A signature gate would not; today only the host committee's votes are signature checks.
@@ -480,7 +480,7 @@ devnet/                 the chain runner, local and on Preprod: flavour, sponsor
 deployments/            the records of the local-chain runs, the two Preprod runs and the bench
 scripts/                compile, cost, attack, story and the README's generated facts
 docs/spikes.md          nine assumptions, each tested before anything was built on it
-docs/v2.md              Lantern v2: the design, the review's hardening, its cost, and what is built versus designed
+docs/v2-spec.md         Lantern v2: the design, the review's hardening, its cost, and what is built versus designed
 SECURITY.md             the threat model
 ```
 

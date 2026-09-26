@@ -4,15 +4,15 @@ name: compile
 
 on:
   push:
-    # v2: Lantern v2's branch (docs/v2.md), until it merges.
+    # v2: Lantern v2's branch (docs/v2-spec.md), until it merges.
     branches: [main, v2]
     # Prose is skipped, except the two documents whose tables the last two steps
-    # compare with the measurement: README.md (the circuit table) and docs/v2.md
+    # compare with the measurement: README.md (the circuit table) and docs/v2-spec.md
     # (§8 and §14.1). Order matters: a later pattern re-includes a path an
     # earlier '!' pattern excluded.
-    paths: ['**', '!**.md', '!docs/**', 'README.md', 'docs/v2.md']
+    paths: ['**', '!**.md', '!docs/**', 'README.md', 'docs/v2-spec.md']
   pull_request:
-    paths: ['**', '!**.md', '!docs/**', 'README.md', 'docs/v2.md']
+    paths: ['**', '!**.md', '!docs/**', 'README.md', 'docs/v2-spec.md']
   workflow_dispatch:
 
 permissions:
@@ -122,6 +122,6 @@ jobs:
       - name: Assert every circuit fits k <= 14
         run: node scripts/check-cost.mjs
 
-      # v2's 13 circuits, each at k <= 14 and equal to the table in docs/v2.md §8.
+      # v2's 13 circuits, each at k <= 14 and equal to the table in docs/v2-spec.md §8.
       - name: Assert every v2 circuit fits k <= 14
         run: node scripts/check-cost-v2.mjs

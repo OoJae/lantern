@@ -1,4 +1,4 @@
-// The emergency lock (docs/v2.md §4). The cases of §4.6, in its order. Case 9,
+// The emergency lock (docs/v2-spec.md §4). The cases of §4.6, in its order. Case 9,
 // the three lock races, is in test/v2-concurrency.test.js with the other replays.
 import { describe, it, expect } from 'vitest';
 import {

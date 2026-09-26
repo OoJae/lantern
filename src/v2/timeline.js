@@ -1,4 +1,4 @@
-// Lantern v2's clock, for a client and a watcher (docs/v2.md §3.3-§3.4).
+// Lantern v2's clock, for a client and a watcher (docs/v2-spec.md §3.3-§3.4).
 //
 // Every constant here MIRRORS an `export pure circuit` of contracts/v2/lantern2.compact.
 // The contract is the authority: checkConstants(pureCircuits) throws if a mirror

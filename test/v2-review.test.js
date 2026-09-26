@@ -1,4 +1,4 @@
-// The adversarial review of Lantern v2, finding by finding (docs/v2.md §3.10).
+// The adversarial review of Lantern v2, finding by finding (docs/v2-spec.md §3.10).
 // Each describe block names the finding, and each test is the attack the
 // review ran against the first build, now refused -- or the property that
 // finding said was missing, now checked. The review's own scripts assumed the

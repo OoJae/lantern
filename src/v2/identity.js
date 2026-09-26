@@ -5,7 +5,7 @@
 //     idSalt   = SHA-256("lantern2:idsalt:v1"   ‖ be32(identitySecret))
 //     vetoSalt = SHA-256("lantern2:vetosalt:v1" ‖ be32(vetoSecret))
 //
-// Why separate domains (docs/v2.md §2): idCommitOf and vetoCommitOf are SHARED
+// Why separate domains (docs/v2-spec.md §2): idCommitOf and vetoCommitOf are SHARED
 // with v1 on purpose, so the same secret and the same salt would publish the
 // same idCommit in both ledgers and link them. Deriving v2's salts under their
 // own domain gives the same secret a different, unlinkable idCommit in v2.

@@ -1,4 +1,4 @@
-// The guardian-naming attack, against Lantern v2 (docs/v2.md §10). The same
+// The guardian-naming attack, against Lantern v2 (docs/v2-spec.md §10). The same
 // attacker as src/attack/attack.mjs: an address book of people close to the
 // victim, every careless derivation of a guardian secret from a name, and the
 // real names as KNOWN PLAINTEXT. v2 publishes two new sets a guardian's secret

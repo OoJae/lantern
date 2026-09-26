@@ -1,4 +1,4 @@
-// v1's test/lantern.test.js, ported to v2 (docs/v2.md §10). Every v1 property
+// v1's test/lantern.test.js, ported to v2 (docs/v2-spec.md §10). Every v1 property
 // still holds; the adaptations are (a) enrolment takes a delay, (b) a guardian
 // opens, (c) a second recovery for one identity waits for the first to die and
 // for the cooldown, and (d) the timelock is the record's own unlockAt.

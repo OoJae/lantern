@@ -4,7 +4,7 @@
 #
 #   bash scripts/compile.sh                 shipped + v2 + adversarial targets, with keys
 #   bash scripts/compile.sh --shipped-only  the product only
-#   bash scripts/compile.sh --v2-only       Lantern v2 only (docs/v2.md), with keys
+#   bash scripts/compile.sh --v2-only       Lantern v2 only (docs/v2-spec.md), with keys
 #   bash scripts/compile.sh --check         seconds: recompile without keys into a scratch
 #                                           directory and fail if any committed module differs
 #   bash scripts/compile.sh --check-v2      the same check, for Lantern v2's module only
@@ -17,7 +17,7 @@ SHIPPED=(
   "contracts/src/host.compact|contracts/managed-host"
 )
 
-# Lantern v2: designed, built and tested, NOT deployed (docs/v2.md). A separate
+# Lantern v2: designed, built and tested, NOT deployed (docs/v2-spec.md). A separate
 # contract, so v1's shipped module above never changes by a byte.
 V2=(
   "contracts/v2/lantern2.compact|contracts/managed-lantern2"

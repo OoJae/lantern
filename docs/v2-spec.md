@@ -11,7 +11,7 @@ v2 is a **new contract**. The shipped v1 contract is frozen on Preprod and verif
 
 ---
 
-<!-- The <a name> anchors in this file keep links written against the shorter docs/v2.md brief on main (its "1. Rate-limited opens" and so on) pointing at the matching section here. -->
+<!-- This spec was docs/v2.md on branch v2; it moved here so that it no longer collides with the shorter docs/v2.md brief on main. The <a name> anchors keep that brief's section links (its "1. Rate-limited opens" and so on) working if they are pointed here. -->
 <a name="at-a-glance"></a>
 ## 0. At a glance
 
