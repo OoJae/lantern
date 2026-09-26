@@ -3,8 +3,9 @@
 // pins v1's 17 circuits and must not change. Fails unless every one of v2's 13 proving
 // circuits is at k <= 14, and just as loudly if it cannot tell: exactly 13 rows must
 // parse, each with a numeric k. It then checks both of docs/v2.md's cost tables (§8, v1
-// against v2, and §14.1, the built contract's k and rows) against this measurement, so the
-// document can never drift from the build.
+// against v2, and §14.1, the built contract's k and rows) against this measurement, and
+// every tree depth the document shows against the contract's. compile.yml runs it on every
+// push that touches code, README.md or docs/v2.md, so the tables cannot drift unnoticed.
 //
 //   node scripts/check-cost-v2.mjs               check
 //   node scripts/check-cost-v2.mjs --write-doc   rewrite the v2 columns of §8 and §14.1

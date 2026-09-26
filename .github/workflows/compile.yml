@@ -6,9 +6,13 @@ on:
   push:
     # v2: Lantern v2's branch (docs/v2.md), until it merges.
     branches: [main, v2]
-    paths-ignore: ['**.md', 'docs/**']
+    # Prose is skipped, except the two documents whose tables the last two steps
+    # compare with the measurement: README.md (the circuit table) and docs/v2.md
+    # (§8 and §14.1). Order matters: a later pattern re-includes a path an
+    # earlier '!' pattern excluded.
+    paths: ['**', '!**.md', '!docs/**', 'README.md', 'docs/v2.md']
   pull_request:
-    paths-ignore: ['**.md', 'docs/**']
+    paths: ['**', '!**.md', '!docs/**', 'README.md', 'docs/v2.md']
   workflow_dispatch:
 
 permissions:
