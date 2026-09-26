@@ -38,6 +38,20 @@ describe('§3.9.2 only a guardian can open', () => {
     expect(sim.ledger.liveRecovery.member(id)).toBe(false);
   });
 
+  it('a stranger with a leaf of her own cannot open: a path the tree never held is not in tree', () => {
+    // The path is a witness the stranger fills in. Hers has a real path's shape
+    // and her OWN leaf, bound to the public context, so it binds; only the
+    // tree's root history refuses it (adv-v2 round 2: no test reached it before).
+    const { sim, id, guardians } = world();
+    const secret = bytes32(9001), salt = bytes32(9101);
+    const leaf = pureCircuits.guardianLeafOf(secret, sim.ledger.guardianCtx.lookup(id), salt);
+    sim.ps.guardianSecret = secret; sim.ps.leafSalt = salt;
+    sim.ps.guardianPath = { ...sim.findPath(guardians[0].leaf), leaf };
+    expect(() => openRaw(sim, id, EPH_C)).toThrow(/guardian not in tree/);
+    expect(sim.ledger.liveRecovery.member(id)).toBe(false);
+    expect(sim.ledger.recoveries.member(pureCircuits.recoveryIdOf(id, EPH_C))).toBe(false);
+  });
+
   it("a guardian of another identity cannot open for this one: its leaf binds a different context", () => {
     const { sim, id } = world();
     const bSecret = fieldOf(510), bSalt = bytes32(511);

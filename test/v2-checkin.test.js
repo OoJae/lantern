@@ -85,6 +85,19 @@ describe('§6.4.5 only a current guardian of THIS identity', () => {
     expect(count(sim, id, periodOf(sim.now))).toBe(0n);
   });
 
+  it('a non-guardian with a leaf of her own, on a path the tree never held, is not in tree', () => {
+    // Her own leaf binds to the public context; only the root history refuses it
+    // (adv-v2 round 2: no test reached this assert before).
+    const { sim, id, guardians } = world();
+    const secret = bytes32(9002), salt = bytes32(9102);
+    const leaf = pureCircuits.guardianLeafOf(secret, sim.ledger.guardianCtx.lookup(id), salt);
+    sim.ps.guardianSecret = secret; sim.ps.leafSalt = salt;
+    sim.ps.guardianPath = { ...sim.findPath(guardians[0].leaf), leaf };
+    expect(() => sim.call('checkIn', id, periodOf(sim.now))).toThrow(/guardian not in tree/);
+    expect(count(sim, id, periodOf(sim.now))).toBe(0n);
+    expect(sim.ledger.checkInNullifiers.size()).toBe(0n);
+  });
+
   it("a guardian of identity B cannot check in for A, and cannot move A's count", () => {
     const { sim, id } = world();
     const bSecret = fieldOf(540), bSalt = bytes32(541);

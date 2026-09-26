@@ -126,6 +126,19 @@ describe('v2 approval', () => {
     sim.ps.guardianPath = sim.findPath(guardians[1].leaf);
     expect(() => sim.call('approveRecovery', id, rid)).toThrow(/does not bind/);
   });
+
+  it('rejects a path that binds but that the tree never held (root check)', () => {
+    // A stranger's OWN leaf on a real path's shape binds to the public context:
+    // only the tree's root history refuses it (adv-v2 round 2: no test reached it).
+    const { sim, id, guardians } = world();
+    const rid = openAs(sim, guardians[0], id, EPH_A);
+    const secret = bytes32(9003), salt = bytes32(9103);
+    const leaf = pureCircuits.guardianLeafOf(secret, sim.ledger.guardianCtx.lookup(id), salt);
+    sim.ps.guardianSecret = secret; sim.ps.leafSalt = salt;
+    sim.ps.guardianPath = { ...sim.findPath(guardians[1].leaf), leaf };
+    expect(() => sim.call('approveRecovery', id, rid)).toThrow(/guardian not in tree/);
+    expect(sim.ledger.approvals.lookup(rid).read()).toBe(0n);
+  });
 });
 
 describe('v2 cross-identity approval inflation (regression)', () => {

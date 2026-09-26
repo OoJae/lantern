@@ -382,6 +382,16 @@ describe('v2 regression: holding the identity secret is not enough to rotate or 
     sim.ps.guardianPath = sim.findPath(guardians[0].leaf);
     expect(() => sim.call('openRecovery', id, EPH_C, periodOf(sim.now))).toThrow(/does not bind/);
     expect(sim.ledger.liveRecovery.member(id)).toBe(false);
+
+    // Nor does a leaf the thief makes herself, bound to the public context, on a
+    // real path's shape: it binds, and the tree's root history refuses it. Without
+    // that check, two such leaves would open, approve and hand her the identity.
+    const own = pureCircuits.guardianLeafOf(bytes32(3000), sim.ledger.guardianCtx.lookup(id), bytes32(3100));
+    sim.ps.guardianPath = { ...sim.findPath(guardians[0].leaf), leaf: own };
+    expect(() => sim.call('openRecovery', id, EPH_C, periodOf(sim.now))).toThrow(/guardian not in tree/);
+    expect(() => sim.call('checkIn', id, periodOf(sim.now))).toThrow(/guardian not in tree/);
+    expect(sim.ledger.liveRecovery.member(id)).toBe(false);
+    expect(sim.ledger.checkInNullifiers.size()).toBe(0n);
   });
 
   it('the owner, holding both the secret and the veto card, still rotates', () => {
