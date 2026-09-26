@@ -13,7 +13,7 @@
 //   device    { name, ephemeralSk, identitySecret, idSalt }  after rebuilding the secret
 import { createContractSim } from '../contract-sim.js';
 import { lantern2Witnesses } from './witnesses.js';
-import { commitmentsOf } from './identity.js';
+import { commitmentsOf, assertV2Card } from './identity.js';
 import { DEFAULT_DELAY, checkDelay, periodOf, slotOf, recoveryStatus, timelineOf, vetoAdvice } from './timeline.js';
 
 const NO_RESERVATION = new Uint8Array(32);
@@ -72,10 +72,11 @@ export function createLantern2Sim({ rt, mod, now }) {
     /**
      * Unlock, with both secrets. Pass `newCard` ({ vetoSecret, vetoSalt }) to
      * replace a card someone may have copied in the same transaction (review
-     * F3); without it the current card stays.
+     * F3); without it the current card stays. A new card must be a v2 card
+     * (src/v2/identity.js), as enrol's is.
      */
     unlock(owner, idCommit, { newCard = null } = {}) {
-      const card = newCard ?? owner;
+      const card = newCard ? assertV2Card(newCard) : owner;
       return call(owner, 'unlockIdentity', idCommit, pure.vetoCommitOf(card.vetoSecret, card.vetoSalt));
     },
     /** A check-in always names the identity ROOT, whatever the guardian passes (review F8). */

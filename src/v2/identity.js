@@ -34,9 +34,41 @@ export function newIdentity(rng = randomFieldElement) {
   };
 }
 
-/** idCommit and vetoCommit, computed by the v2 contract's own pure circuits. */
+const sameBytes = (a, b) => a instanceof Uint8Array && b instanceof Uint8Array
+  && a.length === b.length && a.every((x, i) => x === b[i]);
+
+/**
+ * Throws unless the card's salt is derived under v2's domain. v1's
+ * src/identity.js exports the same names, so a v1 card handed to the v2 client
+ * by one wrong import would otherwise go through without an error.
+ */
+export function assertV2Card(card) {
+  if (!sameBytes(card?.vetoSalt, vetoSaltOf(card?.vetoSecret))) {
+    throw new Error(`not a v2 identity: vetoSalt must be derived under ${VETO_SALT_DOMAIN}`);
+  }
+  return card;
+}
+
+/**
+ * Throws unless both salts are derived under v2's domains. A v1 identity would
+ * publish its v1 commitments, linking the owner's two ledgers, and its shares
+ * would not recover it: recoverFromShares rebuilds the v2 salt.
+ */
+export function assertV2Identity(ident) {
+  if (!sameBytes(ident?.idSalt, idSaltOf(ident?.identitySecret))) {
+    throw new Error(`not a v2 identity: idSalt must be derived under ${ID_SALT_DOMAIN} (a v1 identity would publish `
+      + 'its v1 commitments, and its shares would not recover it)');
+  }
+  return assertV2Card(ident);
+}
+
+/**
+ * idCommit and vetoCommit, computed by the v2 contract's own pure circuits.
+ * Refuses v1's pure circuits and any identity whose salts are not v2's.
+ */
 export function commitmentsOf(pureCircuits, ident) {
   if (typeof pureCircuits.checkInKeyOf !== 'function') throw new Error('these are not Lantern v2 pure circuits');
+  assertV2Identity(ident);
   return {
     idCommit: pureCircuits.idCommitOf(ident.identitySecret, ident.idSalt),
     vetoCommit: pureCircuits.vetoCommitOf(ident.vetoSecret, ident.vetoSalt),

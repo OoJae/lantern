@@ -10,6 +10,7 @@ import {
   checkConstants, checkDelay, cooldownOf, periodOf, periodBounds,
 } from '../src/v2/timeline.js';
 import { newIdentity, commitmentsOf, dealShares, recoverFromShares, idSaltOf } from '../src/v2/identity.js';
+import { newIdentity as v1NewIdentity } from '../src/identity.js';
 import { lantern2Witnesses } from '../src/v2/witnesses.js';
 import { createLantern2Sim } from '../src/v2/sim.js';
 
@@ -131,5 +132,35 @@ describe('src/v2/identity.js', () => {
       expect(hex(P.idCommitOf(rebuilt.identitySecret, rebuilt.idSalt))).toBe(hex(idCommit));
     }
     expect(() => newIdentity(() => 7n)).toThrow(/independent/);
+  });
+
+  it('refuses an identity whose salts are not v2\'s: a v1 identity would link the ledgers and not recover', () => {
+    // src/identity.js exports the same names, so one wrong import hands the v2
+    // client a v1 identity. Its commitments would be v1's, and recoverFromShares
+    // here rebuilds the v2 salt, which would not open them.
+    const v1 = v1NewIdentity();
+    expect(() => commitmentsOf(P, v1)).toThrow(/not a v2 identity: idSalt/);
+    const L = createLantern2Sim({ rt, mod: Lantern2 });
+    expect(() => L.enrol(v1)).toThrow(/not a v2 identity/);
+    expect(L.ledger.enrolled.size()).toBe(0n);
+    // A salt that is not derived at all, and a v2 idSalt with a v1 card.
+    const v2 = newIdentity();
+    expect(() => commitmentsOf(P, { ...v2, idSalt: rand32() })).toThrow(/not a v2 identity: idSalt/);
+    expect(() => commitmentsOf(P, { ...v2, vetoSalt: v1.vetoSalt, vetoSecret: v1.vetoSecret })).toThrow(/not a v2 identity: vetoSalt/);
+    expect(() => commitmentsOf(P, v2)).not.toThrow();
+  });
+
+  it('unlock refuses a v1 card as the new card, before any transaction', () => {
+    const L = createLantern2Sim({ rt, mod: Lantern2 });
+    const owner = newIdentity();
+    const root = L.enrol(owner);
+    L.lock(owner, root);
+    const card = hex(L.ledger.vetoCommits.lookup(root));
+    expect(() => L.unlock(owner, root, { newCard: v1NewIdentity() })).toThrow(/not a v2 identity: vetoSalt/);
+    expect(L.ledger.locked.lookup(root)).toBe(true);
+    expect(hex(L.ledger.vetoCommits.lookup(root))).toBe(card);
+    L.unlock(owner, root, { newCard: newIdentity() });
+    expect(L.ledger.locked.lookup(root)).toBe(false);
+    expect(hex(L.ledger.vetoCommits.lookup(root))).not.toBe(card);
   });
 });
