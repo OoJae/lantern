@@ -1,0 +1,29 @@
+/* The words, as every page that shows a kit draws them (kit/Sheets.jsx's WordGrid and CheckWords, on
+   /kit and /rehearse): imported by Sheets.jsx itself, so a page that shows the words has their styles
+   whether or not /kit was opened first. On screen only; /kit's print sizes are in styles/kit.css, under
+   .kit-page, so they never reach another page's print.
+
+   Numbered, across then down; the numeral small and Ash, the word in the monospace face. */
+.kit-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-1) var(--space-4);
+  margin: 0; padding: 0; list-style: none;
+  font-family: var(--font-mono); font-size: var(--step-0); line-height: 1.5;
+}
+.kit-grid li { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
+.kit-n {
+  flex: none; width: 2ch; text-align: right;
+  font-size: 0.72em; font-variant-numeric: tabular-nums; color: var(--muted);
+}
+.kit-w { overflow-wrap: anywhere; }
+/* The veto card's words a size up, once two columns of the longest (eight letters) fit whole at it. */
+@media (min-width: 420px) {
+  .kit-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .kit-grid-lg { font-size: var(--step-1); }
+}
+@media (min-width: 640px) { .kit-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Three check words, "artist · just · valley". Each keeps the dot after it, so a narrow line breaks
+   only between words, never before a dot. */
+.kit-cws { font-family: var(--font-mono); color: var(--ink); }
+.kit-cw { white-space: nowrap; }

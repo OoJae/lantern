@@ -4,6 +4,7 @@ import { FIELD_LABEL, LEDGER_LABEL, hex, short, toHex, clockText } from '../lib/
 import { Honesty } from '../components/Honesty.jsx';
 import { BreakIt } from '../components/BreakIt.jsx';
 import { TargetTable } from '../components/TargetTable.jsx';
+import FingerprintWords from '../components/FingerprintWords.jsx';
 // The committed record of the same story on a local chain, read at build time. Each step
 // the chain run also took gets a chip saying so -- this page itself makes no proofs.
 import record from '../../../deployments/local-devnet.json' with { type: 'json' };
@@ -214,7 +215,8 @@ export default function Demo() {
 
           <ol className="steps" aria-live="polite">
             {shownRecords.map((r) => (
-              <Step key={r.id} r={r} enumeration={r.id === '5.1' ? enumeration : null} lag={lag(r.id)} />
+              <Step key={r.id} r={r} enumeration={r.id === '5.1' ? enumeration : null} lag={lag(r.id)}
+                deviceKey={r.id === '3.1' ? session.story.world.phonePk : undefined} />
             ))}
           </ol>
 
@@ -261,7 +263,7 @@ export default function Demo() {
   );
 }
 
-function Step({ r, enumeration, lag = '' }) {
+function Step({ r, enumeration, lag = '', deviceKey }) {
   const scanFields = r.scan?.fields ?? [];
   return (
     <li className={`step ${r.kind} ${r.outcome ?? ''} ${r.ok ? '' : 'unexpected'} ${lag}`} data-step={r.id}
@@ -282,6 +284,12 @@ function Step({ r, enumeration, lag = '' }) {
           {r.detail && <span className="detail">{r.detail}</span>}
         </div>
       )}
+      {/* The phone's key in six words (src/words.js), beside the eight-character fingerprint above:
+          66 bits where that is 32, the words a guardian compares aloud before approving. */}
+      {deviceKey && <>
+        <p className="meta">The same key in six words, as a guardian compares it aloud:</p>
+        <FingerprintWords publicKey={deviceKey} size="sm" className="fp-block" />
+      </>}
       {r.publicChange && Object.keys(r.publicChange).length > 0 && (
         <p className="meta">Public record: {Object.entries(r.publicChange).map(([k, v]) => `${LEDGER_LABEL[k] ?? k} ${v > 0 ? '+' : ''}${v}`).join(' · ')}</p>
       )}
@@ -452,6 +460,7 @@ function Ledger({ x, publicRecord }) {
               <code>{short(r.h)}</code>
               <span className="tag">{`${r.approvals} of ${r.threshold}`}</span>
               {r.vetoed && <span className="tag no">vetoed</span>}
+              <FingerprintWords publicKey={r.device} size="sm" label="Its device’s fingerprint" className="fp-block fp-quiet" />
             </li>
           ))}
         </ul>

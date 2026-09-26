@@ -9,7 +9,7 @@ export const FIELD_LABEL = {
   vetoSalt: 'veto salt',
   guardianSecret: 'guardian secret',
   leafSalt: 'leaf salt',
-  ephemeralSk: 'device key',
+  ephemeralSk: 'device secret key', // the device's public key is on the record: the one a guardian compares
 };
 
 export const LEDGER_LABEL = {
