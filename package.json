@@ -35,6 +35,7 @@
     "devnet:verify": "node devnet/src/verify.mjs",
     "devnet:down": "docker compose -f devnet/compose.yml down -v",
     "devnet:bench": "bash devnet/run.sh bench",
+    "watch": "node devnet/src/watch.mjs",
     "build": "bash scripts/compile.sh",
     "compile:check": "bash scripts/compile.sh --check",
     "cost:check": "node scripts/check-cost.mjs",

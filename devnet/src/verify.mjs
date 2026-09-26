@@ -6,7 +6,9 @@
 // key equals a fresh compile; Lantern's flavour differs from the shipped build in
 // finalizeRecovery alone; every sponsored transaction came from a device with no wallet;
 // every recorded transaction is on the chain at its recorded block; and both ledgers end
-// where the record says.
+// where the record says, read in the block of the record's last transaction on each (anyone
+// can call a deployed contract, so its state today may have moved on: that is reported, and
+// is not the record's).
 //
 // The chain is local and one-shot: this checks the chain that produced the record, so run it
 // before `npm run devnet:down`.
@@ -28,6 +30,7 @@ const check = (name, ok, detail = '') => {
 };
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+const counts = (summary) => Object.entries(summary).map(([k, v]) => `${k} ${v}`).join(', ');
 const keyFile = (dir, op) => path.join(dir, 'keys', `${op}.verifier`);
 
 const RECORD_PATH = recordPath({ quick: process.argv.includes('--quick'), selfPay: process.argv.includes('--self-pay') });
@@ -40,6 +43,10 @@ console.log();
 console.log(`  verifying ${path.relative(process.cwd(), RECORD_PATH)} (${record.mode}, recorded ${record.recordedAt})`);
 console.log();
 check('every recorded step went as the story expected', record.steps.every((s) => s.ok), `${record.steps.length} steps`);
+
+/** The block of the record's last transaction on a contract: its deploy, its freeze or a step. */
+const lastBlock = (key, meta) => Math.max(meta.blockHeight, meta.maintenanceAuthority.frozenBy.blockHeight,
+  ...record.steps.filter((s) => (s.contract ?? 'lantern') === key && s.tx?.blockHeight).map((s) => s.tx.blockHeight));
 
 const SPEC = {
   lantern: { zk: LANTERN_ZK, circuits: 10, mod: Lantern, summary: publicRecord, final: record.finalPublicRecord },
@@ -63,9 +70,14 @@ for (const [key, meta] of Object.entries(record.contracts)) {
       `differs: ${differs.join(', ') || 'none'}`);
   }
   if (spec.final) {
+    // The indexer answers a block with the state after this contract's action in that block.
+    const at = lastBlock(key, meta);
+    const then = await pdp.queryContractState(meta.address, { type: 'blockHeight', blockHeight: at });
+    const was = then ? spec.summary(spec.mod.ledger(then.data)) : null;
+    check(`${meta.name}: the ledger ends where the record says`, JSON.stringify(was) === JSON.stringify(spec.final),
+      was ? `${counts(was)}; in block ${at}` : `no state in block ${at}`);
     const now = spec.summary(spec.mod.ledger(state.data));
-    check(`${meta.name}: the ledger ends where the record says`, JSON.stringify(now) === JSON.stringify(spec.final),
-      Object.entries(now).map(([k, v]) => `${k} ${v}`).join(', '));
+    if (was && JSON.stringify(now) !== JSON.stringify(was)) console.log(c('2', `    called since the record: now ${counts(now)}`));
   }
 }
 

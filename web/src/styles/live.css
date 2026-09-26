@@ -1,0 +1,382 @@
+/* /live, "On Preprod". Imported by pages/Live.jsx, so it loads with that page's chunk and nowhere else.
+   Night watch throughout: Lacquer surfaces, Rib hairlines, Hanji ink, Ash meta. Ember appears only
+   for the lock: a finalizeRecovery the contract accepted (the recovery's ring and seal, its chip, a
+   timeline row's rule). Every animation and transition is finite, and none runs under reduced motion.
+   Class names start lv- (the page's own), beside the site's shared ones (.chip, .circuit, .counts). */
+
+.page.live .page-head .lede { max-width: 38rem; }
+.page.live .page-head h1 em { font-weight: 340; }
+.lv-honesty code { color: var(--ink); overflow-wrap: anywhere; }
+
+.lv-label {
+  margin: 0 0 var(--space-2);
+  font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase;
+  color: var(--muted);
+}
+.lv-sub { display: block; margin-top: 2px; font-size: var(--step--1); line-height: var(--leading--1); color: var(--muted); }
+.lv-sub a, .lv-sub code { color: var(--ink); }
+.lv-pending { font-family: var(--font-display); font-style: italic; color: var(--muted); }
+.lv-intro { max-width: 40rem; margin: 0 0 var(--space-5); }
+/* A command (live/Cmd.jsx) wraps between its words only; a long hex value may break inside. */
+.lv-cmd { color: var(--ink); }
+.lv-cmd .lv-w { white-space: nowrap; }
+.lv-cmd .lv-w-long { white-space: normal; overflow-wrap: anywhere; }
+
+/* ---- reaching the indexer ------------------------------------------------------------------------ */
+.lv-reach {
+  margin: 0 0 var(--space-5); padding: var(--space-4) var(--space-5);
+  border: 1px dashed var(--edge); border-radius: var(--radius-surface);
+  font-size: var(--step--1); line-height: var(--leading--1);
+}
+.lv-reach p { margin: 0; max-width: 60rem; }
+.lv-reach p + p { margin-top: var(--space-3); }
+.lv-reach strong { font-family: var(--font-display); font-style: italic; font-weight: 400; font-size: var(--step-0); }
+
+/* ---- the recovery ----------------------------------------------------------------------------------
+   A Lacquer plate. The head (eyebrow, title, where it stands), then the lock (the 72-tick ring and the
+   countdown beside it), then the facts: from 1080px the lock and the facts share a row. */
+.lv-recovery {
+  --pad: clamp(20px, 3.4vw, 48px);
+  position: relative;
+  margin: var(--space-6) 0 0;
+  padding: var(--pad);
+  background: var(--surface);
+  border-radius: var(--radius-surface);
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-6) var(--gutter);
+}
+.lv-recovery-head { min-width: 0; }
+.lv-recovery-head .eyebrow { margin-bottom: var(--space-3); }
+.lv-recovery h2 {
+  margin: 0 0 var(--space-4);
+  font-size: var(--step-3); font-weight: 340; line-height: var(--leading-3); letter-spacing: var(--tracking-3);
+  max-width: 16em;
+}
+.lv-recovery h2 em { font-weight: 340; }
+.lv-state { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); margin: 0; }
+.lv-source-tag { font-family: var(--font-display); font-style: italic; font-size: var(--step--1); color: var(--muted); }
+
+.lv-lock { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-5); align-items: center; min-width: 0; }
+.lv-lock-text { min-width: 0; }
+.lv-lock-text .lv-label { margin-bottom: var(--space-1); }
+.lv-when { margin: 0; font-size: var(--step-1); line-height: var(--leading-1); color: var(--ink); }
+.lv-after { margin: var(--space-2) 0 var(--space-3); font-size: var(--step-0); }
+.lv-lock-text .meta { margin: var(--space-3) 0 0; max-width: 34rem; }
+
+/* The countdown: Fragment Mono, tabular, its units small and set back. Text changes each second; it
+   is never animated. */
+.lv-countdown {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.45em;
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: clamp(1.625rem, 1.1rem + 1.6vw, 2.625rem); line-height: 1.1; letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.lv-unit { display: inline-flex; align-items: baseline; gap: 0.12em; white-space: nowrap; }
+.lv-u { font-family: var(--font-sans); font-size: 0.36em; font-weight: 500; letter-spacing: 0.02em; color: var(--muted); }
+
+/* The ring: 72 ticks, the hours of the timelock, filled as they pass; the seal of the commitment at its
+   centre. The fill eases once, from empty to where the hours stand. */
+.lv-ring { position: relative; width: clamp(104px, 18vw, 184px); aspect-ratio: 1; flex: none; }
+.lv-ring-arc { display: block; width: 100%; height: 100%; overflow: visible; }
+.lv-ring .arc-track { stroke: var(--rib); }
+.lv-ring .arc-fill { stroke: var(--ink); }
+.lv-ring .arc-gaps { stroke: var(--surface); }
+.lv-ring[data-lit] .arc-fill { stroke: var(--ember); }
+.lv-ring-seal { position: absolute; inset: 31%; width: 38%; height: 38%; display: block; }
+@media (prefers-reduced-motion: no-preference) {
+  .lv-ring .arc-fill { transition: stroke-dashoffset var(--dur-lock) var(--ease-settle), stroke var(--dur-lock) var(--ease-settle); }
+}
+
+.lv-facts { display: grid; grid-template-columns: minmax(0, 1fr); margin: 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.lv-facts > div {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-1);
+  padding: 12px 0; border-top: 1px solid var(--line); min-width: 0;
+}
+.lv-facts dt {
+  font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase; color: var(--muted);
+}
+.lv-facts dd { margin: 0; min-width: 0; font-size: var(--step--1); line-height: var(--leading--1); }
+.lv-facts code { color: var(--ink); }
+.lv-device .fp-words { margin: 2px 0 var(--space-1); }
+@media (min-width: 640px) {
+  .lv-facts > div { grid-template-columns: 9.5rem minmax(0, 1fr); gap: var(--space-4); align-items: baseline; }
+}
+
+.lv-refused {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-3);
+  margin: 0; padding-top: var(--space-4); border-top: 1px dashed var(--edge);
+  font-size: var(--step--1); line-height: var(--leading--1); color: var(--muted);
+}
+.lv-refused .chip { flex: none; }
+.lv-refused-text { flex: 1 1 18rem; min-width: 0; }
+
+@media (min-width: 1080px) {
+  /* The third row is the flexible one: the facts, taller than the lock, lengthen it and never the
+     lock's row, so the refused note sits right under the lock. */
+  .lv-recovery { grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: auto auto 1fr; }
+  .lv-recovery-head { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: end; }
+  .lv-recovery-head > * { grid-column: 1 / span 8; }
+  .lv-recovery-head > .lv-state { grid-column: 9 / -1; justify-content: flex-end; text-align: right; padding-bottom: 0.4em; }
+  .lv-lock { grid-column: 1 / span 6; grid-row: 2; align-self: start; }
+  .lv-facts { grid-column: 7 / -1; grid-row: 2 / span 2; align-self: start; }
+  .lv-refused { grid-column: 1 / span 6; grid-row: 3; align-self: start; }
+}
+@media (max-width: 1079.98px) {
+  .lv-refused { border-top: 0; padding-top: 0; }
+}
+/* A phone: the ring small beside "Can finalize from" and the time, the countdown under both. */
+@media (max-width: 479.98px) {
+  .lv-lock { grid-template-columns: auto minmax(0, 1fr); column-gap: var(--space-4); row-gap: 0; align-items: center; }
+  .lv-ring { width: 76px; grid-row: 1 / span 2; }
+  .lv-lock-text { display: contents; }
+  .lv-lock-text > * { grid-column: 2; min-width: 0; }
+  .lv-lock-text > :is(.lv-countdown, .meta, .lv-after) { grid-column: 1 / -1; }
+  .lv-lock-text > .lv-countdown { margin-top: var(--space-4); }
+}
+
+/* The lock: the one Ember chip (as /demo's accepted finalizeRecovery). Night text, a filled seal. */
+.chip.ok.lock { background: var(--ember); border-color: var(--ember); color: var(--night); }
+.chip.ok.lock::before { box-shadow: inset 0 0 0 0.25em var(--night); }
+/* A real wait on the chain: outlined, carrying the lock's dial in small (a ring, its first quarter
+   filled). Not /demo's `clock` chip, which marks the demo's simulated clock. */
+.chip.lv-wait { padding-left: 0.55em; border-color: var(--edge); color: var(--ink); }
+.chip.lv-wait::before {
+  content: ""; flex: none; width: 0.7em; height: 0.7em; margin-top: 0.325em;
+  border: 0.1em solid currentColor; border-radius: 50%;
+  background: conic-gradient(currentColor 0 90deg, transparent 0);
+}
+
+/* ---- the timeline ----------------------------------------------------------------------------------
+   Rows as /demo's steps: a hairline above, a 2px rule at the left. Seen on chain: Hanji. Not yet seen:
+   dashed Edge. The lock: Ember. When, what, and the transaction, in three columns from 760px. */
+.lv-timeline-note { margin: 0 0 var(--space-3); }
+.lv-timeline { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid var(--line); }
+.lv-row {
+  --rule: var(--ink);
+  position: relative;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-1) var(--space-4);
+  padding: 14px 0 14px 18px;
+  border-top: 1px solid var(--line);
+  font-size: var(--step--1); line-height: var(--leading--1);
+}
+.lv-row::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; border-left: 2px solid var(--rule); }
+.lv-row.unseen { --rule: var(--edge); }
+.lv-row.unseen::before { border-left-style: dashed; }
+.lv-row.lock { --rule: var(--ember); }
+.lv-row p { margin: 0; min-width: 0; }
+.lv-when-row { display: flex; flex-wrap: wrap; gap: 0 var(--space-3); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.lv-time { color: var(--ink); }
+.lv-row.unseen .lv-time { color: var(--muted); font-family: var(--font-display); font-style: italic; }
+.lv-block { color: var(--muted); }
+/* The circuit, then its sentence under it, on every row alike: one rhythm down the list. */
+.lv-what { display: grid; justify-items: start; gap: 2px; }
+.lv-what .circuit { font-family: var(--font-mono); max-width: 100%; overflow-wrap: anywhere; }
+.lv-does { min-width: 0; }
+.lv-tx { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-3); }
+.lv-who {
+  font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase; color: var(--muted);
+}
+.lv-hash { white-space: nowrap; text-decoration-color: var(--edge); }
+.lv-hash code { font-size: var(--step--2); color: var(--ink); }
+@media (min-width: 760px) {
+  .lv-row { grid-template-columns: 9.5rem minmax(0, 1fr) 9.5rem; align-items: baseline; padding-right: 0; }
+  .lv-when-row { flex-direction: column; }
+  .lv-tx { flex-direction: column; align-items: flex-end; text-align: right; gap: 2px; }
+}
+
+/* ---- sections as the other app pages' spreads --------------------------------------------------- */
+.page.live .lv-section { margin-top: var(--space-9); scroll-margin-top: calc(var(--header-h, 60px) + 12px); }
+
+/* Jump links under the honesty strip: the chapters' link style, quiet, one row where it fits. */
+.lv-jump { display: flex; flex-wrap: wrap; column-gap: var(--space-5); margin: calc(-1 * var(--space-2)) 0 var(--space-4); font-size: var(--step--1); font-weight: 500; }
+.lv-jump a { display: inline-flex; align-items: center; min-height: 44px; text-decoration-color: var(--edge); }
+
+/* ---- the check ------------------------------------------------------------------------------------
+   One mark per fact, drawn (the tick glyph is outside the fonts): waiting is a dashed Ash ring, being
+   checked an Edge ring, a match the closed seal (a filled ring and its dot), a mismatch the open seal
+   (a 60 degree gap at one o'clock), a question the indexer never answered a dashed Hanji ring. A mark
+   that closes is pressed in once (240ms). */
+.lv-check-go button[aria-disabled="true"] { cursor: progress; }
+.lv-check-go { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); margin: 0 0 var(--space-5); }
+.lv-progress { font-size: var(--step--1); line-height: var(--leading--1); color: var(--muted); max-width: 32rem; }
+.lv-checker[data-phase="done"] .lv-progress { color: var(--ink); font-family: var(--font-display); font-style: italic; font-size: var(--step-1); line-height: var(--leading-1); }
+.lv-check-group + .lv-check-group { margin-top: var(--space-5); }
+.lv-check-group h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase; color: var(--muted);
+}
+.lv-check-list { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid var(--line); }
+.lv-check {
+  display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: var(--space-3); align-items: start;
+  padding: 9px 0; border-top: 1px solid var(--line);
+  font-size: var(--step--1); line-height: var(--leading--1);
+}
+.lv-check-body { display: grid; gap: 1px; min-width: 0; }
+.lv-check-label { color: var(--ink); }
+.lv-check-detail { color: var(--muted); overflow-wrap: anywhere; }
+.lv-check.fail .lv-check-detail { color: var(--ink); }
+.lv-mark {
+  width: 14px; height: 14px; margin-top: 0.22em; border-radius: 50%;
+  border: 1.5px dashed var(--muted);
+}
+.lv-check.running .lv-mark { border: 1.5px solid var(--edge); }
+.lv-check.pass .lv-mark {
+  border: 1.5px solid var(--ink);
+  background: radial-gradient(circle, var(--ink) 0 2px, transparent 2.5px);
+}
+.lv-check.fail .lv-mark {
+  border: 1.5px solid var(--ink);
+  -webkit-mask: conic-gradient(from 60deg, #000 300deg, transparent 0);
+  mask: conic-gradient(from 60deg, #000 300deg, transparent 0);
+}
+.lv-check.error .lv-mark { border: 1.5px dashed var(--ink); }
+@media (prefers-reduced-motion: no-preference) {
+  .lv-check.pass .lv-mark, .lv-check.fail .lv-mark { animation: lv-press var(--dur-stamp) var(--ease-ignite); }
+}
+@keyframes lv-press { from { transform: scale(1.35) rotate(-8deg); } }
+
+/* The transactions, contract by contract under an italic subhead: a grid of small cells, filling as
+   they are checked. Two to a row on a phone (one at 320px), three on a desktop, where the longest
+   circuit name fits on one line. */
+.lv-tx-contract + .lv-tx-contract { margin-top: var(--space-4); }
+.lv-tx-contract h4 {
+  margin: 0; padding: var(--space-2) 0 var(--space-1);
+  font-family: var(--font-display); font-style: italic; font-weight: 400;
+  font-size: var(--step-0); line-height: var(--leading-0); color: var(--ink);
+}
+.lv-tx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr)); column-gap: var(--space-4); border-bottom: 0; }
+@media (min-width: 760px) { .lv-tx-grid { grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr)); } }
+.lv-tx-grid .lv-check { padding: 7px 0; }
+.lv-tx-check code { font-size: var(--step--2); color: var(--ink); overflow-wrap: anywhere; } /* <wbr> first, between words */
+/* The full check: two commands, each under the record it checks. */
+.lv-full { margin: var(--space-5) 0 0; max-width: 40rem; }
+.lv-full p { margin: 0 0 var(--space-3); }
+.lv-full a { color: var(--ink); }
+.lv-cmds { margin: 0; display: grid; gap: var(--space-3); }
+.lv-cmds > div { display: grid; gap: 2px; padding-left: var(--space-3); border-left: 1px solid var(--line); }
+.lv-cmds dt { color: var(--muted); }
+.lv-cmds dt code { color: var(--muted); }
+.lv-cmds dd { margin: 0; }
+
+/* ---- the watch ------------------------------------------------------------------------------------ */
+.lv-watch-form { margin: 0 0 var(--space-5); }
+.lv-watch-form .lv-label { display: block; }
+.lv-watch-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.lv-watch-row input {
+  flex: 1 1 18rem; min-width: 0; min-height: 44px; padding: 0 14px;
+  font-family: var(--font-mono); font-size: var(--step--1); color: var(--ink);
+  background: var(--ground); border: 1px solid var(--edge); border-radius: var(--radius-surface);
+}
+.lv-watch-row input::placeholder { color: var(--muted); opacity: 1; }
+.lv-watch-row input[aria-invalid="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.lv-watch-row button { flex: none; }
+.lv-error {
+  display: flex; gap: var(--space-2); align-items: baseline;
+  margin: var(--space-2) 0 0; font-size: var(--step--1); line-height: var(--leading--1); color: var(--ink); font-weight: 500;
+}
+.lv-error::before {
+  content: ""; flex: none; width: 0.7em; height: 0.7em; border: 0.1em solid currentColor; border-radius: 50%; transform: translateY(0.05em);
+  -webkit-mask: conic-gradient(from 60deg, #000 300deg, transparent 0);
+  mask: conic-gradient(from 60deg, #000 300deg, transparent 0);
+}
+.lv-demo-id { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-3); margin: var(--space-2) 0 0; font-size: var(--step--1); }
+.lv-demo-id .linkish { min-height: 44px; }
+.lv-demo-note code { color: var(--ink); }
+
+.lv-watching { padding-top: var(--space-5); border-top: 1px solid var(--line); }
+.lv-watching-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-4); margin: 0 0 var(--space-1); font-size: var(--step-1); line-height: var(--leading-1); }
+.lv-watching-head code { font-size: 0.8em; color: var(--ink); }
+.lv-watching-head .linkish { font-size: var(--step--1); }
+.lv-poll { margin: 0 0 var(--space-4); }
+.lv-poll[data-stale] { color: var(--ink); }
+.lv-recs-more { margin: var(--space-3) 0 0; }
+.lv-enrolled, .lv-none, .lv-error-note { margin: 0 0 var(--space-3); max-width: 42rem; }
+.lv-enrolled code, .lv-none code { color: var(--ink); }
+.lv-none { font-family: var(--font-display); font-style: italic; font-size: var(--step-1); line-height: var(--leading-1); color: var(--muted); }
+.lv-error-note { color: var(--ink); font-size: var(--step--1); }
+
+.lv-recs { list-style: none; margin: var(--space-4) 0 0; padding: 0; display: grid; gap: var(--space-3); }
+.lv-rec { padding: var(--space-5); background: var(--surface); border-radius: var(--radius-surface); border-left: 2px solid var(--ink); min-width: 0; }
+.lv-rec[data-state="vetoed"], .lv-rec[data-state="cancelled"] { border-left: 2px dashed var(--muted); }
+.lv-rec[data-state="finalized"] { border-left-color: var(--ember); }
+.lv-rec-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-4); }
+.lv-rec-head .chip { flex: none; max-width: 100%; }
+@media (max-width: 479.98px) { .lv-rec, .lv-contract, .lv-move { padding: 20px 16px; } }
+.lv-rec-head code { color: var(--muted); }
+.lv-rec-device .lv-label { margin-bottom: var(--space-2); }
+.lv-rec-facts { display: grid; grid-template-columns: minmax(0, 1fr); margin: var(--space-4) 0 0; }
+.lv-rec-facts > div { display: grid; align-content: start; gap: 1px; padding: 8px 0; border-top: 1px solid var(--line); font-size: var(--step--1); min-width: 0; }
+.lv-rec-facts dt { color: var(--muted); }
+.lv-rec-facts dd { margin: 0; }
+@media (min-width: 760px) {
+  .lv-rec-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--space-5); }
+}
+
+.lv-notify { margin: var(--space-5) 0 0; }
+.lv-notify p { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.lv-notify .meta { max-width: 34rem; }
+/* Always rendered, empty or not: a live region already in the accessibility tree is what gets the
+   first alert announced ("a recovery was opened"). Empty, it takes no room. */
+.lv-news:empty { margin: 0; }
+.lv-news { margin: var(--space-4) 0 0; display: grid; gap: var(--space-2); }
+.lv-new { margin: 0; padding: var(--space-3) var(--space-4); border-left: 2px solid var(--ink); background: var(--surface); font-size: var(--step--1); line-height: var(--leading--1); }
+.lv-new-at { font-family: var(--font-mono); color: var(--muted); }
+
+/* What the owner does: the site's one set of instructions, under a Hanji top rule (as /demo's control
+   card), numbered in Fraunces italic. */
+.lv-move { margin: var(--space-7) 0 0; padding: var(--space-5); background: var(--surface); border-top: 2px solid var(--ink); border-radius: 0 0 var(--radius-surface) var(--radius-surface); }
+.lv-move h3 { margin: 0 0 var(--space-3); font-family: var(--font-display); font-size: var(--step-2); font-weight: 360; line-height: var(--leading-2); }
+.lv-steps { list-style: none; margin: 0 0 var(--space-4); padding: 0; counter-reset: lv-step; display: grid; gap: var(--space-3); }
+.lv-steps li { counter-increment: lv-step; display: grid; grid-template-columns: 1.6rem minmax(0, 1fr); gap: var(--space-2); max-width: 44rem; }
+.lv-steps p { margin: 0; }
+.lv-steps li::before { content: counter(lv-step); font-family: var(--font-display); font-style: italic; font-size: var(--step-1); line-height: 1.2; color: var(--muted); }
+.lv-steps strong { font-weight: 600; }
+.lv-move > .meta { margin: 0; max-width: 44rem; }
+.lv-move code { color: var(--ink); }
+
+/* ---- the whole story ------------------------------------------------------------------------------ */
+.lv-story-lede { max-width: 40rem; margin: 0 0 var(--space-5); }
+.lv-contracts { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+@media (min-width: 900px) { .lv-contracts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.lv-contract { background: var(--surface); border-radius: var(--radius-surface); padding: var(--space-5); min-width: 0; }
+.lv-contract h3 { margin: 0 0 var(--space-1); font-family: var(--font-display); font-size: var(--step-2); font-weight: 360; line-height: var(--leading-2); }
+.lv-contract-detail { margin: 0 0 var(--space-3); color: var(--muted); font-size: var(--step--1); line-height: var(--leading--1); }
+.lv-contract-where { margin: 0 0 var(--space-5); font-size: var(--step--1); }
+.lv-contract-where code { color: var(--ink); }
+.lv-counts-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 var(--space-3); }
+.lv-counts-head p { margin: 0; }
+.lv-contract { container-type: inline-size; }
+.lv-counts { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: var(--space-5); margin: var(--space-2) 0 0; }
+@container (min-width: 34rem) { .lv-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.lv-counts > div {
+  display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2);
+  min-width: 0; padding: 7px 0; border-top: 1px solid var(--rib); font-size: var(--step--1);
+}
+.lv-counts dt { color: var(--muted); min-width: 0; }
+.lv-counts dd { margin: 0; font-family: var(--font-mono); color: var(--ink); font-variant-numeric: tabular-nums; text-align: right; }
+.lv-counts > div[data-differs] { border-top-style: dashed; border-top-color: var(--edge); }
+
+/* A disclosure the site's way: the summary is a text control with a drawn chevron, turning 90° once. */
+.lv-more { margin-top: var(--space-5); }
+.lv-more > summary {
+  display: inline-flex; align-items: center; gap: var(--space-2); min-height: 44px;
+  cursor: pointer; list-style: none; font-size: var(--step--1); font-weight: 500;
+  text-decoration: underline; text-decoration-thickness: 1px; text-decoration-color: var(--edge); text-underline-offset: 0.22em;
+}
+.lv-more > summary::-webkit-details-marker { display: none; }
+.lv-more > summary::before {
+  content: ""; flex: none; width: 0.45em; height: 0.45em; margin-right: 0.15em;
+  border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg);
+}
+.lv-more[open] > summary::before { transform: rotate(45deg); }
+@media (prefers-reduced-motion: no-preference) {
+  .lv-more > summary::before { transition: transform var(--dur-hover) var(--ease-settle); }
+}
+@media (hover: hover) { .lv-more > summary:hover { text-decoration-color: currentColor; } }
+.lv-more .lv-timeline-wrap { margin-top: var(--space-3); }
+
+.lv-onward { margin: var(--space-9) 0 0; font-size: var(--step--1); }

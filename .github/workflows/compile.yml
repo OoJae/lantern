@@ -91,3 +91,17 @@ jobs:
       # Fails unless exactly 17 circuits parse, each at k <= 14.
       - name: Assert every circuit fits k <= 14
         run: node scripts/check-cost.mjs
+
+      # /live checks the whole story's contract on Preprod against web/src/live/keys.js, which pins the
+      # one key that run does not share with the committed build: the 60-second flavour's
+      # finalizeRecovery. Build that flavour afresh, and the pin must be its key.
+      - name: Assert /live's pinned flavour key is a fresh flavour build's
+        run: |
+          set -euo pipefail
+          bash devnet/compile.sh
+          sha=$(shasum -a 256 devnet/build/lantern/keys/finalizeRecovery.verifier | cut -d' ' -f1)
+          grep -q "sha: '${sha}'" web/src/live/keys.js \
+            || { echo "::error::web/src/live/keys.js does not pin the flavour build's finalizeRecovery key (${sha})"; exit 1; }
+          echo "web/src/live/keys.js pins the flavour build's finalizeRecovery key: ${sha}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
