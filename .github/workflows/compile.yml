@@ -4,7 +4,8 @@ name: compile
 
 on:
   push:
-    branches: [main]
+    # v2: Lantern v2's branch (docs/v2.md), until it merges.
+    branches: [main, v2]
     paths-ignore: ['**.md', 'docs/**']
   pull_request:
     paths-ignore: ['**.md', 'docs/**']
@@ -33,6 +34,13 @@ jobs:
       # Seconds, and no keys: every committed module equals a fresh compile.
       - name: Fast check (no keys)
         run: bash scripts/compile.sh --check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # The same, for Lantern v2 alone (npm run compile:check:v2), so a v2
+      # drift is named in its own step.
+      - name: Fast check, Lantern v2 (no keys)
+        run: bash scripts/compile.sh --check-v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -85,7 +93,7 @@ jobs:
           done
           for p in idCommitOf vetoCommitOf guardianLeafOf recoveryIdOf approvalNullifierOf vetoNullifierOf \
                    lineageLeafOf gateNullifierOf ephemeralPkOf openNullifierOf checkInNullifierOf checkInKeyOf \
-                   cooldownSecondsOf; do
+                   guardianCtxOf cooldownSecondsOf openSlackSeconds vetoSlackSeconds; do
             if [ -e "contracts/managed-lantern2/zkir/${p}.zkir" ]; then
               echo "::error::v2 ${p} is no longer a pure circuit"; exit 1
             fi

@@ -7,6 +7,7 @@
 #   bash scripts/compile.sh --v2-only       Lantern v2 only (docs/v2.md), with keys
 #   bash scripts/compile.sh --check         seconds: recompile without keys into a scratch
 #                                           directory and fail if any committed module differs
+#   bash scripts/compile.sh --check-v2      the same check, for Lantern v2's module only
 set -euo pipefail
 
 COMPACT_VERSION="0.31.1"
@@ -66,10 +67,10 @@ build() {
   strip_maps "${out}"
 }
 
-if [ "${1:-}" = "--check" ]; then
+check() {
   scratch="$(mktemp -d)"; trap 'rm -rf "$scratch"' EXIT
   status=0
-  for t in "${SHIPPED[@]}" "${V2[@]}" "${ADVERSARIAL[@]}"; do
+  for t in "$@"; do
     src="${t%%|*}" out="${t##*|}"
     compact compile "+${COMPACT_VERSION}" --skip-zk "${src}" "${scratch}/${out}" >/dev/null
     strip_maps "${scratch}/${out}"
@@ -81,7 +82,17 @@ if [ "${1:-}" = "--check" ]; then
       status=1
     fi
   done
-  exit $status
+  return $status
+}
+
+if [ "${1:-}" = "--check" ]; then
+  check "${SHIPPED[@]}" "${V2[@]}" "${ADVERSARIAL[@]}"; exit $?
+fi
+
+# Lantern v2's generated module against a fresh compile of contracts/v2/, and
+# nothing else: what `npm run compile:check:v2` and the v2 CI step run.
+if [ "${1:-}" = "--check-v2" ]; then
+  check "${V2[@]}"; exit $?
 fi
 
 if [ "${1:-}" = "--v2-only" ]; then

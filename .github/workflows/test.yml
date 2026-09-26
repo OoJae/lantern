@@ -4,7 +4,8 @@ name: test
 
 on:
   push:
-    branches: [main]
+    # v2: Lantern v2's branch (docs/v2.md), until it merges.
+    branches: [main, v2]
   pull_request:
   workflow_dispatch:
 

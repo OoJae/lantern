@@ -39,6 +39,7 @@
     "devnet:bench": "bash devnet/run.sh bench",
     "build": "bash scripts/compile.sh",
     "compile:check": "bash scripts/compile.sh --check",
+    "compile:check:v2": "bash scripts/compile.sh --check-v2",
     "cost:check": "node scripts/check-cost.mjs",
     "cost:v2": "bash scripts/cost-v2.sh",
     "cost:check:v2": "node scripts/check-cost-v2.mjs",
