@@ -13,6 +13,25 @@ import { assertNoLeak, encodingsOf, flatten } from '../src/leakscan.js';
 
 const D = BigInt(DELAY);
 
+/**
+ * The lineage path is a witness the prover fills in. A forged one has a real
+ * path's shape and the leaf lineageLeafOf(root, head) the tree never held, so it
+ * binds, and only the tree's root history (the `descends` fact, in the gate)
+ * refuses it (adv-v2 round 2: no test reached that check before).
+ */
+const forgeLineage = (sim, root, head) => {
+  sim.ps.lineagePath = { ...sim.ledger.lineage.findPathForLeaf(pureCircuits.lineageLeafOf(root, root)), leaf: pureCircuits.lineageLeafOf(root, head) };
+  return sim;
+};
+/** Enrol a second identity X as its own owner, and act as X from then on. Returns X's idCommit. */
+const enrolX = (sim) => {
+  const x = { identitySecret: fieldOf(4040), idSalt: bytes32(4041), vetoSecret: fieldOf(4042), vetoSalt: bytes32(4043) };
+  Object.assign(sim.ps, x);
+  const xId = pureCircuits.idCommitOf(x.identitySecret, x.idSalt);
+  sim.call('enrollIdentity', xId, pureCircuits.vetoCommitOf(x.vetoSecret, x.vetoSalt), 2n, D);
+  return xId;
+};
+
 describe('v2 succession: a SECOND recovery', () => {
   it('carries the genesis root forward to the successor', () => {
     const { sim, id, idRoot, guardians } = world();
@@ -178,17 +197,28 @@ describe('v2 proveSuccession', () => {
     expect(() => sim.call('proveSuccession', idRoot, id)).toThrow(/superseded/);
   });
 
-  it('rejects a commitment that was never enrolled', () => {
+  it('rejects a commitment that was never enrolled, even on a path that binds to it', () => {
     const { sim, idRoot } = world();
     const stranger = pureCircuits.idCommitOf(fieldOf(31337), bytes32(31));
     loadLineage(sim, idRoot, idRoot);
-    expect(() => sim.call('proveSuccession', idRoot, stranger)).toThrow();
+    expect(() => sim.call('proveSuccession', idRoot, stranger)).toThrow(/does not bind/);
+    forgeLineage(sim, idRoot, stranger);
+    expect(() => sim.call('proveSuccession', idRoot, stranger)).toThrow(/not a known lineage root/);
   });
 
   it('rejects a head claimed under the wrong root', () => {
     const { sim, id, idRoot } = world();
     loadLineage(sim, idRoot, id);
     expect(() => sim.call('proveSuccession', bytes32(4242), id)).toThrow(/does not bind/);
+  });
+
+  it('rejects an ENROLLED identity posing as the head of another root, on a forged path', () => {
+    const { sim, idRoot } = world();
+    const xId = enrolX(sim);
+    forgeLineage(sim, idRoot, xId);
+    expect(() => sim.call('proveSuccession', idRoot, xId)).toThrow(/not a known lineage root/);
+    loadLineage(sim, xId, xId);   // control: X is the head of its own root
+    expect(() => sim.call('proveSuccession', xId, xId)).not.toThrow();
   });
 });
 
@@ -228,6 +258,13 @@ describe('v2 proveHeadOwnership', () => {
     const pub = flatten([pd.input, pd.output, pd.publicTranscript]);
     expect(encodingsOf(sim.ledger.lineage.root().field).some((f) => pub.includes(f))).toBe(true);
   });
+
+  it('rejects an enrolled identity, holding its own secret, that claims another root on a forged path', () => {
+    const { sim, idRoot } = world();
+    const xId = enrolX(sim);
+    forgeLineage(sim, idRoot, xId);
+    expect(() => sim.call('proveHeadOwnership', idRoot, xId)).toThrow(/not a known lineage root/);
+  });
 });
 
 describe('v2 reference host gate: a DApp survives its user losing their key', () => {
@@ -262,6 +299,18 @@ describe('v2 reference host gate: a DApp survives its user losing their key', ()
     const { sim, id, idRoot } = world();
     loadLineage(sim, idRoot, id);
     expect(() => sim.call('hostGatedAction', bytes32(4242), id, bytes32(4))).toThrow(/does not bind/);
+  });
+
+  it("rejects an enrolled identity, holding its own secret, that claims another root's relationship on a forged path", () => {
+    const { sim, idRoot } = world();
+    const xId = enrolX(sim);
+    forgeLineage(sim, idRoot, xId);
+    expect(() => sim.call('hostGatedAction', idRoot, xId, bytes32(1)))
+      .toThrow(/not the current owner of this identity root/);
+    expect(sim.ledger.gateActions).toBe(0n);
+    loadLineage(sim, xId, xId);   // control: X's own gate works
+    expect(() => sim.call('hostGatedAction', xId, xId, bytes32(2))).not.toThrow();
+    expect(sim.ledger.gateActions).toBe(1n);
   });
 
   it('rejects someone who descends but does not hold the secret', () => {
