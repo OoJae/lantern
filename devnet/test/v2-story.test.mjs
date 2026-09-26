@@ -36,7 +36,7 @@ describe('the v2 chain story, in memory', () => {
       'unlockIdentity', 'hostGatedAction', 'checkIn']) assert.ok(circuits.has(c), c);
   });
 
-  it('ends where the rules say: one veto, the reserved recovery live, unlocked with a new card, one check-in', async () => {
+  it('ends where the rules say: one veto, the reserved recovery the current one, unlocked with a new card, one check-in', async () => {
     const { sim, x, story } = inMemory();
     await runV2Story(story, x);
     const w = story.world;

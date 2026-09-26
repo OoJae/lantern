@@ -24,6 +24,7 @@ async function builtRecord() {
   const records = await runV2Story(story, x);
   const contract = {
     ...x.contract,
+    maintenanceAuthority: { ...x.contract.maintenanceAuthority, counter: 2 }, // one key insert, then the freeze
     operationsAtDeploy: V2_CIRCUITS.slice(0, 8),
     verifierKeysInsertedBy: [{ operations: V2_CIRCUITS.slice(8), txId: 'ef'.repeat(33), txHash: 'ef'.repeat(32), blockHeight: 98, status: 'SucceedEntirely' }],
   };
@@ -55,6 +56,7 @@ describe('a v2 record', () => {
     assert.match(alter((c) => { delete c.steps[5].tx; }), /step 2\.2 was accepted without a finalized transaction/);
     assert.match(alter((c) => { c.summary.accepted += 1; }), /summary\.accepted/);
     assert.match(alter((c) => { c.contracts.lantern2.maintenanceAuthority.committee = 1; }), /not recorded frozen/);
+    assert.match(alter((c) => { c.contracts.lantern2.maintenanceAuthority.counter = 3; }), /counter is 3, not 1 \+ the recorded key inserts/);
     assert.match(alter((c) => { c.contracts.lantern2.maintenanceAuthority.frozenBy.blockHeight = 10_000; }), /in that order, before the first step/);
     assert.match(alter((c) => { c.contracts.lantern2.verifierKeysInsertedBy[0].operations.pop(); }), /each of v2's 13 circuits exactly once/);
     assert.match(alter((c) => { c.steps[6].tx.blockHeight = 1; }), /not in block order/);

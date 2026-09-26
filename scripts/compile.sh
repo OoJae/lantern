@@ -17,8 +17,8 @@ SHIPPED=(
   "contracts/src/host.compact|contracts/managed-host"
 )
 
-# Lantern v2: designed, built and tested, NOT deployed (docs/v2.md). A separate
-# contract, so v1's shipped module above never changes by a byte.
+# Lantern v2: built and tested, and deployed on Preprod beside the shipped contract
+# (docs/v2.md). A separate contract, so v1's shipped module above never changes by a byte.
 V2=(
   "contracts/v2/lantern2.compact|contracts/managed-lantern2"
 )

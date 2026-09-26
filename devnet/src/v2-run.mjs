@@ -97,6 +97,6 @@ writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`);
 const s = record.summary;
 console.log(green(`  Every step went exactly as expected: ${s.accepted} accepted, ${s.refused} refused, ${s.transactions} transactions.`));
 console.log(`  proofs: ${s.proveSeconds.min}–${s.proveSeconds.max} s (median ${s.proveSeconds.median} s) · call to finalized: median ${s.callToFinalizedSeconds.median} s · ${s.wallClockMinutes} min in all`);
-console.log(`  Lantern v2 at ${x.contract.address} · the identity ends unlocked, one veto, its reserved recovery live, ${finalIdentity.checkIns.count} check-in this period`);
+console.log(`  Lantern v2 at ${x.contract.address} · the identity ends unlocked, one veto, its reserved recovery the current one, ${finalIdentity.checkIns.count} check-in this period`);
 console.log(dim(`  record: ${path.relative(repoRoot, file)} · check it against the chain: ${isPublic ? `LANTERN_NETWORK=${network.networkId} ` : ''}npm run devnet:verify:v2`));
 process.exit(0);

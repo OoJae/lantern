@@ -115,6 +115,10 @@ export function problemsOf(record) {
   else {
     if (c.maintenanceAuthority?.committee !== 0 || !(c.maintenanceAuthority?.threshold >= 1)) bad('the maintenance authority is not recorded frozen');
     if (c.maintenanceAuthority?.frozenBy?.status !== 'SucceedEntirely') bad('the freeze is not a successful transaction');
+    // Each maintenance update moves the counter on by one, and the freeze sets it one past the last.
+    if (c.maintenanceAuthority?.counter !== 1 + (c.verifierKeysInsertedBy?.length ?? 0)) {
+      bad(`the maintenance authority's counter is ${c.maintenanceAuthority?.counter}, not 1 + the recorded key inserts`);
+    }
     const setup = setupTxs(c).map((t) => t.blockHeight);
     const first = Math.min(...withTx.map((s) => s.tx.blockHeight));
     if (setup.some((h, i) => !(h > 0) || (i > 0 && h < setup[i - 1])) || (withTx.length && setup.at(-1) > first)) {

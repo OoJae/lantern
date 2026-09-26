@@ -5,7 +5,8 @@
 // wrote it (v2-run.mjs):
 //   - the record is internally consistent (v2-record.mjs problemsOf), and was compiled from the
 //     sources committed here (their sha256);
-//   - the contract exists, and its maintenance authority is frozen, so its rules can never change;
+//   - the contract exists, and its maintenance authority is frozen, so its rules can never change,
+//     with a counter that shows no maintenance update but the recorded key inserts and the freeze;
 //   - every on-chain verifier key is byte-identical to a fresh compile of contracts/v2/lantern2.compact
 //     (devnet/build/lantern2: npm run devnet:verify:v2 builds it first, with compile.sh's stamp);
 //   - every recorded transaction is on the chain, at its recorded block, and carries the recorded
@@ -79,8 +80,12 @@ const state = await pdp.queryContractState(meta.address);
 check(`${meta.name}: exists on this chain`, Boolean(state), meta.address);
 if (state) {
   const ma = state.maintenanceAuthority;
-  check(`${meta.name}: maintenance authority frozen, so its rules can never change`, ma.committee.length === 0 && ma.threshold >= 1,
-    `committee ${ma.committee.length}, threshold ${ma.threshold}`);
+  // Each maintenance update moves the counter on by one, and the freeze sets it one past the last:
+  // so the counter is 1 + the recorded key inserts only if no other update came before the freeze.
+  const inserts = meta.verifierKeysInsertedBy?.length ?? 0;
+  check(`${meta.name}: maintenance authority frozen, so its rules can never change`,
+    ma.committee.length === 0 && ma.threshold >= 1 && Number(ma.counter) === 1 + inserts,
+    `committee ${ma.committee.length}, threshold ${ma.threshold}, counter ${ma.counter}: no maintenance update but the recorded ${inserts === 1 ? 'key insert' : `${inserts} key inserts`} and the freeze`);
   const ops = state.operations().map(String).sort();
   const matching = ops.filter((op) => existsSync(keyFile(op)) && same(state.operation(op).verifierKey, readFileSync(keyFile(op))));
   check(`${meta.name}: every on-chain verifier key is byte-identical to a fresh compile of contracts/v2/lantern2.compact`,

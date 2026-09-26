@@ -6,9 +6,11 @@
 // ten keys, at 55%, pass). So the deploy carries as many keys as fit a budget, and one or more
 // maintenance updates, signed by the deployer's key like the freeze (freeze.mjs), insert the
 // rest: each the compiled key, byte for byte. Only then is the maintenance authority frozen, so
-// once any circuit can be called the contract's rules are already fixed, and verify-v2.mjs checks
-// every key on chain against a fresh compile. The deployed contract is the one a single deploy
-// would have made; only how its keys arrived differs.
+// once the story calls any circuit the contract's rules are already fixed (anyone can call a
+// deployed circuit from the deploy on; the record's first call comes after the freeze), and
+// verify-v2.mjs checks every key on chain against a fresh compile, and that the authority's counter
+// shows no maintenance update but the recorded inserts and the freeze. The deployed contract is
+// the one a single deploy would have made; only how its keys arrived differs.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import * as L from '@midnight-ntwrk/ledger-v8';

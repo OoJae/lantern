@@ -101,6 +101,9 @@ for (const [name, { rec, network, payer }] of Object.entries(RECORDS)) {
       }
       expect(c.maintenanceAuthority.committee).toBe(0);
       expect(c.maintenanceAuthority.threshold).toBe(1);
+      // Each maintenance update moves the counter on by one, and the freeze sets it one past the
+      // last: so no update came between the deploy and the freeze but the recorded key insert.
+      expect(c.maintenanceAuthority.counter).toBe(1 + c.verifierKeysInsertedBy.length);
     });
 
     it('names each of v2\'s 13 circuits exactly once, in the deploy or the key insert', () => {
