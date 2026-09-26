@@ -164,8 +164,8 @@ export pure circuit checkInKeyOf(idRoot: Bytes<32>, ctx: Bytes<32>, period: Uint
 // rotation by rotating a throwaway identity to the same context first, or block
 // an enrolment by rotating to the victim's pending idCommit: `usedGuardianCtx`
 // is global. Bound to the root, no other identity can ever produce this value.
-// That closes the CONTEXT route only: finalizeRecovery's successor is still an
-// unopened argument, which can take a pending idCommit too (see there).
+// That closes the CONTEXT route. The other route, finalizeRecovery's successor
+// argument, is closed there: a finalize proves the successor's opening.
 export pure circuit guardianCtxOf(idRoot: Bytes<32>, seed: Bytes<32>): Bytes<32> {
   return upgradeFromTransient(transientHash<CtxPreimage>(
     CtxPreimage { domain: pad(18, "lantern2:rotate:v1"), idRoot: idRoot, seed: seed }));
@@ -252,7 +252,9 @@ export ledger lastVetoAt: Map<Bytes<32>, Uint<64>>;
 // (§3.10, review F0): recoveryIdOf(head, next device key). That one recovery
 // may open during the cooldown, so colluders who win the race at the
 // cooldown's public end find the owner's recovery already in the slot. Keyed to
-// the head through the rid, so it is single-use and dies with a finalize.
+// the head through the rid, so it is single-use; a finalize retires that head
+// and resets this to zeros, so the ledger never shows a reservation no one can
+// open (second review).
 export ledger reservedRecovery: Map<Bytes<32>, Bytes<32>>;
 // idRoot -> locked. A Map seeded false rather than a Set, so every write is a
 // plain insert and every reader does one lookup with no conditional.
@@ -264,7 +266,7 @@ export ledger checkInNullifiers: Set<Bytes<32>>;
 constructor() {}
 
 // ---------------------------------------------------------------------------
-// PRIVATE WITNESSES -- the same ten as v1, and no new ones.
+// PRIVATE WITNESSES -- v1's ten, and two new ones.
 // ---------------------------------------------------------------------------
 
 witness guardianSecret(): Bytes<32>;
@@ -277,6 +279,11 @@ witness vetoSalt(): Bytes<32>;
 witness claimedNow(): Uint<64>;
 witness ephemeralSk(): Bytes<32>;
 witness lineagePath(): MerkleTreePath<32, Bytes<32>>;
+// NEW (second review): the opening of finalizeRecovery's successor. There,
+// identitySecret() is the RECONSTRUCTED secret of the identity being recovered,
+// so the successor's opening needs witnesses of its own.
+witness successorSecret(): Field;
+witness successorSalt(): Bytes<32>;
 
 // ---------------------------------------------------------------------------
 // ENROLMENT
@@ -566,15 +573,15 @@ export circuit finalizeRecovery(
   retiredIdentities.insert(disclose(idCommit));
   lineage.insert(disclose(lineageLeafOf(rec.idRoot, newIdCommit)));
 
-  // KNOWN GAP (second review; inherited from v1, not closed in this build):
-  // newIdCommit is a bare argument, never opened. Anyone who holds a finalizable
-  // recovery of their OWN identity can finalize to a PENDING enrolment's
-  // idCommit, or to an honest device's pending successor, first; that
-  // enrolment then fails with "identity already enrolled", that finalize with
-  // the assert below. Denial of service only, at the cost of one prepared
-  // recovery per block: the victim retries with a fresh identity secret (or a
-  // fresh successor, before expiresAt). The fix is to prove the successor's
-  // opening here, from two new witnesses: successorSecret() and successorSalt().
+  // NEW (second review): the device proves it can OPEN its successor, as an
+  // enrolment does. In v1 newIdCommit is a bare argument, so anyone holding a
+  // finalizable recovery of their OWN identity could finalize to a PENDING
+  // enrolment's idCommit, or to an honest device's pending successor, first:
+  // that enrolment would fail with "identity already enrolled", that finalize
+  // with the assert after this one. Witness-derived, like the core: nothing
+  // about the successor's secret is revealed.
+  assert(idCommitOf(successorSecret(), successorSalt()) == newIdCommit,
+         "successor commitment is not opened");
   assert(!enrolled.member(disclose(newIdCommit)), "successor already enrolled");
   enrolled.insert(disclose(newIdCommit));
   thresholds.insert(disclose(newIdCommit), t);
@@ -583,6 +590,9 @@ export circuit finalizeRecovery(
   // delay, the veto count and the slot.
   idRoots.insert(disclose(newIdCommit), disclose(rec.idRoot));
   locked.insert(disclose(rec.idRoot), false);
+  // A reservation names recoveryIdOf(the old head, a device key), and the old
+  // head is now retired, so no guardian can ever open it: clear it.
+  reservedRecovery.insert(disclose(rec.idRoot), default<Bytes<32>>);
 }
 
 // ---------------------------------------------------------------------------
@@ -674,10 +684,12 @@ export circuit unlockIdentity(idCommit: Bytes<32>, newVetoCommit: Bytes<32>): []
 //
 // A current guardian proves membership and writes a nullifier bound to
 // (secret, context, period); a counter for (root, context, period) goes up by
-// one. The owner compares it with n, already public, and learns "2 of 3
-// checked in this quarter" -- never which two. The argument is the identity
-// ROOT, always (review F8): guardians need not track the head, and a choice
-// between the root and a later commitment would fingerprint the guardian.
+// one. Anyone compares it with n, already public, and learns "2 of 3
+// checked in this quarter" -- never which two, unless they hold the dealt
+// guardian secrets, as an owner's device that kept them does (docs/v2-spec.md
+// §6.2). The argument is the identity ROOT, always (review F8): guardians need
+// not track the head, and a choice between the root and a later commitment
+// would fingerprint the guardian.
 // ---------------------------------------------------------------------------
 
 export circuit checkIn(idRoot: Bytes<32>, period: Uint<32>): [] {

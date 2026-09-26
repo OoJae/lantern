@@ -90,7 +90,7 @@ describe('src/v2/sim.js: one v2 life, end to end, as its users would live it', (
     const device = { name: 'new phone', ephemeralSk: deviceSk, ...recoverFromShares([shares[0], shares[2]]) };
     expect(hex(device.idSalt)).toBe(hex(idSaltOf(ident.identitySecret)));
     const next = { name: 'Alice', ...newIdentity() };
-    L.finalize(device, rid, commitmentsOf(P, next));
+    L.finalize(device, rid, next);
 
     const s = L.status(root);
     expect(s.locked).toBe(false);
@@ -113,7 +113,7 @@ describe('src/v2/sim.js: one v2 life, end to end, as its users would live it', (
     for (const g of gs) L.approve(g, root, rid);
     L.setTime(L.status(root).holder.unlockAt);
     const next = newIdentity();
-    L.finalize({ ephemeralSk: deviceSk, identitySecret: owner.identitySecret, idSalt: owner.idSalt }, rid, commitmentsOf(P, next));
+    L.finalize({ ephemeralSk: deviceSk, identitySecret: owner.identitySecret, idSalt: owner.idSalt }, rid, next);
     const head = commitmentsOf(P, next).idCommit;
     L.checkIn(gs[1], head);
     L.lock(next, head);

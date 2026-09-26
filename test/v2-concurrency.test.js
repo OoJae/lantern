@@ -21,8 +21,9 @@ const ANY_READ_MISMATCH = /mismatch between expected .* and actual .* read/;
 // not even an all-zero rid.
 const isRid = (rid) => (cell) => cell?.value?.[0] !== undefined
   && Buffer.from(new rt.CompactTypeBytes(32).fromValue([cell.value[0]])).equals(Buffer.from(rid));
-const NEW_ID = () => pureCircuits.idCommitOf(fieldOf(701), bytes32(111));
-const NEW_VETO = () => pureCircuits.vetoCommitOf(fieldOf(801), bytes32(141));
+// The successor the simulator's default private state opens (finalizeRecovery proves it).
+const NEW_ID = () => pureCircuits.idCommitOf(fieldOf(70), bytes32(71));
+const NEW_VETO = () => pureCircuits.vetoCommitOf(fieldOf(80), bytes32(81));
 
 describe('v2 read-commitment contention (Spike B)', () => {
   it('two guardians approving from the same state do not invalidate each other', () => {

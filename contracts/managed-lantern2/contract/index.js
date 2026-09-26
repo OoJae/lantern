@@ -437,6 +437,12 @@ export class Contract {
     if (typeof(witnesses_0.lineagePath) !== 'function') {
       throw new __compactRuntime.CompactError('first (witnesses) argument to Contract constructor does not contain a function-valued field named lineagePath');
     }
+    if (typeof(witnesses_0.successorSecret) !== 'function') {
+      throw new __compactRuntime.CompactError('first (witnesses) argument to Contract constructor does not contain a function-valued field named successorSecret');
+    }
+    if (typeof(witnesses_0.successorSalt) !== 'function') {
+      throw new __compactRuntime.CompactError('first (witnesses) argument to Contract constructor does not contain a function-valued field named successorSalt');
+    }
     this.witnesses = witnesses_0;
     this.circuits = {
       idCommitOf(context, ...args_1) {
@@ -514,35 +520,35 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('enrollIdentity',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 288 char 1',
+                                     'lantern2.compact line 295 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('enrollIdentity',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 288 char 1',
+                                     'lantern2.compact line 295 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
         if (!(vetoCommit_0.buffer instanceof ArrayBuffer && vetoCommit_0.BYTES_PER_ELEMENT === 1 && vetoCommit_0.length === 32)) {
           __compactRuntime.typeError('enrollIdentity',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 288 char 1',
+                                     'lantern2.compact line 295 char 1',
                                      'Bytes<32>',
                                      vetoCommit_0)
         }
         if (!(typeof(threshold_0) === 'bigint' && threshold_0 >= 0n && threshold_0 <= 255n)) {
           __compactRuntime.typeError('enrollIdentity',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'lantern2.compact line 288 char 1',
+                                     'lantern2.compact line 295 char 1',
                                      'Uint<0..256>',
                                      threshold_0)
         }
         if (!(typeof(delay_0) === 'bigint' && delay_0 >= 0n && delay_0 <= 18446744073709551615n)) {
           __compactRuntime.typeError('enrollIdentity',
                                      'argument 4 (argument 5 as invoked from Typescript)',
-                                     'lantern2.compact line 288 char 1',
+                                     'lantern2.compact line 295 char 1',
                                      'Uint<0..18446744073709551616>',
                                      delay_0)
         }
@@ -574,14 +580,14 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('addGuardian',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 317 char 1',
+                                     'lantern2.compact line 324 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('addGuardian',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 317 char 1',
+                                     'lantern2.compact line 324 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
@@ -611,21 +617,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('rotateGuardianSet',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 339 char 1',
+                                     'lantern2.compact line 346 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('rotateGuardianSet',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 339 char 1',
+                                     'lantern2.compact line 346 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
         if (!(seed_0.buffer instanceof ArrayBuffer && seed_0.BYTES_PER_ELEMENT === 1 && seed_0.length === 32)) {
           __compactRuntime.typeError('rotateGuardianSet',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 339 char 1',
+                                     'lantern2.compact line 346 char 1',
                                      'Bytes<32>',
                                      seed_0)
         }
@@ -657,28 +663,28 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('openRecovery',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 398 char 1',
+                                     'lantern2.compact line 405 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('openRecovery',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 398 char 1',
+                                     'lantern2.compact line 405 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
         if (!(ephemeralPk_0.buffer instanceof ArrayBuffer && ephemeralPk_0.BYTES_PER_ELEMENT === 1 && ephemeralPk_0.length === 32)) {
           __compactRuntime.typeError('openRecovery',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 398 char 1',
+                                     'lantern2.compact line 405 char 1',
                                      'Bytes<32>',
                                      ephemeralPk_0)
         }
         if (!(typeof(period_0) === 'bigint' && period_0 >= 0n && period_0 <= 4294967295n)) {
           __compactRuntime.typeError('openRecovery',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'lantern2.compact line 398 char 1',
+                                     'lantern2.compact line 405 char 1',
                                      'Uint<0..4294967296>',
                                      period_0)
         }
@@ -710,21 +716,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('approveRecovery',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 467 char 1',
+                                     'lantern2.compact line 474 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('approveRecovery',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 467 char 1',
+                                     'lantern2.compact line 474 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
         if (!(rid_0.buffer instanceof ArrayBuffer && rid_0.BYTES_PER_ELEMENT === 1 && rid_0.length === 32)) {
           __compactRuntime.typeError('approveRecovery',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 467 char 1',
+                                     'lantern2.compact line 474 char 1',
                                      'Bytes<32>',
                                      rid_0)
         }
@@ -755,21 +761,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('vetoRecovery',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 504 char 1',
+                                     'lantern2.compact line 511 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(rid_0.buffer instanceof ArrayBuffer && rid_0.BYTES_PER_ELEMENT === 1 && rid_0.length === 32)) {
           __compactRuntime.typeError('vetoRecovery',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 504 char 1',
+                                     'lantern2.compact line 511 char 1',
                                      'Bytes<32>',
                                      rid_0)
         }
         if (!(nextRid_0.buffer instanceof ArrayBuffer && nextRid_0.BYTES_PER_ELEMENT === 1 && nextRid_0.length === 32)) {
           __compactRuntime.typeError('vetoRecovery',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 504 char 1',
+                                     'lantern2.compact line 511 char 1',
                                      'Bytes<32>',
                                      nextRid_0)
         }
@@ -801,28 +807,28 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('finalizeRecovery',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 535 char 1',
+                                     'lantern2.compact line 542 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(rid_0.buffer instanceof ArrayBuffer && rid_0.BYTES_PER_ELEMENT === 1 && rid_0.length === 32)) {
           __compactRuntime.typeError('finalizeRecovery',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 535 char 1',
+                                     'lantern2.compact line 542 char 1',
                                      'Bytes<32>',
                                      rid_0)
         }
         if (!(newIdCommit_0.buffer instanceof ArrayBuffer && newIdCommit_0.BYTES_PER_ELEMENT === 1 && newIdCommit_0.length === 32)) {
           __compactRuntime.typeError('finalizeRecovery',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 535 char 1',
+                                     'lantern2.compact line 542 char 1',
                                      'Bytes<32>',
                                      newIdCommit_0)
         }
         if (!(newVetoCommit_0.buffer instanceof ArrayBuffer && newVetoCommit_0.BYTES_PER_ELEMENT === 1 && newVetoCommit_0.length === 32)) {
           __compactRuntime.typeError('finalizeRecovery',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'lantern2.compact line 535 char 1',
+                                     'lantern2.compact line 542 char 1',
                                      'Bytes<32>',
                                      newVetoCommit_0)
         }
@@ -854,21 +860,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('proveSuccession',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 594 char 1',
+                                     'lantern2.compact line 604 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idRoot_0.buffer instanceof ArrayBuffer && idRoot_0.BYTES_PER_ELEMENT === 1 && idRoot_0.length === 32)) {
           __compactRuntime.typeError('proveSuccession',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 594 char 1',
+                                     'lantern2.compact line 604 char 1',
                                      'Bytes<32>',
                                      idRoot_0)
         }
         if (!(head_0.buffer instanceof ArrayBuffer && head_0.BYTES_PER_ELEMENT === 1 && head_0.length === 32)) {
           __compactRuntime.typeError('proveSuccession',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 594 char 1',
+                                     'lantern2.compact line 604 char 1',
                                      'Bytes<32>',
                                      head_0)
         }
@@ -899,21 +905,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('proveHeadOwnership',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 602 char 1',
+                                     'lantern2.compact line 612 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idRoot_0.buffer instanceof ArrayBuffer && idRoot_0.BYTES_PER_ELEMENT === 1 && idRoot_0.length === 32)) {
           __compactRuntime.typeError('proveHeadOwnership',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 602 char 1',
+                                     'lantern2.compact line 612 char 1',
                                      'Bytes<32>',
                                      idRoot_0)
         }
         if (!(head_0.buffer instanceof ArrayBuffer && head_0.BYTES_PER_ELEMENT === 1 && head_0.length === 32)) {
           __compactRuntime.typeError('proveHeadOwnership',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 602 char 1',
+                                     'lantern2.compact line 612 char 1',
                                      'Bytes<32>',
                                      head_0)
         }
@@ -945,28 +951,28 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('hostGatedAction',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 615 char 1',
+                                     'lantern2.compact line 625 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(rootIdCommit_0.buffer instanceof ArrayBuffer && rootIdCommit_0.BYTES_PER_ELEMENT === 1 && rootIdCommit_0.length === 32)) {
           __compactRuntime.typeError('hostGatedAction',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 615 char 1',
+                                     'lantern2.compact line 625 char 1',
                                      'Bytes<32>',
                                      rootIdCommit_0)
         }
         if (!(currentIdCommit_0.buffer instanceof ArrayBuffer && currentIdCommit_0.BYTES_PER_ELEMENT === 1 && currentIdCommit_0.length === 32)) {
           __compactRuntime.typeError('hostGatedAction',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 615 char 1',
+                                     'lantern2.compact line 625 char 1',
                                      'Bytes<32>',
                                      currentIdCommit_0)
         }
         if (!(nonce_0.buffer instanceof ArrayBuffer && nonce_0.BYTES_PER_ELEMENT === 1 && nonce_0.length === 32)) {
           __compactRuntime.typeError('hostGatedAction',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'lantern2.compact line 615 char 1',
+                                     'lantern2.compact line 625 char 1',
                                      'Bytes<32>',
                                      nonce_0)
         }
@@ -997,14 +1003,14 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('lockIdentity',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 648 char 1',
+                                     'lantern2.compact line 658 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('lockIdentity',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 648 char 1',
+                                     'lantern2.compact line 658 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
@@ -1034,21 +1040,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('unlockIdentity',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 662 char 1',
+                                     'lantern2.compact line 672 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idCommit_0.buffer instanceof ArrayBuffer && idCommit_0.BYTES_PER_ELEMENT === 1 && idCommit_0.length === 32)) {
           __compactRuntime.typeError('unlockIdentity',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 662 char 1',
+                                     'lantern2.compact line 672 char 1',
                                      'Bytes<32>',
                                      idCommit_0)
         }
         if (!(newVetoCommit_0.buffer instanceof ArrayBuffer && newVetoCommit_0.BYTES_PER_ELEMENT === 1 && newVetoCommit_0.length === 32)) {
           __compactRuntime.typeError('unlockIdentity',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 662 char 1',
+                                     'lantern2.compact line 672 char 1',
                                      'Bytes<32>',
                                      newVetoCommit_0)
         }
@@ -1079,21 +1085,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('checkIn',
                                      'argument 1 (as invoked from Typescript)',
-                                     'lantern2.compact line 683 char 1',
+                                     'lantern2.compact line 695 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(idRoot_0.buffer instanceof ArrayBuffer && idRoot_0.BYTES_PER_ELEMENT === 1 && idRoot_0.length === 32)) {
           __compactRuntime.typeError('checkIn',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'lantern2.compact line 683 char 1',
+                                     'lantern2.compact line 695 char 1',
                                      'Bytes<32>',
                                      idRoot_0)
         }
         if (!(typeof(period_0) === 'bigint' && period_0 >= 0n && period_0 <= 4294967295n)) {
           __compactRuntime.typeError('checkIn',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'lantern2.compact line 683 char 1',
+                                     'lantern2.compact line 695 char 1',
                                      'Uint<0..4294967296>',
                                      period_0)
         }
@@ -1946,7 +1952,7 @@ export class Contract {
     if (!(result_0.buffer instanceof ArrayBuffer && result_0.BYTES_PER_ELEMENT === 1 && result_0.length === 32)) {
       __compactRuntime.typeError('guardianSecret',
                                  'return value',
-                                 'lantern2.compact line 270 char 1',
+                                 'lantern2.compact line 272 char 1',
                                  'Bytes<32>',
                                  result_0)
     }
@@ -1963,7 +1969,7 @@ export class Contract {
     if (!(result_0.buffer instanceof ArrayBuffer && result_0.BYTES_PER_ELEMENT === 1 && result_0.length === 32)) {
       __compactRuntime.typeError('leafSalt',
                                  'return value',
-                                 'lantern2.compact line 271 char 1',
+                                 'lantern2.compact line 273 char 1',
                                  'Bytes<32>',
                                  result_0)
     }
@@ -1980,7 +1986,7 @@ export class Contract {
     if (!(typeof(result_0) === 'object' && result_0.leaf.buffer instanceof ArrayBuffer && result_0.leaf.BYTES_PER_ELEMENT === 1 && result_0.leaf.length === 32 && Array.isArray(result_0.path) && result_0.path.length === 32 && result_0.path.every((t) => typeof(t) === 'object' && typeof(t.sibling) === 'object' && typeof(t.sibling.field) === 'bigint' && t.sibling.field >= 0 && t.sibling.field <= __compactRuntime.MAX_FIELD && typeof(t.goes_left) === 'boolean'))) {
       __compactRuntime.typeError('guardianPath',
                                  'return value',
-                                 'lantern2.compact line 272 char 1',
+                                 'lantern2.compact line 274 char 1',
                                  'struct MerkleTreePath<leaf: Bytes<32>, path: Vector<32, struct MerkleTreePathEntry<sibling: struct MerkleTreeDigest<field: Field>, goes_left: Boolean>>>',
                                  result_0)
     }
@@ -1997,7 +2003,7 @@ export class Contract {
     if (!(typeof(result_0) === 'bigint' && result_0 >= 0 && result_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('identitySecret',
                                  'return value',
-                                 'lantern2.compact line 273 char 1',
+                                 'lantern2.compact line 275 char 1',
                                  'Field',
                                  result_0)
     }
@@ -2014,7 +2020,7 @@ export class Contract {
     if (!(result_0.buffer instanceof ArrayBuffer && result_0.BYTES_PER_ELEMENT === 1 && result_0.length === 32)) {
       __compactRuntime.typeError('idSalt',
                                  'return value',
-                                 'lantern2.compact line 274 char 1',
+                                 'lantern2.compact line 276 char 1',
                                  'Bytes<32>',
                                  result_0)
     }
@@ -2031,7 +2037,7 @@ export class Contract {
     if (!(typeof(result_0) === 'bigint' && result_0 >= 0 && result_0 <= __compactRuntime.MAX_FIELD)) {
       __compactRuntime.typeError('vetoSecret',
                                  'return value',
-                                 'lantern2.compact line 275 char 1',
+                                 'lantern2.compact line 277 char 1',
                                  'Field',
                                  result_0)
     }
@@ -2048,7 +2054,7 @@ export class Contract {
     if (!(result_0.buffer instanceof ArrayBuffer && result_0.BYTES_PER_ELEMENT === 1 && result_0.length === 32)) {
       __compactRuntime.typeError('vetoSalt',
                                  'return value',
-                                 'lantern2.compact line 276 char 1',
+                                 'lantern2.compact line 278 char 1',
                                  'Bytes<32>',
                                  result_0)
     }
@@ -2065,7 +2071,7 @@ export class Contract {
     if (!(typeof(result_0) === 'bigint' && result_0 >= 0n && result_0 <= 18446744073709551615n)) {
       __compactRuntime.typeError('claimedNow',
                                  'return value',
-                                 'lantern2.compact line 277 char 1',
+                                 'lantern2.compact line 279 char 1',
                                  'Uint<0..18446744073709551616>',
                                  result_0)
     }
@@ -2082,7 +2088,7 @@ export class Contract {
     if (!(result_0.buffer instanceof ArrayBuffer && result_0.BYTES_PER_ELEMENT === 1 && result_0.length === 32)) {
       __compactRuntime.typeError('ephemeralSk',
                                  'return value',
-                                 'lantern2.compact line 278 char 1',
+                                 'lantern2.compact line 280 char 1',
                                  'Bytes<32>',
                                  result_0)
     }
@@ -2099,13 +2105,47 @@ export class Contract {
     if (!(typeof(result_0) === 'object' && result_0.leaf.buffer instanceof ArrayBuffer && result_0.leaf.BYTES_PER_ELEMENT === 1 && result_0.leaf.length === 32 && Array.isArray(result_0.path) && result_0.path.length === 32 && result_0.path.every((t) => typeof(t) === 'object' && typeof(t.sibling) === 'object' && typeof(t.sibling.field) === 'bigint' && t.sibling.field >= 0 && t.sibling.field <= __compactRuntime.MAX_FIELD && typeof(t.goes_left) === 'boolean'))) {
       __compactRuntime.typeError('lineagePath',
                                  'return value',
-                                 'lantern2.compact line 279 char 1',
+                                 'lantern2.compact line 281 char 1',
                                  'struct MerkleTreePath<leaf: Bytes<32>, path: Vector<32, struct MerkleTreePathEntry<sibling: struct MerkleTreeDigest<field: Field>, goes_left: Boolean>>>',
                                  result_0)
     }
     partialProofData.privateTranscriptOutputs.push({
       value: _descriptor_11.toValue(result_0),
       alignment: _descriptor_11.alignment()
+    });
+    return result_0;
+  }
+  _successorSecret_0(context, partialProofData) {
+    const witnessContext_0 = __compactRuntime.createWitnessContext(ledger(context.currentQueryContext.state), context.currentPrivateState, context.currentQueryContext.address);
+    const [nextPrivateState_0, result_0] = this.witnesses.successorSecret(witnessContext_0);
+    context.currentPrivateState = nextPrivateState_0;
+    if (!(typeof(result_0) === 'bigint' && result_0 >= 0 && result_0 <= __compactRuntime.MAX_FIELD)) {
+      __compactRuntime.typeError('successorSecret',
+                                 'return value',
+                                 'lantern2.compact line 285 char 1',
+                                 'Field',
+                                 result_0)
+    }
+    partialProofData.privateTranscriptOutputs.push({
+      value: _descriptor_2.toValue(result_0),
+      alignment: _descriptor_2.alignment()
+    });
+    return result_0;
+  }
+  _successorSalt_0(context, partialProofData) {
+    const witnessContext_0 = __compactRuntime.createWitnessContext(ledger(context.currentQueryContext.state), context.currentPrivateState, context.currentQueryContext.address);
+    const [nextPrivateState_0, result_0] = this.witnesses.successorSalt(witnessContext_0);
+    context.currentPrivateState = nextPrivateState_0;
+    if (!(result_0.buffer instanceof ArrayBuffer && result_0.BYTES_PER_ELEMENT === 1 && result_0.length === 32)) {
+      __compactRuntime.typeError('successorSalt',
+                                 'return value',
+                                 'lantern2.compact line 286 char 1',
+                                 'Bytes<32>',
+                                 result_0)
+    }
+    partialProofData.privateTranscriptOutputs.push({
+      value: _descriptor_0.toValue(result_0),
+      alignment: _descriptor_0.alignment()
     });
     return result_0;
   }
@@ -2928,7 +2968,7 @@ export class Contract {
   _assertCurrentPeriod_0(context, partialProofData, period_0) {
     const start_0 = ((t1) => {
                       if (t1 > 18446744073709551615n) {
-                        throw new __compactRuntime.CompactError('lantern2.compact line 384 char 17: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                        throw new __compactRuntime.CompactError('lantern2.compact line 391 char 17: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                       }
                       return t1;
                     })(period_0 * this._periodSeconds_0());
@@ -2940,7 +2980,7 @@ export class Contract {
                                                 partialProofData,
                                                 ((t1) => {
                                                   if (t1 > 18446744073709551615n) {
-                                                    throw new __compactRuntime.CompactError('lantern2.compact line 386 char 22: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                                                    throw new __compactRuntime.CompactError('lantern2.compact line 393 char 22: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                                                   }
                                                   return t1;
                                                 })(start_0
@@ -3015,7 +3055,7 @@ export class Contract {
     const lo_0 = this._claimedNow_0(context, partialProofData);
     const hi_0 = ((t1) => {
                    if (t1 > 18446744073709551615n) {
-                     throw new __compactRuntime.CompactError('lantern2.compact line 408 char 14: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                     throw new __compactRuntime.CompactError('lantern2.compact line 415 char 14: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                    }
                    return t1;
                  })(lo_0 + this._openSlackSeconds_0());
@@ -3209,7 +3249,7 @@ export class Contract {
                                                  partialProofData,
                                                  ((t1) => {
                                                    if (t1 > 18446744073709551615n) {
-                                                     throw new __compactRuntime.CompactError('lantern2.compact line 439 char 26: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                                                     throw new __compactRuntime.CompactError('lantern2.compact line 446 char 26: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                                                    }
                                                    return t1;
                                                  })(_descriptor_4.fromValue(__compactRuntime.queryLedgerState(context,
@@ -3283,7 +3323,7 @@ export class Contract {
                             'a recovery is already live for this identity');
     const unlockAt_0 = ((t1) => {
                          if (t1 > 18446744073709551615n) {
-                           throw new __compactRuntime.CompactError('lantern2.compact line 447 char 20: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                           throw new __compactRuntime.CompactError('lantern2.compact line 454 char 20: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                          }
                          return t1;
                        })(hi_0
@@ -3319,14 +3359,14 @@ export class Contract {
                     approveBy:
                       ((t1) => {
                         if (t1 > 18446744073709551615n) {
-                          throw new __compactRuntime.CompactError('lantern2.compact line 456 char 25: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                          throw new __compactRuntime.CompactError('lantern2.compact line 463 char 25: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                         }
                         return t1;
                       })(hi_0 + this._approvalWindowSeconds_0()),
                     expiresAt:
                       ((t1) => {
                         if (t1 > 18446744073709551615n) {
-                          throw new __compactRuntime.CompactError('lantern2.compact line 457 char 25: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                          throw new __compactRuntime.CompactError('lantern2.compact line 464 char 25: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                         }
                         return t1;
                       })(unlockAt_0 + this._finalizeWindowSeconds_0()) };
@@ -3757,7 +3797,7 @@ export class Contract {
     const lo_0 = this._claimedNow_0(context, partialProofData);
     const hi_0 = ((t1) => {
                    if (t1 > 18446744073709551615n) {
-                     throw new __compactRuntime.CompactError('lantern2.compact line 521 char 14: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
+                     throw new __compactRuntime.CompactError('lantern2.compact line 528 char 14: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 18446744073709551615');
                    }
                    return t1;
                  })(lo_0 + this._vetoSlackSeconds_0());
@@ -4113,6 +4153,12 @@ export class Contract {
                                                  value: __compactRuntime.StateValue.newNull().encode() } },
                                        { ins: { cached: false, n: 1 } },
                                        { ins: { cached: true, n: 3 } }]);
+    __compactRuntime.assert(this._equal_22(this._idCommitOf_1(this._successorSecret_0(context,
+                                                                                      partialProofData),
+                                                              this._successorSalt_0(context,
+                                                                                    partialProofData)),
+                                           newIdCommit_0),
+                            'successor commitment is not opened');
     __compactRuntime.assert(!_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                        partialProofData,
                                                                                        [
@@ -4234,11 +4280,33 @@ export class Contract {
                                                                                               alignment: _descriptor_1.alignment() }).encode() } },
                                        { ins: { cached: false, n: 1 } },
                                        { ins: { cached: true, n: 2 } }]);
+    const tmp_5 = rec_0.idRoot;
+    const tmp_6 = new Uint8Array(32);
+    __compactRuntime.queryLedgerState(context,
+                                      partialProofData,
+                                      [
+                                       { idx: { cached: false,
+                                                pushPath: true,
+                                                path: [
+                                                       { tag: 'value',
+                                                         value: { value: _descriptor_8.toValue(1n),
+                                                                  alignment: _descriptor_8.alignment() } },
+                                                       { tag: 'value',
+                                                         value: { value: _descriptor_8.toValue(11n),
+                                                                  alignment: _descriptor_8.alignment() } }] } },
+                                       { push: { storage: false,
+                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_0.toValue(tmp_5),
+                                                                                              alignment: _descriptor_0.alignment() }).encode() } },
+                                       { push: { storage: true,
+                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_0.toValue(tmp_6),
+                                                                                              alignment: _descriptor_0.alignment() }).encode() } },
+                                       { ins: { cached: false, n: 1 } },
+                                       { ins: { cached: true, n: 2 } }]);
     return [];
   }
   _proveSuccession_0(context, partialProofData, idRoot_0, head_0) {
     const path_0 = this._lineagePath_0(context, partialProofData);
-    __compactRuntime.assert(this._equal_22(path_0.leaf,
+    __compactRuntime.assert(this._equal_23(path_0.leaf,
                                            this._lineageLeafOf_0(idRoot_0,
                                                                  head_0)),
                             'path does not bind to this lineage leaf');
@@ -4313,7 +4381,7 @@ export class Contract {
     return [];
   }
   _proveHeadOwnership_0(context, partialProofData, idRoot_0, head_0) {
-    __compactRuntime.assert(this._equal_23(this._idCommitOf_1(this._identitySecret_0(context,
+    __compactRuntime.assert(this._equal_24(this._idCommitOf_1(this._identitySecret_0(context,
                                                                                      partialProofData),
                                                               this._idSalt_0(context,
                                                                              partialProofData)),
@@ -4351,7 +4419,7 @@ export class Contract {
                      nonce_0)
   {
     const path_0 = this._lineagePath_0(context, partialProofData);
-    __compactRuntime.assert(this._equal_24(path_0.leaf,
+    __compactRuntime.assert(this._equal_25(path_0.leaf,
                                            this._lineageLeafOf_0(rootIdCommit_0,
                                                                  currentIdCommit_0)),
                             'path does not bind to this lineage leaf');
@@ -4444,7 +4512,7 @@ export class Contract {
                                                                                         { popeq: { cached: false,
                                                                                                    result: undefined } }]).value),
                             'identity is locked');
-    __compactRuntime.assert(this._equal_25(this._idCommitOf_1(this._identitySecret_0(context,
+    __compactRuntime.assert(this._equal_26(this._idCommitOf_1(this._identitySecret_0(context,
                                                                                      partialProofData),
                                                               this._idSalt_0(context,
                                                                              partialProofData)),
@@ -4554,7 +4622,7 @@ export class Contract {
                                                                                         { popeq: { cached: true,
                                                                                                    result: undefined } }]).value),
                             'identity retired');
-    __compactRuntime.assert(this._equal_26(_descriptor_0.fromValue(__compactRuntime.queryLedgerState(context,
+    __compactRuntime.assert(this._equal_27(_descriptor_0.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                                      partialProofData,
                                                                                                      [
                                                                                                       { dup: { n: 0 } },
@@ -4624,7 +4692,7 @@ export class Contract {
     return [];
   }
   _unlockIdentity_0(context, partialProofData, idCommit_0, newVetoCommit_0) {
-    __compactRuntime.assert(this._equal_27(this._idCommitOf_1(this._identitySecret_0(context,
+    __compactRuntime.assert(this._equal_28(this._idCommitOf_1(this._identitySecret_0(context,
                                                                                      partialProofData),
                                                               this._idSalt_0(context,
                                                                              partialProofData)),
@@ -4670,7 +4738,7 @@ export class Contract {
                                                                                         { popeq: { cached: true,
                                                                                                    result: undefined } }]).value),
                             'identity retired');
-    __compactRuntime.assert(this._equal_28(_descriptor_0.fromValue(__compactRuntime.queryLedgerState(context,
+    __compactRuntime.assert(this._equal_29(_descriptor_0.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                                      partialProofData,
                                                                                                      [
                                                                                                       { dup: { n: 0 } },
@@ -4780,7 +4848,7 @@ export class Contract {
                                                                                        { popeq: { cached: true,
                                                                                                   result: undefined } }]).value),
                             'identity not enrolled');
-    __compactRuntime.assert(this._equal_29(_descriptor_0.fromValue(__compactRuntime.queryLedgerState(context,
+    __compactRuntime.assert(this._equal_30(_descriptor_0.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                                      partialProofData,
                                                                                                      [
                                                                                                       { dup: { n: 0 } },
@@ -4827,7 +4895,7 @@ export class Contract {
     this._assertCurrentPeriod_0(context, partialProofData, period_0);
     const secret_0 = this._guardianSecret_0(context, partialProofData);
     const path_0 = this._guardianPath_0(context, partialProofData);
-    __compactRuntime.assert(this._equal_30(path_0.leaf,
+    __compactRuntime.assert(this._equal_31(path_0.leaf,
                                            this._guardianLeafOf_0(secret_0,
                                                                   ctx_0,
                                                                   this._leafSalt_0(context,
@@ -5092,6 +5160,10 @@ export class Contract {
     return true;
   }
   _equal_30(x0, y0) {
+    if (!x0.every((x, i) => y0[i] === x)) { return false; }
+    return true;
+  }
+  _equal_31(x0, y0) {
     if (!x0.every((x, i) => y0[i] === x)) { return false; }
     return true;
   }
@@ -7350,7 +7422,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 256 char 1',
+                                     'lantern2.compact line 258 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -7382,7 +7454,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'lantern2.compact line 256 char 1',
+                                     'lantern2.compact line 258 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -7471,7 +7543,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 259 char 1',
+                                     'lantern2.compact line 261 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -7503,7 +7575,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'lantern2.compact line 259 char 1',
+                                     'lantern2.compact line 261 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -7592,7 +7664,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 261 char 1',
+                                     'lantern2.compact line 263 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -7624,7 +7696,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'lantern2.compact line 261 char 1',
+                                     'lantern2.compact line 263 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -7714,7 +7786,7 @@ export function ledger(stateOrChargedState) {
         if (!(elem_0.buffer instanceof ArrayBuffer && elem_0.BYTES_PER_ELEMENT === 1 && elem_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'lantern2.compact line 262 char 1',
+                                     'lantern2.compact line 264 char 1',
                                      'Bytes<32>',
                                      elem_0)
         }
@@ -7761,7 +7833,9 @@ const _dummyContract = new Contract({
   vetoSalt: (...args) => undefined,
   claimedNow: (...args) => undefined,
   ephemeralSk: (...args) => undefined,
-  lineagePath: (...args) => undefined
+  lineagePath: (...args) => undefined,
+  successorSecret: (...args) => undefined,
+  successorSalt: (...args) => undefined
 });
 export const pureCircuits = {
   idCommitOf: (...args_0) => {

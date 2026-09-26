@@ -21,6 +21,8 @@ export type Witnesses<PS> = {
                                                                                     goes_left: boolean
                                                                                   }[]
                                                                           }];
+  successorSecret(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, bigint];
+  successorSalt(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
 }
 
 export type ImpureCircuits<PS> = {

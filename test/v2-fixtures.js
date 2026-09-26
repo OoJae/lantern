@@ -103,7 +103,14 @@ export function succeed(sim, id, guardians, gen = 1, eph = EPH_A) {
   const newId = pureCircuits.idCommitOf(secret, salt);
   const rid = openAndApprove(sim, id, guardians, 2, eph);
   toUnlock(sim, rid);
-  sim.call('finalizeRecovery', rid, newId, pureCircuits.vetoCommitOf(vSecret, vSalt));
+  // The device proves it opens its successor; then the default successor is back.
+  const { successorSecret, successorSalt } = sim.ps;
+  sim.ps.successorSecret = secret; sim.ps.successorSalt = salt;
+  try {
+    sim.call('finalizeRecovery', rid, newId, pureCircuits.vetoCommitOf(vSecret, vSalt));
+  } finally {
+    sim.ps.successorSecret = successorSecret; sim.ps.successorSalt = successorSalt;
+  }
   sim.ps.identitySecret = secret; sim.ps.idSalt = salt;
   sim.ps.vetoSecret = vSecret;    sim.ps.vetoSalt = vSalt;
   return { newId, secret, salt, vSecret, vSalt, rid };

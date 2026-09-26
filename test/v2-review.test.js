@@ -193,7 +193,7 @@ describe('F0: the veto reserves the owner\'s next device, so colluders cannot wi
     L.approve(gs[0], root, r1); L.approve(gs[1], root, r1);
     L.setTime(L.status(root).holder.unlockAt);
     const next = newIdentity();
-    L.finalize({ ephemeralSk: sk1, identitySecret: owner.identitySecret, idSalt: owner.idSalt }, r1, commitmentsOf(P, next));
+    L.finalize({ ephemeralSk: sk1, identitySecret: owner.identitySecret, idSalt: owner.idSalt }, r1, next);
     const head = commitmentsOf(P, next).idCommit;
 
     const bad = L.open(gs[2], head, rand32());
@@ -252,12 +252,12 @@ describe('F1: the rotation\'s context is derived from the root, so nobody watchi
     expect(sim.ledger.enrolled.member(carolId)).toBe(true);
   });
 
-  it('KNOWN GAP (second review, open): the finalize route can still take a pending idCommit, and the client says what to do', () => {
-    // finalizeRecovery never opens its successor argument (noted at the assert
-    // in the contract). So a recovery of the attacker's OWN identity can take a
-    // victim's pending idCommit, or an honest device's pending successor. When
-    // the contract proves the successor's opening, Mallory's finalize below
-    // must be refused, and this test turned round.
+  it('second review: a finalize proves its successor\'s opening, so the finalize route cannot take a pending idCommit either', () => {
+    // The first build, like v1, took finalizeRecovery's successor as a bare
+    // argument: a recovery of the attacker's OWN identity could take a victim's
+    // pending enrolment idCommit, or an honest device's pending successor,
+    // first. The attacker sees every public byte of both pending transactions;
+    // what it lacks is their openings.
     const L = createLantern2Sim({ rt, mod: Lantern2 });
     const rand32 = () => globalThis.crypto.getRandomValues(new Uint8Array(32));
     const finalizable = (owner) => {
@@ -271,19 +271,47 @@ describe('F1: the rotation\'s context is derived from the root, so nobody watchi
     const mallory = finalizable(newIdentity());
     const alice = finalizable(newIdentity());
     L.setTime(L.status(alice.root).holder.unlockAt);
+    // Mallory lies to her own prover: the pending commitment as the argument,
+    // and the only opening she has, her own successor's, as the witness.
+    const own = newIdentity();
+    const takeFirst = (target) => L.sim.callAs(
+      { ...mallory.device, successorSecret: own.identitySecret, successorSalt: own.idSalt },
+      'finalizeRecovery', mallory.rid, target.idCommit, target.vetoCommit);
 
     const victim = newIdentity();
-    const pending = commitmentsOf(P, victim);   // public in the victim's pending enrolment
-    L.finalize(mallory.device, mallory.rid, pending);
-    expect(hex(L.ledger.idRoots.lookup(pending.idCommit))).toBe(hex(mallory.root));
-    expect(() => L.enrol(victim)).toThrow(/identity already enrolled\. .*fresh identity with newIdentity\(\)/);
-    expect(() => L.enrol(newIdentity())).not.toThrow();
+    const pendingEnrolment = commitmentsOf(P, victim);
+    expect(() => takeFirst(pendingEnrolment)).toThrow(/successor commitment is not opened/);
+    expect(L.ledger.enrolled.member(pendingEnrolment.idCommit)).toBe(false);
+    expect(() => L.enrol(victim)).not.toThrow();
 
-    // An honest device whose successor was taken keeps its recovery, and retries.
-    expect(() => L.finalize(alice.device, alice.rid, pending)).toThrow(/successor already enrolled\. .*fresh successor/);
-    const next = commitmentsOf(P, newIdentity());
+    const next = newIdentity();
+    const pendingSuccessor = commitmentsOf(P, next);
+    expect(() => takeFirst(pendingSuccessor)).toThrow(/successor commitment is not opened/);
     expect(() => L.finalize(alice.device, alice.rid, next)).not.toThrow();
-    expect(hex(L.ledger.idRoots.lookup(next.idCommit))).toBe(hex(alice.root));
+    expect(hex(L.ledger.idRoots.lookup(pendingSuccessor.idCommit))).toBe(hex(alice.root));
+
+    // Mallory's own recovery is untouched by the refusals, and finalizes to a successor she opens.
+    expect(() => L.finalize(mallory.device, mallory.rid, own)).not.toThrow();
+    expect(hex(L.ledger.idRoots.lookup(commitmentsOf(P, own).idCommit))).toBe(hex(mallory.root));
+  });
+
+  it('second review: the circuit checks both halves of the successor\'s opening, and the client needs the successor itself', () => {
+    const { sim, id, guardians } = world();
+    const rid = openAndApprove(sim, id, guardians, 2);
+    toUnlock(sim, rid);
+    const opening = { successorSecret: fieldOf(70), successorSalt: bytes32(71) };   // opens NEW_ID
+    for (const wrong of [{ successorSecret: fieldOf(71) }, { successorSalt: bytes32(72) }]) {
+      Object.assign(sim.ps, opening, wrong);
+      expect(() => sim.call('finalizeRecovery', rid, NEW_ID(), NEW_VETO())).toThrow(/successor commitment is not opened/);
+      expect(sim.ledger.retiredIdentities.member(id)).toBe(false);
+    }
+    Object.assign(sim.ps, opening);
+    expect(() => sim.call('finalizeRecovery', rid, NEW_ID(), NEW_VETO())).not.toThrow();
+
+    // src/v2/sim.js: commitments alone are refused before any transaction.
+    const L = createLantern2Sim({ rt, mod: Lantern2 });
+    expect(() => L.finalize({ ephemeralSk: bytes32(1) }, rid, commitmentsOf(P, newIdentity())))
+      .toThrow(/needs the successor from newIdentity\(\), not only its commitments/);
   });
 
   it('src/v2/sim.js rotates with a fresh random seed by default, and returns the context it installed', () => {
@@ -502,12 +530,14 @@ describe('F6: slotOf agrees with the contract', () => {
     expect(slotOf(sim.ledger, id, sim.now)).toMatchObject({ free: false, canOpenReserved: false });
   });
 
-  // The contract keeps a reservation after a finalize retires the head it names;
-  // no guardian can ever open it again. slotOf stops offering it.
+  // A finalize retires the head a reservation names, so no guardian could ever
+  // open it again: the contract resets it to zeros (second review), the count
+  // stays, and slotOf stops offering it.
   const staleAfterFinalize = (sim, id, guardians, reservedRid) => {
     const slot = slotOf(sim.ledger, id, sim.now);
     expect(sim.ledger.vetoCounts.lookup(id).read()).toBeGreaterThan(0n);
-    expect(hex(sim.ledger.reservedRecovery.lookup(id))).toBe(hex(reservedRid));   // still in the contract
+    expect(hex(reservedRid)).not.toBe(hex(NO_RESERVATION));
+    expect(hex(sim.ledger.reservedRecovery.lookup(id))).toBe(hex(NO_RESERVATION));   // cleared by the finalize
     expect(slot.reserved).toBeNull();
     expect(slot.canOpenReserved).toBe(false);
     expect(() => openAs(sim, guardians[1], id, EPH_D)).toThrow(/identity retired/);
@@ -533,7 +563,7 @@ describe('F6: slotOf agrees with the contract', () => {
 
   it('a counted veto of a dead recovery, then the live one finalizing inside the cooldown: canOpen and canOpenReserved both false', () => {
     // The owner's client refuses to veto a dead recovery (F2); the contract
-    // alone counts it, and its reservation then outlives the finalize.
+    // alone counts it, and the finalize must still clear its reservation.
     const { sim, id, guardians } = world({ n: 3, delay: DAY });
     const missed = openAs(sim, guardians[0], id, EPH_A);
     sim.setTime(Number(sim.ledger.recoveries.lookup(missed).approveBy));
@@ -592,7 +622,7 @@ describe('F8: every check-in names the root, whoever sends it', () => {
     for (const g of gs) L.approve(g, root, rid);
     L.setTime(L.status(root).holder.unlockAt);
     const next = newIdentity();
-    L.finalize({ ephemeralSk: deviceSk, identitySecret: owner.identitySecret, idSalt: owner.idSalt }, rid, commitmentsOf(P, next));
+    L.finalize({ ephemeralSk: deviceSk, identitySecret: owner.identitySecret, idSalt: owner.idSalt }, rid, next);
     const successor = commitmentsOf(P, next).idCommit;
     expect(() => L.checkIn(gs[1], successor)).not.toThrow();
     expect(hex(firstArg(L.lastProofData))).toBe(hex(root));

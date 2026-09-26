@@ -34,6 +34,11 @@ export const defaultPrivateState = () => ({
   vetoSalt: bytes32(61),
   claimedNow: undefined, // undefined => tell the truth (use the block time)
   ephemeralSk: undefined,
+  // finalizeRecovery proves its successor's opening (second review). The
+  // default opens the successor every v2 test file finalizes to as NEW_ID:
+  // idCommitOf(fieldOf(70), bytes32(71)). A test finalizing elsewhere sets these.
+  successorSecret: fieldOf(70),
+  successorSalt: bytes32(71),
 });
 
 export class Lantern2Sim {
@@ -57,6 +62,8 @@ export class Lantern2Sim {
       vetoSecret: w('vetoSecret'),
       vetoSalt: w('vetoSalt'),
       claimedNow: (ctx) => [ctx.privateState, BigInt(self.ps.claimedNow ?? self.now)],
+      successorSecret: w('successorSecret'),
+      successorSalt: w('successorSalt'),
     });
 
     const ctor = this.contract.initialState(createConstructorContext(this.ps, COIN_PK));

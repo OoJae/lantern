@@ -476,8 +476,8 @@ consequence.
    emergency lock, a delay chosen at enrolment (24 h to 90 days) and private
    guardian check-ins. Its design, its own limits and its measured cost are in
    [docs/v2-spec.md](docs/v2-spec.md); `npm run test:v2` runs its tests. Apart from one
-   note in §2 (the dealt guardian secrets), nothing in this document's other
-   sections describes v2.
+   note in §2 (the dealt guardian secrets) and one in item 13 below, nothing in this
+   document's other sections describes v2.
 
 5. **A reconstructed secret cannot be zeroised.** `reconstruct()` returns a
    JavaScript `BigInt`, which is immutable. The secret stays in the recovering
@@ -532,6 +532,21 @@ consequence.
    1,048,576 leaves each, shared by every identity, and enrolment is
    permissionless. Exhausting one costs one transaction per leaf. The canonical
    host snapshot is depth-20 too, so it holds at most that many live owners.
+
+13. **A finalize can take a pending commitment.** `finalizeRecovery`'s successor,
+   `newIdCommit`, is an argument the circuit never opens (`contracts/src/lantern.compact`,
+   at the `successor already enrolled` assert). So anyone who holds a finalizable
+   recovery of their *own* identity can finalize to a commitment someone else is
+   about to use, and land first: another device's pending `enrollIdentity`, which
+   then fails with `identity already enrolled`, or an honest recovery's pending
+   successor, which then fails with `successor already enrolled`. Denial of service
+   only: nothing is taken over, since the attacker's successor is a commitment it
+   cannot open, and each attempt spends a recovery that waited out its own 72 hours.
+   The victim retries with a fresh identity secret, or finalizes again to a fresh
+   successor; the recovery itself stays finalizable. The shipped contract cannot
+   change. **v2, not shipped:** Lantern v2's `finalizeRecovery` proves the successor's
+   opening, so this is refused there
+   ([docs/v2-spec.md §3.10](docs/v2-spec.md#310-hardening-after-the-adversarial-review)).
 
 ---
 

@@ -288,13 +288,15 @@ describe('v2 privacy', () => {
     assertNoLeak(sim.lastProofData, { guardianSecret: guardians[0].secret, leafSalt: guardians[0].salt });
   });
 
-  it('never leaks the identity secret, its salt or the device key on finalize', () => {
+  // NEW in v2 (second review): the finalize also reads the successor's opening.
+  it('never leaks the identity secret, its salt, the device key or the successor\'s opening on finalize', () => {
     const { sim, id, guardians } = world();
     const rid = openAndApprove(sim, id, guardians, 2);
     toUnlock(sim, rid);
     sim.call('finalizeRecovery', rid, NEW_ID(), NEW_VETO());
     assertNoLeak(sim.lastProofData, {
       identitySecret: ID_SECRET, idSalt: ID_SALT, ephemeralSk: sim.ps.ephemeralSk,
+      successorSecret: sim.ps.successorSecret, successorSalt: sim.ps.successorSalt,
     });
   });
 
