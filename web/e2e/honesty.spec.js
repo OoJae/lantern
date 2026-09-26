@@ -1,13 +1,19 @@
 import { test, expect } from '@playwright/test';
 import { BANNED, openDemo, expectNoSeriousA11yIssues, expectNoSideScroll, expectFiniteAnimations, pageCopy, watchCsp } from './helpers.js';
 
-test('the pages that run circuits say exactly what they are', async ({ page }) => {
+test('the pages that run circuits say exactly what they are, and where the same story runs for real', async ({ page }) => {
   await openDemo(page);
   await expect(page.locator('.honesty')).toContainText('no wallet, no chain, no proofs');
   await page.goto('/attacks');
   await expect(page.locator('.honesty')).toContainText('no wallet, no chain, no proofs');
   await page.goto('/rehearse');
   await expect(page.locator('.honesty')).toContainText('no wallet, no chain, no proofs');
+  // not only a terminal command: the real transactions of the same story, checked in the browser
+  for (const path of ['/demo', '/attacks', '/rehearse']) {
+    await page.goto(path);
+    await expect(page.locator('.honesty').getByRole('link', { name: 'the same story on Preprod' })).toHaveAttribute('href', '/live');
+    await expect(page.locator('.honesty')).toContainText('npm run devnet');
+  }
 });
 
 for (const path of ['/', '/demo', '/attacks', '/about', '/brand', '/live', '/rehearse', '/kit', '/nope']) {

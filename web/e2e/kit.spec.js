@@ -96,8 +96,15 @@ test('makes a veto card and one kit per guardian, all in list words', async ({ p
     // The share goes only to the device the guardian checked; the words go to no one.
     await expect(sheet.locator('.kit-section').nth(2).locator('.kit-small')).toHaveText('Your part of the identity secret. Give it only to the device whose six words the owner read to you, and only after you have approved its recovery.');
     await expect(sheet.locator('.kit-never')).toHaveText(NEVER);
-    await expect(sheet.locator('.kit-expires')).toHaveText('After a recovery, or once the owner replaces the guardians, this kit stops working: the owner makes new ones.');
+    await expect(sheet.locator('.kit-expires')).toHaveText('After a recovery, the share here stops working, but the guardian secret and leaf salt still approve recoveries until the owner replaces the guardians. If the owner replaces the guardians without a recovery, the share here still works. Keep this kit safe or destroy it: never throw it away whole.');
   }
+  // An old kit's share dies with a recovery; its guardian secret and leaf salt do not (the guardian
+  // context survives finalizeRecovery), so the page never calls old kits dead paper.
+  await expect(page.locator('.kit-sheets .kit-note')).toContainText('the shares on the old kits stop working, but each old kit can still approve a recovery. So replace your guardians with your new veto card');
+  // A replacement without a recovery leaves the identity secret as it was (rotateGuardianSet changes only
+  // the guardian context), so every old kit's share still rebuilds it: old kits are destroyed, not dropped.
+  await expect(page.locator('.kit-sheets .kit-note')).toContainText('have every old kit destroyed: without a recovery your secret is unchanged, so an old kit’s share still rebuilds it.');
+  await expect(page.locator('.kit-sheets .kit-note')).toContainText('recover to a new secret before you make new kits: new kits of the same secret leave every old share working.');
   // One identity: every kit names the same commitment, and at enrolment it is the guardian context too,
   // which the kit says in words rather than print the same 64 characters twice.
   const ids = await page.locator('.kit-public div:nth-child(3) dd').allInnerTexts();
@@ -513,6 +520,16 @@ test('/kit: no overclaiming words, no serious accessibility issue, no side-scrol
   await page.getByRole('button', { name: 'The card, as printed' }).click();
   await expectNoSeriousA11yIssues(page);
   await noCspViolations();
+});
+
+test('/kit: a veto card typed into "Check your backup" is the visitor\'s data, not the page\'s words, even when it holds "live"', async ({ page }) => {
+  await openKit(page);
+  await make(page);
+  const box = page.getByLabel('Your veto card’s words, from paper');
+  // "live" is a BIP-39 word: one in a card of 24 random words turns up about once in 85 runs
+  await box.fill(Array.from({ length: 24 }, (_, i) => (i === 7 ? 'live' : 'abandon')).join(' '));
+  expect(await box.evaluate((e) => e.textContent)).toContain('live'); // React writes the value into the textarea's text node
+  expect(await pageCopy(page)).not.toMatch(BANNED);
 });
 
 for (const width of [320, 375]) {

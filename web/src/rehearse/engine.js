@@ -381,7 +381,9 @@ export function newRehearsal({ names, threshold }) {
       if (p.caller) {
         const items = [{ label: 'device secret key', fp: first8(p.caller.ephemeralSk) }];
         if (p.caller.from.length) items.push({ label: `${p.caller.from.length} of your shares`, shares: p.caller.from.length });
-        out.push({ key: 'caller', name: 'The caller', turned: true, tag: s.finalized === 'caller' ? 'holds your identity' : 'not you', items });
+        // With t shares he rebuilds your secret: he can act as you until your own recovery retires it.
+        const tag = s.finalized === 'caller' ? 'holds your identity' : p.caller.from.length >= t && s.finalized !== 'you' ? 'can act as you' : 'not you';
+        out.push({ key: 'caller', name: 'The caller', turned: true, tag, items });
       }
       return out;
     },

@@ -6,8 +6,8 @@ import { BANNED, expectNoSeriousA11yIssues, expectNoSideScroll, expectFiniteAnim
 const STEPS = 8;
 const night = (page) => page.locator('section.night');
 
-async function openLanding(page) {
-  await page.goto('/');
+async function openLanding(page, path = '/') {
+  await page.goto(path);
   // pending (the poster, while the scene would load) settles on what draws the lantern.
   await expect(night(page)).toHaveAttribute('data-scene', /^(webgl|poster|still)$/);
 }
@@ -45,6 +45,12 @@ test('one h1, the story in eight blocks, and every way out of it', async ({ page
   for (const [name, href] of [['Run beat 4', '/demo?beat=4'], ['Run beat 7', '/demo?beat=7'], ['Run beat 8', '/demo?beat=8'], ['Tamper with a share yourself', '/demo#break']]) {
     await expect(page.locator('.story').getByRole('link', { name })).toHaveAttribute('href', href);
   }
+  // Every way on from the story: the recovery on Preprod, a rehearsal, and a practice kit.
+  await expect(after.getByRole('link', { name: 'See the real recovery on Preprod' })).toHaveAttribute('href', '/live');
+  await expect(after.getByRole('link', { name: 'Rehearse your own' })).toHaveAttribute('href', '/rehearse');
+  await expect(after.getByRole('link', { name: 'Print a practice kit' })).toHaveAttribute('href', '/kit');
+  // Chapter 05 never has one guardian alone act as Hana: Jihoon needs Mum's share too (story beat 7).
+  await expect(page.locator('.story')).toContainText('When Jihoon turns, phishes Mum’s share and opens a recovery of his own, Hana’s veto card cancels it. With two shares he can act as her');
   // The four facts, I to IV, under their headings.
   await expect(page.locator('.fact-list h3')).toHaveText(['No recovery by default', 'Correct, not just authorised', 'The guardians stay hidden', 'Downstream apps keep working']);
   expect(await page.locator('body').innerText()).not.toMatch(BANNED);
@@ -188,11 +194,39 @@ test('with no WebGL at all the poster draws the story', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-// Headless Chromium draws WebGL2 in software (SwiftShader): the scene runs on its low tier, or, if
-// the machine is too slow even for that, hands over to the poster. Either is right; the tests
-// below that need the scene skip when the poster is drawing.
-test('the scene draws into one canvas of its own, over the poster, and stops drawing once the story is off screen', async ({ page }) => {
+// Headless Chromium draws WebGL2 in software (SwiftShader). There the landing keeps the poster unless
+// the scene is asked for by name, so the tests below ask for its low tier (?scene=low); if the
+// machine is too slow even for that, it hands over to the poster. Either is right; the tests below
+// that need the scene skip when the poster is drawing.
+const isSoftware = (page) => page.evaluate(() => {
+  const gl = document.createElement('canvas').getContext('webgl2');
+  const info = gl?.getExtension('WEBGL_debug_renderer_info');
+  return Boolean(gl) && /SwiftShader|llvmpipe|Software|Basic Render/i.test(info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : String(gl.getParameter(gl.RENDERER)));
+});
+
+test('on a software renderer, the landing keeps the poster: no scene stalls the page unless it is asked for', async ({ page }) => {
+  const long = [];
+  await page.addInitScript(() => {
+    window.__longTasks = [];
+    try {
+      new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__longTasks.push(e.duration); }).observe({ type: 'longtask', buffered: true });
+    } catch { /* no long-task timing here */ }
+  });
   await openLanding(page);
+  await page.waitForTimeout(1500);
+  long.push(...await page.evaluate(() => window.__longTasks ?? []));
+  test.skip(!(await isSoftware(page)), 'a hardware GPU draws the scene');
+  await expect(night(page)).toHaveAttribute('data-scene', 'poster');
+  await expect(page.locator('canvas')).toHaveCount(0);
+  await expect(page.locator('.stage svg.lantern-poster')).toBeVisible();
+  expect(long.filter((d) => d > 500), 'main-thread tasks over 500 ms').toEqual([]);
+  // asked for by name, it runs there all the same
+  await openLanding(page, '/?scene=low');
+  await expect(night(page)).toHaveAttribute('data-scene', /^(webgl|poster)$/);
+});
+
+test('the scene draws into one canvas of its own, over the poster, and stops drawing once the story is off screen', async ({ page }) => {
+  await openLanding(page, '/?scene=low');
   test.skip(await night(page).getAttribute('data-scene') !== 'webgl', 'only when the WebGL scene is drawing');
   const host = page.locator('.canvas-host');
   await expect(page.locator('canvas')).toHaveCount(1);
@@ -236,7 +270,9 @@ test('leaving the landing and coming back, again and again, leaves one canvas at
     if (['warning', 'error'].includes(m.type()) && /webgl|\bgl_|context|gpu|swiftshader/i.test(m.text())) warnings.push(m.text());
   });
   page.on('pageerror', (e) => warnings.push(e.message));
-  await openLanding(page);
+  // the scene asked for by name, so a software renderer (headless Chromium's) draws it too; the tab
+  // keeps asking for it when the header's link brings the landing back
+  await openLanding(page, '/?scene=low');
   const header = page.locator('header.site');
   for (let round = 0; round < ROUNDS; round++) {
     await expect(night(page)).toHaveAttribute('data-scene', /^(webgl|poster)$/);

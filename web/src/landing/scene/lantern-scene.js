@@ -6,8 +6,8 @@
 //
 // host     the sticky stage element; the scene appends its own canvas to it (never reused).
 // tracker  { u, textRects?(out) } from ../tracker.js: u is the scroll position in story steps.
-// tier     'auto' | 'high' | 'mid' | 'low'.
-// onFail   (reason) => void: 'no-webgl2' | 'compile' | 'context-lost' | 'slow' | 'error'. Called at
+// tier     'auto' | 'high' | 'mid' | 'low'. On 'auto', a software rasteriser gets no scene (below).
+// onFail   (reason) => void: 'no-webgl2' | 'software' | 'compile' | 'context-lost' | 'slow' | 'error'. Called at
 //          most once, never after dispose(). The scene has already torn itself down; show the poster.
 // signal   optional AbortSignal: aborting during setup tears down and resolves a no-op handle.
 //
@@ -66,6 +66,14 @@ export async function createLanternScene({ host, tracker, tier: requested = 'aut
   const info = probe();
   if (!info) {
     report('no-webgl2');
+    return noop;
+  }
+  // A software rasteriser (SwiftShader, llvmpipe: a GPU the browser has blocklisted, a VM, a remote
+  // desktop) builds the scene's pipelines in the GPU process while the page waits on its frames: most
+  // of a second on a fast CPU, several on a slow one, with "Watch a recovery" on screen. On 'auto' it
+  // gets the poster. A tier asked for by name still runs the scene on it (the tests ask for low).
+  if (requested === 'auto' && info.software) {
+    report('software');
     return noop;
   }
   const coarse = isCoarse();

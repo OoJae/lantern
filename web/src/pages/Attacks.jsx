@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from '../lib/router.jsx';
 import { Honesty } from '../components/Honesty.jsx';
+import { LoadFailed } from '../components/LoadFailed.jsx';
 import { TargetTable } from '../components/TargetTable.jsx';
 // This page is a lazy chunk of its own, so the pictograms' drawings load with it and never on the
 // first load.
@@ -14,13 +15,15 @@ let cached = null;
 
 export default function Attacks() {
   const [e, setE] = useState(cached);
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
     if (cached) return undefined;
     let cancelled = false;
+    // A failure leaves `cached` unset, so a later visit tries again.
     import('../lib/engine.js').then((engine) => {
       cached ??= engine.runEnumeration();
       if (!cancelled) setE(cached);
-    });
+    }).catch(() => { if (!cancelled) setFailed(true); });
     return () => { cancelled = true; };
   }, []);
 
@@ -36,7 +39,7 @@ export default function Attacks() {
         </p>
       </header>
 
-      {!e && <p className="loading" role="status">Building the four ledgers and running the attack…</p>}
+      {!e && (failed ? <LoadFailed /> : <p className="loading" role="status">Building the four ledgers and running the attack…</p>)}
       {e && <>
         <TargetTable enumeration={e} />
         <p className="verdict-line" data-ok={String(e.ok)}>

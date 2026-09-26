@@ -8,6 +8,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from '../lib/router.jsx';
 import FingerprintWords from '../components/FingerprintWords.jsx';
+import { LoadFailed } from '../components/LoadFailed.jsx';
 import { VetoSheet, GuardianSheet } from '../kit/Sheets.jsx';
 import { BackupCheck } from '../kit/BackupCheck.jsx';
 import { GUARDIAN_SCRIPT } from '../kit/copy.js';
@@ -17,6 +18,7 @@ const COUNTS = [2, 3, 4, 5, 6, 7];
 
 export default function Kit() {
   const [engine, setEngine] = useState(null);
+  const [failed, setFailed] = useState(false);
   const [n, setN] = useState(3);
   const [t, setT] = useState(2);
   const [made, setMade] = useState(null);
@@ -30,9 +32,10 @@ export default function Kit() {
     let cancelled = false;
     import('../kit/engine.js').then((e) => {
       if (cancelled) return;
+      const sample = [e.sampleDeviceKey(), e.sampleDeviceKey()];
       setEngine(e);
-      setDevices([e.sampleDeviceKey(), e.sampleDeviceKey()]);
-    });
+      setDevices(sample);
+    }).catch(() => { if (!cancelled) setFailed(true); });
     return () => { cancelled = true; };
   }, []);
 
@@ -105,7 +108,7 @@ export default function Kit() {
         <div className="kit-row">
           {engine
             ? <button type="button" className="primary" onClick={make}>{made ? (stale ? `Make new kits for ${t} of ${n}` : 'Make new kits') : 'Make the kits'}</button>
-            : <p className="loading">Loading the contract…</p>}
+            : failed ? <LoadFailed /> : <p className="loading">Loading the contract…</p>}
           {made && !stale && <p className="meta kit-made">New secrets each time. The old kits are gone.</p>}
         </div>
       </section>
@@ -118,8 +121,12 @@ export default function Kit() {
             edge to edge, printed side in, write whose it is on the blank outside, and give it by hand.
           </p>
           <p className="meta kit-note">
-            After a recovery, make new kits and a new veto card: the old ones stop working. After you replace
-            your guardians, make new kits for all of them.
+            After a recovery, your old veto card and the shares on the old kits stop working, but each old kit can
+            still approve a recovery. So replace your guardians with your new veto card, then make new kits for all
+            of them. After you replace your guardians for any other reason, make new kits for all of them too, and
+            have every old kit destroyed: without a recovery your secret is unchanged, so an old kit’s share still
+            rebuilds it. If you replace a guardian you no longer trust, or one whose kit may have leaked, recover to a
+            new secret before you make new kits: new kits of the same secret leave every old share working.
           </p>
           {stale && (
             <p className="kit-stale" data-testid="kit-stale">

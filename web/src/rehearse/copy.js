@@ -38,6 +38,14 @@ export function why(r, w) {
   const caller = r.tag === 'caller';
   const t = w.t;
   if (r.kind !== 'call') return null;
+  // A veto kills one recovery, not the shares the caller was sent. With t of them he rebuilds the
+  // identity secret, which opens your commitment until your own recovery finalizes and retires it: until
+  // then he can act as you wherever your identity is accepted. The note follows the rehearsal as it is
+  // now (the page asks again at every change), so it changes once yours finalizes.
+  const sent = w.sharesAt('caller').length;
+  const yoursDone = w.state.finalized === 'you';
+  const actsAsYou = caller && sent >= t && !yoursDone;
+  const untilYours = 'until your own recovery finalizes and retires it, he can act as you wherever your identity is accepted';
   if (r.outcome === 'accepted') {
     if (r.circuit === 'finalizeRecovery') {
       // The count the contract compared with the threshold, as it stood when the call was made.
@@ -48,9 +56,10 @@ export function why(r, w) {
         : `Every check held: the approved device, the 72 hours, ${approvals} and a rebuilt secret that opens your original commitment. The same call retires the old commitment and enrols its successor, with a new veto card.`;
     }
     if (r.circuit === 'vetoRecovery') {
-      return caller
-        ? 'Only your veto card opens the veto commitment you made when you enrolled, and no guardian holds it. The caller’s recovery can never finalize now, whatever shares he holds.'
-        : 'Your veto card opens your veto commitment, so the contract kills the recovery: your own, this time. It can never finalize now.';
+      if (!caller) return 'Your veto card opens your veto commitment, so the contract kills the recovery: your own, this time. It can never finalize now.';
+      return `Only your veto card opens the veto commitment you made when you enrolled, and no guardian holds it. The caller’s recovery can never finalize now, whatever shares he holds.${actsAsYou
+        ? ` But the ${plural(sent, 'share')} he holds rebuild your identity secret: ${untilYours}.`
+        : ''}`;
     }
     if (r.circuit === 'approveRecovery' && caller) {
       return 'The contract checks that a real guardian approved, without learning which one. It cannot know whose words the guardian compared.';
@@ -69,9 +78,18 @@ export function why(r, w) {
     case 'reconstructed secret does not open idCommit':
       return 'A changed share rebuilds a different secret, and only your real secret opens the commitment you made when you enrolled. The device, the wait and the approvals were all in order.';
     case 'recovery vetoed':
-      return caller
-        ? 'Your veto card killed his recovery during the 72 hours. His approvals and the shares he was sent are worth nothing now.'
-        : 'This recovery was vetoed with your veto card, so it can never finalize. Getting back in would take a new recovery and a new round of approvals.';
+      if (!caller) return 'This recovery was vetoed with your veto card, so it can never finalize. Getting back in would take a new recovery and a new round of approvals.';
+      if (yoursDone) {
+        return `Your veto card killed his recovery during the 72 hours, and your own recovery has since retired the commitment it was after. His approvals${sent ? ', and the shares he was sent,' : ''} are worth nothing now.`;
+      }
+      if (sent >= t) {
+        return `Your veto card killed his recovery: it can never finalize, and his approvals died with it. But the ${plural(sent, 'share')} he was sent rebuild your identity secret, and it still opens your commitment: ${untilYours}. Finalize yours.`;
+      }
+      if (sent > 0) {
+        const few = sent === 1 ? 'The share he was sent reveals nothing about your secret on its own, but it counts' : `The ${sent} shares he was sent reveal nothing about your secret on their own, but they count`;
+        return `Your veto card killed his recovery, and his approvals died with it. ${few} toward the ${t} that rebuild it until your own recovery finalizes and retires it.`;
+      }
+      return 'Your veto card killed his recovery during the 72 hours. His approvals are worth nothing now, and no guardian sent him a share.';
     case 'identity already retired':
       return caller
         ? 'Your recovery finalized first, so the commitment he was after is retired.'

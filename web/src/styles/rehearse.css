@@ -396,3 +396,8 @@
 }
 @keyframes rh-shade-in { from { clip-path: inset(0 0 100% 0); } }
 @keyframes rh-shade-out { from { clip-path: inset(0); } }
+
+/* Forced colours drop the current step's Ember disc: it is redrawn in the system's colours. */
+@media (forced-colors: active) {
+  .rh-rail .current .rh-num { forced-color-adjust: none; background: Highlight; border-color: Highlight; color: HighlightText; box-shadow: none; }
+}

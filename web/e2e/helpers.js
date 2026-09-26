@@ -11,8 +11,10 @@ export const WORD_LISTS = '.fp-words, .kit-grid, .kit-cws';
 /**
  * The page's own words, as a reader meets them, for the scan against BANNED: every text node that is
  * drawn (screen-reader text included; closed details, hidden tabs and display: none left out, as
- * innerText leaves them), except the random word lists above. Joined by single spaces, so a phrase
- * split across elements is still one phrase.
+ * innerText leaves them), except the random word lists above and what is typed into a form field. A
+ * textarea's text node is its value, which React writes there from what the visitor typed (a veto
+ * card's random words, typed into "Check your backup"): never the site's own words. Joined by single
+ * spaces, so a phrase split across elements is still one phrase.
  */
 export function pageCopy(page) {
   return page.evaluate((skip) => {
@@ -20,7 +22,7 @@ export function pageCopy(page) {
     const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let n = walk.nextNode(); n; n = walk.nextNode()) {
       const el = n.parentElement;
-      if (!el || el.closest(`${skip}, script, style, template`)) continue;
+      if (!el || el.closest(`${skip}, script, style, template, textarea`)) continue;
       if (!el.checkVisibility()) continue;
       out.push(n.data);
     }
@@ -93,4 +95,17 @@ export async function watchCsp(page) {
     await page.evaluate(() => new Promise((r) => setTimeout(r, 50)));
     expect(seen, 'Content-Security-Policy violations').toEqual([]);
   };
+}
+
+// WCAG 1.4.12 (Text Spacing): the spacing a reader may set with a bookmarklet or an extension. Added
+// through the CSSOM, as a rule in one of the site's own sheets: the CSP (style-src 'self') blocks a
+// <style> element, not the CSSOM.
+export async function withTextSpacing(page) {
+  await page.evaluate(() => {
+    const sheet = [...document.styleSheets].find((s) => { try { return s.cssRules.length >= 0; } catch { return false; } });
+    for (const rule of [
+      '* { line-height: 1.5 !important; letter-spacing: 0.12em !important; word-spacing: 0.16em !important; }',
+      'p { margin-bottom: 2em !important; }',
+    ]) sheet.insertRule(rule, sheet.cssRules.length);
+  });
 }

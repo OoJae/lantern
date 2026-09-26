@@ -15,14 +15,23 @@
 //     style-src 'self', applies to both);
 //   - the first load (the entry script and every chunk it imports statically) is at most 85 KB
 //     gzipped; the 3D scene, once it exists (its chunk and every chunk that one imports statically),
-//     at most 160 KB, and it shares no chunk with the first load but the bundler's own runtime.
+//     at most 160 KB, and it shares no chunk with the first load but the bundler's own runtime;
+//   - the packages the site's modules come from are exactly scripts/notices.mjs's BUNDLED list, found
+//     by building the site once more in memory (write: false, the same vite.config.js) and reading the
+//     node_modules package of every module in it, so a new dependency cannot ship without its notice;
+//   - THIRD-PARTY-NOTICES.txt ships, exactly as scripts/notices.mjs makes it from the packages
+//     installed: every bundled package's licence notice, at the version bundled (the minified chunks
+//     carry none of them).
 // Then prints the gzip sizes and a hash over every built file: rebuild from the same commit and compare.
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
+import { build } from 'vite';
+import { BUNDLED, compareBundled, installed, notices } from './notices.mjs';
 
-const web = new URL('..', import.meta.url).pathname;
+const web = fileURLToPath(new URL('..', import.meta.url)); // not .pathname: a path with a space survives
 // DIST=<dir> checks a build written elsewhere (vite build --outDir <dir>).
 const dist = process.env.DIST ? resolve(process.env.DIST) : join(web, 'dist');
 const fail = (m) => { console.error(`check-bundle: ${m}`); process.exit(1); };
@@ -155,6 +164,32 @@ for (const f of files.filter((p) => p.endsWith('.svg'))) {
   if (INLINE_STYLE.test(readFileSync(f, 'utf8'))) fail(`${rel(f)} carries inline style: use presentation attributes`);
 }
 
+// ---- third-party notices -------------------------------------------------------------------------
+// Which packages the bundle holds, from the bundle: an in-memory build of the same sources and config
+// (nothing written, so dist and its hash are untouched), every module id in every chunk. BUNDLE_CONFIG
+// names another config, only to show this check failing (a config that adds an import).
+const inMemory = await build({
+  root: web, configFile: process.env.BUNDLE_CONFIG ? resolve(process.env.BUNDLE_CONFIG) : join(web, 'vite.config.js'),
+  logLevel: 'silent', build: { write: false },
+});
+const moduleIds = (Array.isArray(inMemory) ? inMemory : [inMemory]).flatMap((r) => r.output).flatMap((o) => o.moduleIds ?? Object.keys(o.modules ?? {}));
+if (!moduleIds.length) fail('the in-memory build gave no module ids: cannot tell which packages ship');
+const bundled = compareBundled(moduleIds);
+if (bundled.extra.length || bundled.missing.length) {
+  fail([
+    bundled.extra.length ? `bundled but not in BUNDLED (scripts/notices.mjs), so no notice ships for them: ${bundled.extra.join(', ')}` : null,
+    bundled.missing.length ? `in BUNDLED but no longer bundled: ${bundled.missing.join(', ')}` : null,
+  ].filter(Boolean).join('; ') + '. Correct BUNDLED and run npm run notices (from web/)');
+}
+const noticesFile = join(dist, 'THIRD-PARTY-NOTICES.txt');
+if (!existsSync(noticesFile)) fail('THIRD-PARTY-NOTICES.txt does not ship: run npm run notices (from web/)');
+const noticesText = readFileSync(noticesFile, 'utf8');
+for (const name of BUNDLED) {
+  const { version } = installed(name);
+  if (!noticesText.includes(`\n${name}@${version}\n`)) fail(`THIRD-PARTY-NOTICES.txt does not name ${name}@${version}, the version installed: run npm run notices (from web/)`);
+}
+if (noticesText !== notices()) fail('THIRD-PARTY-NOTICES.txt is not what the installed packages give: run npm run notices (from web/)');
+
 // ---- sizes -------------------------------------------------------------------------------------------
 // Budgets over what a visitor downloads, not over one file: code the bundler moves into a shared
 // chunk (React sits in one) still counts. The first load is the entry and its static imports. The
@@ -196,4 +231,5 @@ for (const f of files.map(rel).sort()) {
 }
 console.log(`check-bundle: 1 .wasm (${(statSync(wasm[0]).size / 1e6).toFixed(1)} MB), no local Midnight packages, landing entry wasm-free and WebGL-free`);
 console.log(`check-bundle: ${cssFonts.size} fonts preloaded and matching fonts.json, fallbacks on their ranges; HTML and SVGs style-free; first load ${kb(eagerGz)} of ${kb(BUDGET.firstLoad)} gzipped (entry ${kb(entryGz)} and ${eager.length - 1} static imports)${scenes.length ? `, scene ${kb(sceneGz)} of ${kb(BUDGET.scene)}` : ', no scene chunk yet'}`);
+console.log(`check-bundle: the build bundles exactly the ${bundled.found.length} packages BUNDLED names, and THIRD-PARTY-NOTICES.txt names each at the version installed`);
 console.log(`check-bundle: build hash ${h.digest('hex')}`);

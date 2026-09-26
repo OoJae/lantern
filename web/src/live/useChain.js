@@ -241,12 +241,20 @@ export function useChain({ background = false } = {}) {
     }
   }, [answered, catchUp, patch, patchKey, unanswered]);
 
-  // the first read; again on "Try again"
+  // the first read; again on "Try again". `retrying` holds from the click until that read settles, so
+  // the page can keep the button (and the focus on it) in place meanwhile; `retriedAt` is when the
+  // last one settled.
   const [attempt, setAttempt] = useState(0);
+  const [retrying, setRetrying] = useState(false);
+  const [retriedAt, setRetriedAt] = useState(null);
   useEffect(() => {
     const ctl = new AbortController();
     // A run that was given up on (StrictMode's second mount, "Try again") leaves `busy` to the new one.
-    readAll(ctl.signal).finally(() => { if (!ctl.signal.aborted) busy.current = false; });
+    readAll(ctl.signal).finally(() => {
+      if (ctl.signal.aborted) return;
+      busy.current = false;
+      if (attempt) { setRetrying(false); setRetriedAt(Date.now()); }
+    });
     return () => ctl.abort();
   }, [readAll, attempt]);
 
@@ -264,6 +272,6 @@ export function useChain({ background = false } = {}) {
     return () => { clearInterval(t); ctl.abort(); };
   }, [active, poll]);
 
-  const retry = useCallback(() => setAttempt((n) => n + 1), []);
-  return { ...chain, retry };
+  const retry = useCallback(() => { setRetrying(true); setAttempt((n) => n + 1); }, []);
+  return { ...chain, retrying, retriedAt, retry };
 }

@@ -1,4 +1,7 @@
-// The first thing on every page that runs circuits. It says exactly what this page is and is not.
+import { Link } from '../lib/router.jsx';
+
+// The first thing on every page that runs circuits. It says exactly what this page is and is not, and
+// where the same story runs for real: on Preprod, which a browser can check (/live), or on a local chain.
 export function Honesty() {
   return (
     <aside className="honesty" aria-label="What this page is">
@@ -7,7 +10,10 @@ export function Honesty() {
         no wallet, no chain, no proofs. Every accept and every refusal is the contract’s own logic.
         Once it has loaded, this page makes no network requests — check DevTools, or build it yourself.
       </p>
-      <p className="meta">Real proofs and real transactions on a local chain: <code>npm run devnet</code>.</p>
+      <p className="meta">
+        Real proofs and real transactions: <Link to="/live">the same story on Preprod</Link>, its transactions checked from
+        your browser, or on a local chain with <code>npm run devnet</code>.
+      </p>
     </aside>
   );
 }

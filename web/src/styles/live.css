@@ -109,7 +109,8 @@
   margin: 0; padding-top: var(--space-4); border-top: 1px dashed var(--edge);
   font-size: var(--step--1); line-height: var(--leading--1); color: var(--muted);
 }
-.lv-refused .chip { flex: none; }
+/* The chip keeps its size where it fits, and wraps inside the column on the narrowest phones. */
+.lv-refused .chip { flex: 0 1 auto; }
 .lv-refused-text { flex: 1 1 18rem; min-width: 0; }
 
 @media (min-width: 1080px) {
@@ -268,7 +269,8 @@
 .lv-watch-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .lv-watch-row input {
   flex: 1 1 18rem; min-width: 0; min-height: 44px; padding: 0 14px;
-  font-family: var(--font-mono); font-size: var(--step--1); color: var(--ink);
+  /* at least 16px, as every field on the site: iOS Safari zooms the page into a smaller one on focus */
+  font-family: var(--font-mono); font-size: var(--step-0); color: var(--ink);
   background: var(--ground); border: 1px solid var(--edge); border-radius: var(--radius-surface);
 }
 .lv-watch-row input::placeholder { color: var(--muted); opacity: 1; }
@@ -380,3 +382,9 @@
 .lv-more .lv-timeline-wrap { margin-top: var(--space-3); }
 
 .lv-onward { margin: var(--space-9) 0 0; font-size: var(--step--1); }
+
+/* Forced colours drop a passed check's dot (a gradient), which would leave it an empty ring, the same
+   as one still running: it is a filled disc instead. */
+@media (forced-colors: active) {
+  .lv-check.pass .lv-mark { background-color: CanvasText; }
+}

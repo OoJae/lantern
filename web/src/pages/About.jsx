@@ -50,8 +50,9 @@ export default function About() {
         <p className="eyebrow">What is real, and where</p>
         <h1>Nothing here is a <em>mock-up</em></h1>
         <p className="lede">
-          Every accept and refusal on this site comes from Lantern’s compiled Compact contract. What differs
-          between the places you can run it is what surrounds the circuits.
+          Every accept and refusal in a recovery here comes from Lantern’s compiled Compact contract: run in your
+          browser, or, on the Preprod page, by the chain itself. What differs between the places you can see it is
+          what surrounds the circuits.
         </p>
       </header>
       <div className="table-wrap" tabIndex={0} role="region" aria-label="What is real, and where">
@@ -60,8 +61,12 @@ export default function About() {
             <tr><th scope="col">Where</th><th scope="col">Circuits</th><th scope="col">Ledger</th><th scope="col">Zero-knowledge proofs</th><th scope="col">Fees</th></tr>
           </thead>
           <tbody>
-            <tr><th scope="row">This site</th><Cells values={['the compiled contract’s generated JavaScript', 'in memory, in your browser', 'none', 'none']} /></tr>
+            {/* The site's pages, each by what it runs: README.md's table has the same rows. */}
+            <tr><th scope="row"><Link to="/demo">The recovery</Link>, <Link to="/attacks">Attack it</Link></th><Cells values={['the compiled contract’s generated JavaScript', 'in memory, in your browser', 'none', 'none']} /></tr>
+            <tr><th scope="row"><Link to="/rehearse">Rehearse a recovery</Link></th><Cells values={['the same generated JavaScript, with your choice of guardians and threshold', 'in memory, in your browser', 'none', 'none']} /></tr>
+            <tr><th scope="row"><Link to="/kit">Recovery kits</Link></th><Cells values={['only the pure circuits, such as idCommitOf and vetoCommitOf; secrets from your browser’s Web Crypto', 'none: practice kits, for no enrolled identity', 'none', 'none']} /></tr>
             <tr><th scope="row"><code>npm test</code>, <code>npm run story</code></th><Cells values={['the same modules', 'in memory', 'none', 'none']} /></tr>
+            <tr className="chain"><th scope="row"><Link to="/live">On Preprod</Link>, in your browser</th><Cells values={['the generated ledger() reader, decoding Preprod’s public state', 'Midnight Preprod, read only, from its public indexer', 'none; it reads what proved transactions left on the chain', 'none']} /></tr>
             <tr className="chain"><th scope="row"><code>npm run devnet</code></th><Cells values={['the same source, compiled with one constant changed: a 60-second timelock instead of 72 hours', 'a local Midnight node and indexer', 'real, from a local proof server', 'real DUST']} /></tr>
             <tr className="chain"><th scope="row"><code>npm run devnet</code>, on Preprod</th><Cells values={['the same source, with the same 60-second timelock', 'Midnight Preprod, a public test network', 'real, from a local proof server', 'real DUST']} /></tr>
             <tr className="chain"><th scope="row">The shipped contract, on Preprod</th><Cells values={['the shipped build, unchanged: a 72-hour timelock', 'Midnight Preprod, a public test network', 'real, from a local proof server', 'real DUST']} /></tr>
@@ -82,7 +87,7 @@ export default function About() {
         <h2 className="section">What it does not claim</h2>
         <div className="spread-body">
           <ul className="plain">
-            <li>It cannot stop <em>t</em> guardians who collude from taking the identity. It gives you 72 hours of public notice and a veto they cannot hold.</li>
+            <li>It cannot stop <em>t</em> guardians who collude from taking the identity. It gives you 72 hours of public notice from the open, and a veto they cannot hold.</li>
             <li>Until a recovery finalizes, whoever holds the lost device’s secret can act as you. The recovery ends that.</li>
             <li>An open recovery is public: it tells the world an identity’s owner may have lost a key.</li>
           </ul>

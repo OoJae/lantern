@@ -18,13 +18,18 @@ import Cmd from './Cmd.jsx';
 import { Link } from '../lib/router.jsx';
 import { fingerprintWords } from '../../../src/words.js';
 import { CONTRACTS, DEMO_IDENTITY, RECORDED_TXS, SETUP, SHIPPED_RECOVERY } from './records.js';
-import { CHIP, parseIdCommit, recoveriesFor, recoveryState, shortHex, spanWords, STATE_WORDS, utc, utcClock, utcDay, utcHM } from './status.js';
+import { alertFor, CHIP, ENDED, keepNews, lineageOf, orderForWatch, parseIdCommit, recoveriesFor, recoveryState, shortHex, spanWords, STATE_WORDS, utc, utcClock, utcDay, utcHM } from './status.js';
 import { POLL_MS, useNow } from './useChain.js';
 
 const LANTERNS = CONTRACTS.filter((c) => c.kind === 'lantern');
 const STORE = 'lantern.watch.id';
 const STORE_SW = 'lantern.watch.sw-only';
-const SHOWN = 20; // recoveries drawn at most, newest first: anyone can open one against any identity
+// Recoveries drawn at most beyond every open one with an approval, most urgent first (status.js
+// orderForWatch): anyone can open one against any enrolled identity, and none expires, so a flood of
+// decoys must never push one that can finalize out of sight.
+const SHOWN = 20;
+const NEWS_MAX = 8; // entries the in-page log keeps
+const FLOOD = 3; // more open recoveries than this, and the page says what a flood is and how to end it
 // What the time under a recovery is, by where it stands: the lock's end, whether or not it can still come.
 const WHEN = {
   waiting: 'Can finalize from', short: 'Can finalize from', ready: 'Can finalize from',
@@ -36,6 +41,8 @@ const canNotify = () => typeof window !== 'undefined' && 'Notification' in windo
 const readStored = (k) => { try { return window.localStorage.getItem(k); } catch { return null; } };
 const writeStored = (k, v) => { try { if (v) window.localStorage.setItem(k, v); else window.localStorage.removeItem(k); } catch { /* private mode: fine */ } };
 const names = (fs) => fs.map((f) => f.c.inline).join(' and ');
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
 const capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** The identity in the page's address, #id=…: after the #, a part a browser never sends to the
@@ -74,18 +81,26 @@ function whatIsIt(id) {
   return null;
 }
 
-/** What changed on one contract since its baseline, as alerts. */
+/** What changed on one contract since its baseline, as alerts: one per recovery at most, its end
+ *  first (status.js alertFor), so a finalize or a veto seen together with an approval is not lost. */
 function changes(f, prev, map) {
   const events = [];
   for (const [rid, { r, st }] of map) {
     const was = prev.get(rid);
+    const news = alertFor(was ? { approvals: was.r.approvals, state: was.st.state } : null, r.approvals, st.state);
+    if (!news) continue;
     const tag = `lantern-${f.c.key}:${rid}`;
-    if (!was) {
-      events.push({ tag, title: 'A recovery was opened for the identity you watch', body: `On ${f.c.inline}. Its new device’s fingerprint: ${fingerprintWords(r.ephemeralPk).join(' ')}. It can finalize from ${utc(st.canFinalizeAt)} unless it is vetoed.` });
-    } else if (r.approvals > was.r.approvals) {
-      events.push({ tag, title: 'A recovery for the identity you watch gained an approval', body: `Now ${r.approvals} of ${st.threshold ?? '?'}, on ${f.c.inline}. It can finalize from ${utc(st.canFinalizeAt)}.` });
-    } else if (st.state !== was.st.state && ['finalized', 'closed', 'vetoed', 'cancelled'].includes(st.state)) {
-      events.push({ tag, title: `A recovery for the identity you watch: ${STATE_WORDS[st.state].toLowerCase()}`, body: `On ${f.c.inline}, recovery ${shortHex(r.rid)}.` });
+    const of = `${r.approvals} of ${st.threshold ?? '?'}`;
+    const device = `Its new device’s fingerprint: ${fingerprintWords(r.ephemeralPk).join(' ')}.`;
+    const said = STATE_WORDS[st.state].toLowerCase();
+    if (news.kind === 'opened') {
+      events.push({ tag, kind: news.kind, title: 'A recovery was opened for the identity you watch', body: `On ${f.c.inline}. ${device} It can finalize from ${utc(st.canFinalizeAt)} unless it is vetoed.` });
+    } else if (news.kind === 'approval') {
+      events.push({ tag, kind: news.kind, title: 'A recovery for the identity you watch gained an approval', body: `Now ${of}, on ${f.c.inline}.${ENDED.has(st.state) ? '' : ` It can finalize from ${utc(st.canFinalizeAt)}.`}` });
+    } else if (news.isNew) {
+      events.push({ tag, kind: news.kind, title: `A recovery was opened for the identity you watch, and is already ${said}`, body: `On ${f.c.inline}, recovery ${shortHex(r.rid)}: opened and ended since the last check, with ${of} approvals. ${device}` });
+    } else {
+      events.push({ tag, kind: news.kind, title: `A recovery for the identity you watch: ${said}`, body: `On ${f.c.inline}, recovery ${shortHex(r.rid)}.${news.gained ? ` It had reached ${of} approvals.` : ''}` });
     }
   }
   return events;
@@ -126,7 +141,8 @@ export default function Watch({ chain, onWatching }) {
     if (!d) return { c, status: got.status === 'ok' ? 'undecoded' : got.status, error: got.error, recs: [], identity: null, heirs: [] };
     const recs = recoveriesFor(id, d).map((r) => ({ r, st: recoveryState(r, d, now, c.delaySeconds) }));
     const identity = d.identities[id] ?? null;
-    const heirs = Object.values(d.identities).filter((i) => i.idRoot === id && i.idCommit !== id);
+    // the rest of its lineage, from its root: a commitment since succeeded still names the current one
+    const heirs = lineageOf(id, d);
     return { c, status: 'ok', recs, identity, heirs };
   }) : []), [id, chain.byKey, now]);
 
@@ -148,7 +164,7 @@ export default function Watch({ chain, onWatching }) {
     }
     if (!events.length) return;
     const at = Date.now();
-    setNews((n) => [...events.map((e, i) => ({ ...e, at, key: `${at}-${i}` })), ...n].slice(0, 8));
+    setNews((n) => keepNews([...events.map((e, i) => ({ ...e, at, key: `${at}-${i}` })), ...n], NEWS_MAX));
     if (permNow.current === 'granted') {
       for (const e of events) {
         try {
@@ -182,12 +198,29 @@ export default function Watch({ chain, onWatching }) {
     setPerm(p);
   };
 
-  const all = found.flatMap((f) => f.recs.map((x) => ({ ...x, f }))).sort((a, b) => b.r.openedAtHi - a.r.openedAtHi);
-  const recs = all.slice(0, SHOWN);
+  const all = found.flatMap((f) => f.recs.map((x) => ({ ...x, f })));
+  const order = orderForWatch(all, SHOWN);
+  const recs = order.drawn;
   const reading = found.some((f) => f.status === 'reading');
   const failed = found.filter((f) => f.status === 'error' || f.status === 'missing');
   const undecoded = found.filter((f) => f.status === 'undecoded');
   const known = found.some((f) => f.identity || f.heirs.length || f.recs.length);
+
+  // What a screen reader hears when a watch starts, and once its first read settles: said once, then
+  // kept, so later news is spoken by the log below and not twice (WCAG 4.1.3). The region is always in
+  // the page, so a change to it is announced; the identity's first characters make two watches differ.
+  const who = id ? `Watching ${shortHex(id)}` : '';
+  const settled = id && !reading && !failed.length;
+  const fresh = !id ? ''
+    : reading && !all.length ? `${who}. Reading both Lantern contracts…`
+    : all.length ? `${who}: ${all.length} recover${all.length === 1 ? 'y' : 'ies'} found.`
+    : known ? `${who}: enrolled, and no recovery opened yet.`
+    : failed.length ? `${who}: ${names(failed)} could not be read from the indexer yet.`
+    : undecoded.length ? `${who}: this browser could not run the contract’s reader, so no recovery can be listed here.`
+    : `${who}. ${whatIsIt(id) ?? 'Neither Lantern contract on Preprod has enrolled this identity, and no recovery names it.'}`;
+  const [kept, setKept] = useState(null);
+  useEffect(() => { if (settled && kept?.id !== id) setKept({ id, text: fresh }); }, [settled, kept, id, fresh]);
+  const said = id && kept?.id === id ? kept.text : fresh;
 
   // When both Lantern contracts last answered, and whether a later check went unanswered.
   const states = LANTERNS.map((c) => chain.byKey[c.key]);
@@ -217,6 +250,7 @@ export default function Watch({ chain, onWatching }) {
           <span className="meta lv-demo-note">The one the shipped recovery restores: <code>{shortHex(DEMO_IDENTITY)}</code>.</span>
         </p>
       </form>
+      <p className="sr-only" role="status" data-testid="watch-said">{said}</p>
 
       {id ? (
         <div className="lv-watching" data-testid="watching">
@@ -260,8 +294,14 @@ export default function Watch({ chain, onWatching }) {
 
           {known && !all.length && !reading ? <p className="lv-none" data-testid="watch-none">No recovery has been opened for it. When one is, it appears here.</p> : null}
 
+          {order.hiddenOpen || order.open > FLOOD ? (
+            <p className="lv-error-note lv-flood" data-testid="watch-flood">
+              {plural(order.open, 'recovery is', 'recoveries are')} open for this identity. Anyone can open one against an enrolled identity, and none expires, so the ones with approvals are drawn first and none of them is left out. Vetoing them one by one does not stop new ones: replacing your guardians, with the veto card, cancels every open recovery in one transaction, your own too.
+            </p>
+          ) : null}
+
           {recs.length ? (
-            <ol className="lv-recs" aria-label="Recoveries for this identity, newest first">
+            <ol className="lv-recs" aria-label="Recoveries for this identity, most urgent first">
               {recs.map(({ r, st, f }) => (
                 <li key={`${f.c.key}:${r.rid}`} className="lv-rec" data-state={st.state} data-testid="watch-recovery">
                   <p className="lv-rec-head">
@@ -286,7 +326,10 @@ export default function Watch({ chain, onWatching }) {
           ) : null}
           {all.length > recs.length ? (
             <p className="meta lv-recs-more" data-testid="watch-more">
-              And {all.length - recs.length} older recover{all.length - recs.length === 1 ? 'y' : 'ies'}, not drawn here. The watcher in a terminal lists every one.
+              Not drawn here: {[
+                order.hiddenOpen ? `${plural(order.hiddenOpen, 'more open recovery', 'more open recoveries')} with no approvals` : null,
+                order.hiddenEnded ? plural(order.hiddenEnded, order.hiddenOpen ? 'ended one' : 'ended recovery', order.hiddenOpen ? 'ended ones' : 'ended recoveries') : null,
+              ].filter(Boolean).join(', and ')}. The watcher in a terminal lists every one.
             </p>
           ) : null}
 
@@ -316,11 +359,11 @@ export default function Watch({ chain, onWatching }) {
         <ol className="lv-steps">
           <li><p><strong>Compare the six words.</strong> If you opened it, they match the six your new phone shows. If you did not open it, or they differ, it is not your device, whoever tells you otherwise: call your guardians on numbers you already know, and tell them not to approve it.</p></li>
           <li><p><strong>Veto it with your veto card</strong> before it can finalize. The card holds the second secret you kept apart when you enrolled. No guardian holds it, so no number of guardians can stop your veto, and a vetoed recovery never finalizes.</p></li>
-          <li><p><strong>Then replace your guardians</strong> if a share may have leaked. That needs the veto card too.</p></li>
+          <li><p><strong>If shares may have leaked, recover to a new secret.</strong> Replacing your guardians does not change your secret: every share you have dealt still rebuilds it, and whoever holds enough of them can act as you at every host until a recovery of your own finalizes. Open a recovery for your own new device, have your guardians approve it and finalize it after 72 hours. Do not replace your guardians while it is open, because a replacement kills it. Then replace them with your new veto card, make new kits, and have every old kit destroyed.</p></li>
         </ol>
         <p className="meta">
           This page only watches: a veto is made from your own device, with Lantern’s <code>vetoRecovery</code> circuit and the card. <Link to="/kit">What a veto card holds</Link>.
-          To be told with no tab open, run the watcher: <Cmd>{`LANTERN_NETWORK=preprod npm run watch -- --id ${id ?? '<commitment>'}`}</Cmd>, with <code>--webhook</code> to send each change on (and <code>--once --state</code> for a cron job). It needs the <a href={SETUP}>same setup as the full check</a>.
+          To be told with no tab open, run the watcher: <Cmd>{`LANTERN_NETWORK=preprod npm run watch -- --id ${id ?? '<commitment>'}`}</Cmd>, with <code>--webhook-file</code> (or <code>LANTERN_WEBHOOK</code>) to send each change on, since a webhook URL is a secret (and <code>--once --state</code> for a cron job). It needs the <a href={SETUP}>same setup as the full check</a>.
         </p>
       </div>
     </div>

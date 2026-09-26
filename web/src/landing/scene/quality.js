@@ -1,8 +1,9 @@
 // Quality tiers, the WebGL2 probe and the frame-time watchdog.
 //
-// high: a desktop GPU. mid: a touch device (pixel ratio capped at 1.5). low: a software
-// rasteriser (SwiftShader in CI, llvmpipe, Microsoft Basic Render): ratio 1, scale 0.75,
-// 30 fps, no MSAA, one halo per lantern, one fibre octave.
+// high: a desktop GPU. mid: a touch device (pixel ratio capped at 1.5). low: ratio 1, scale 0.75,
+// 30 fps, no MSAA, one halo per lantern, one fibre octave; only when asked for by name (the landing's
+// ?scene=low, as the tests ask): on 'auto', a software rasteriser (SwiftShader in CI, llvmpipe,
+// Microsoft Basic Render) gets the poster instead (lantern-scene.js).
 
 const SOFTWARE = /SwiftShader|llvmpipe|Software|Basic Render/i;
 const MAX_PIXELS = 3.7e6;

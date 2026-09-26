@@ -1,10 +1,12 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from '../lib/router.jsx';
-import { FIELD_LABEL, LEDGER_LABEL, hex, short, toHex, clockText } from '../lib/format.js';
+import { FIELD_LABEL, LEDGER_LABEL, hex, short, toHex } from '../lib/format.js';
 import { Honesty } from '../components/Honesty.jsx';
+import { LoadFailed } from '../components/LoadFailed.jsx';
 import { BreakIt } from '../components/BreakIt.jsx';
 import { TargetTable } from '../components/TargetTable.jsx';
 import FingerprintWords from '../components/FingerprintWords.jsx';
+import ClockTime from '../components/ClockTime.jsx';
 // The committed record of the same story on a local chain, read at build time. Each step
 // the chain run also took gets a chip saying so -- this page itself makes no proofs.
 import record from '../../../deployments/local-devnet.json' with { type: 'json' };
@@ -15,6 +17,7 @@ const RECORDED_ON = record.recordedAt.slice(0, 10);
 export default function Demo() {
   const [engine, setEngine] = useState(null);
   const [session, setSession] = useState(null);
+  const [failed, setFailed] = useState(false);
   const [records, setRecords] = useState([]);
   const [busy, setBusy] = useState(false);
   const [enumeration, setEnumeration] = useState(null);
@@ -36,11 +39,13 @@ export default function Demo() {
 
   useEffect(() => {
     let cancelled = false;
+    // .catch after .then: a chunk that never arrives, and a runtime that cannot start in it, both say so
     import('../lib/engine.js').then((e) => {
       if (cancelled) return;
+      const next = e.newSession();
       setEngine(e);
-      setSession(e.newSession());
-    });
+      setSession(next);
+    }).catch(() => { if (!cancelled) setFailed(true); });
     return () => { cancelled = true; };
   }, []);
 
@@ -160,7 +165,7 @@ export default function Demo() {
     return (
       <section className="page">
         <Honesty />
-        <p className="loading" role="status">Loading the compiled contract into your browser…</p>
+        {failed ? <LoadFailed /> : <p className="loading" role="status">Loading the compiled contract into your browser…</p>}
       </section>
     );
   }
@@ -345,8 +350,9 @@ function Summary({ records }) {
     <div className={`summary ${bad.length ? 'bad' : 'good'}`} data-testid="summary" role="status">
       <p><strong>{records.length} steps</strong> · {calls.filter((r) => r.outcome === 'accepted').length} accepted · {calls.filter((r) => r.outcome === 'refused').length} refused, each by the circuit's own assert.</p>
       <p>{bad.length ? `${bad.length} step(s) did not go as the story expects.` : 'Every step went exactly as expected.'}</p>
-      <p className="meta">The same script, with real proofs and real transactions on a local chain: <code>npm run devnet</code>.</p>
+      <p className="meta">The same script, with real proofs and real transactions: on Preprod, or on a local chain with <code>npm run devnet</code>.</p>
       <p>Now choose the attack yourself: <a href="#break">Try to break it</a>.</p>
+      <p className="onward"><Link to="/live">See it on Preprod</Link> · <Link to="/rehearse">Rehearse your own recovery</Link></p>
     </div>
   );
 }
@@ -362,10 +368,10 @@ function Clock({ now, start, duration }) {
       <div className="clock-face">
         <ClockRing hours={Math.max(0, Math.min(72, Math.floor(elapsed / 3600)))} />
         <div className="clock-digits">
-          <p className={`time ${roll.was === null ? '' : 'rolled'}`} data-now={now} key={now}>{clockText(now)}</p>
+          <p className={`time ${roll.was === null ? '' : 'rolled'}`} data-now={now} key={now}><ClockTime at={now} /></p>
           {roll.was !== null && (
             <p className="time-was" aria-hidden="true"
-              onAnimationEnd={() => setRoll((r) => (r.now === now ? { now, was: null } : r))}>{clockText(roll.was)}</p>
+              onAnimationEnd={() => setRoll((r) => (r.now === now ? { now, was: null } : r))}><ClockTime at={roll.was} /></p>
           )}
         </div>
       </div>

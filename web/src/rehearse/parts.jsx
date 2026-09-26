@@ -4,7 +4,8 @@
 // the lock look and move here exactly as they do there.
 import { useEffect, useRef, useState } from 'react';
 import FingerprintWords from '../components/FingerprintWords.jsx';
-import { FIELD_LABEL, LEDGER_LABEL, clockText, short } from '../lib/format.js';
+import ClockTime from '../components/ClockTime.jsx';
+import { FIELD_LABEL, LEDGER_LABEL, short } from '../lib/format.js';
 import { STEPS, stepIndex, why, NEVER_ON_IT } from './copy.js';
 
 /** The eight steps as a string of lights: done, the one you are on, and those still ahead. */
@@ -125,10 +126,10 @@ export function Clock({ clock, duration }) {
       <div className="clock-face">
         <ClockRing hours={hours} />
         <div className="clock-digits">
-          <p className={`time ${roll.was === null ? '' : 'rolled'}`} data-now={now} key={now}>{clockText(now)}</p>
+          <p className={`time ${roll.was === null ? '' : 'rolled'}`} data-now={now} key={now}><ClockTime at={now} /></p>
           {roll.was !== null && (
             <p className="time-was" aria-hidden="true"
-              onAnimationEnd={() => setRoll((r) => (r.now === now ? { now, was: null } : r))}>{clockText(roll.was)}</p>
+              onAnimationEnd={() => setRoll((r) => (r.now === now ? { now, was: null } : r))}><ClockTime at={roll.was} /></p>
           )}
         </div>
       </div>

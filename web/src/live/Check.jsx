@@ -39,13 +39,21 @@ const WHY = {
   refused: 'could not be checked: the indexer refused the question',
   shape: 'could not be checked: the indexer’s answer was not in the expected shape',
 };
+// A run gives up once the indexer has stopped answering: this many answers in a row that never came
+// (too slow, or out of reach), none matching or not in between; every question not yet answered is then
+// not asked, and says so. One round of the pool: with a hung indexer, about 30 s rather than 6 minutes
+// of 20-second timeouts, 4 at a time. An answer the indexer did give (an HTTP error, a refusal, a bad
+// shape) or a reader that did not run does not count: the indexer is there.
+const SILENT_MAX = 4;
+const NOT_ASKED = 'could not be checked: not asked, as the indexer had stopped answering';
 const whyNot = (e) => WHY[e?.kind] ?? (e?.kind === 'http' ? `could not be checked: ${e.message}` : 'could not be checked: this page failed while checking it');
 const plural = (n, one, many) => (n === 1 ? one : many);
 
 /** The checks, in the order they are drawn. Each `run(ctx)` resolves { ok, detail }. */
 function buildChecks() {
   const contractChecks = CONTRACTS.flatMap((c) => {
-    const where = c.kind === 'host' ? 'contracts/managed-host/keys' : 'contracts/managed/keys';
+    // the keys are not committed; a compile makes them (keys.js pins their hashes)
+    const where = c.kind === 'host' ? 'a compile of host.compact (npm run compile)' : 'a compile of lantern.compact (npm run compile)';
     return [
       {
         id: `exists-${c.key}`, group: 'contracts',
@@ -259,7 +267,12 @@ export default function Check() {
   const start = useCallback(async () => {
     const mine = ++run.current;
     ctl.current?.abort();
-    const { signal } = (ctl.current = new AbortController());
+    // `page` ends the run when the page leaves or the check starts again; `giveUp` also ends it once
+    // the indexer has stopped answering (SILENT_MAX), and the run then finishes with what it has.
+    const page = (ctl.current = new AbortController());
+    const giveUp = new AbortController();
+    page.signal.addEventListener('abort', () => giveUp.abort(), { once: true });
+    const { signal } = giveUp;
     setResults({});
     setPhase('running');
     const reads = {};
@@ -279,16 +292,27 @@ export default function Check() {
       readAt: (c, height) => (reads[`${c.key}@${height}`] ??= contractStateAt(c.address, height, { signal }).then((s) => decode(c, s))),
       tx: (id) => (txs[id] ??= transactionById(id, { signal })),
     };
+    let silent = 0;
+    let tripped = false;
     await pool(CHECKS, 4, (c) => {
       if (run.current === mine) setResults((s) => ({ ...s, [c.id]: { state: 'running' } }));
       return c.run(ctx);
     }, (i, r, e) => {
-      if (run.current !== mine || signal.aborted) return;
+      // (once given up, the questions still in flight end with an abort: they were not answered)
+      if (run.current !== mine || page.signal.aborted || tripped) return;
       const id = CHECKS[i].id;
       const res = e ? { state: 'error', kind: e?.kind ?? null, detail: whyNot(e) } : { state: r.ok ? 'pass' : 'fail', detail: r.detail };
       setResults((s) => ({ ...s, [id]: res }));
+      if (e && (e.kind === 'slow' || e.kind === 'unreachable')) {
+        silent += 1;
+        if (silent >= SILENT_MAX) { tripped = true; giveUp.abort(); }
+      } else silent = 0;
     }, { signal });
-    if (run.current === mine && !signal.aborted) setPhase('done');
+    if (run.current !== mine || page.signal.aborted) return;
+    if (tripped) {
+      setResults((s) => Object.fromEntries(CHECKS.map((c) => [c.id, s[c.id] && s[c.id].state !== 'running' ? s[c.id] : { state: 'error', kind: 'slow', detail: NOT_ASKED }])));
+    }
+    setPhase('done');
   }, []);
 
   const doneCount = Object.values(results).filter((r) => r.state !== 'running').length;

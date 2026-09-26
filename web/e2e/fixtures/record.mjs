@@ -3,16 +3,34 @@
 // tests run the page's real code against real data, with no network. Run from web/:
 //
 //   node e2e/fixtures/record.mjs          # writes e2e/fixtures/indexer.json
+//   OUT=<file> node e2e/fixtures/record.mjs   # writes it elsewhere (to compare with the committed one)
+//
+// The fixture is the chain AS THE RECORDS END, not as it is when this runs. All three contracts take
+// calls from anyone (enrollIdentity and openRecovery need no owner secret), so a call someone else
+// makes after the records must not become the fixture's "latest": live.spec would then find the
+// story's counts missing from the block of its last call and its own transactions no longer the last.
+// So each contract's state is the one in the block of the record's last transaction on it, and its
+// action stream stops at that transaction; any later call is left out and reported. The tests that
+// need a later call make one up (live.spec's over.states and over.actions).
 //
 // It asks exactly what the page asks (the documents come from src/lib/indexer.js):
-//  - each recorded contract's latest action and state (LanternState; LanternLatest is the same
-//    answer without the state, so the fixture server derives it; so is LanternStateAt, the state in
-//    one block, from the states recorded here with their blocks);
+//  - each recorded contract's action and state in the block of the record's last transaction on it
+//    (LanternStateAt), served as its latest (LanternState; LanternLatest is the same answer without
+//    the state, so the fixture server derives it; so is LanternStateAt, the state in one block, from
+//    the states recorded here with their blocks);
 //  - every transaction both records name, by identifier (LanternTx);
 //  - each contract's actions from its deploy, over the WebSocket (LanternActions);
 //  - and two earlier states of the whole story's Lantern (after one approval, then two), so a test
 //    can show the watch noticing an approval land.
 // Re-record after the shipped recovery finalizes to test the finalized page against real data.
+// live.spec.js counts every recorded transaction from the records themselves and branches on
+// preprod-shipped.json's `finalize`, so a finalized record needs no edit there, only this fixture.
+// Once `node devnet/src/shipped.mjs finalize` has written the finalize into the record, in this order,
+// before any push (a record newer than this fixture fails live.spec's first "pure parts" check):
+//   1. node e2e/fixtures/record.mjs               (from web/: this fixture, with the finalize)
+//   2. node scripts/readme-facts.mjs --write      (from the root: the README's Preprod facts)
+//   3. npm run web:build && npm run web:e2e       (from the root)
+//   4. only then commit the record, this fixture and the README together.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { DOCUMENTS, INDEXER, INDEXER_WS } from '../../src/lib/indexer.js';
 
@@ -28,10 +46,17 @@ async function q(query, variables) {
   return body.data;
 }
 
+// Each contract's deploy, the update that froze its rules, and every call the records hold on it:
+// `last` is the block of the latest of them, whatever order the record lists them in.
+const txsOf = (deploy, calls) => [deploy, deploy.maintenanceAuthority?.frozenBy, ...calls].filter((t) => t?.blockHeight);
+const shippedTxs = txsOf(shipped.contract, [...shipped.steps.map((s) => s.tx), shipped.finalize?.tx]);
+const storyTxs = txsOf(story.contracts.lantern, story.steps.filter((s) => s.contract !== 'host').map((s) => s.tx));
+const hostTxs = txsOf(story.contracts.host, story.steps.filter((s) => s.contract === 'host').map((s) => s.tx));
+const lastOf = (txs) => Math.max(...txs.map((t) => t.blockHeight));
 const contracts = [
-  { address: shipped.contract.address, from: shipped.contract.blockHeight },
-  { address: story.contracts.lantern.address, from: story.contracts.lantern.blockHeight },
-  { address: story.contracts.host.address, from: story.contracts.host.blockHeight },
+  { address: shipped.contract.address, from: shipped.contract.blockHeight, last: lastOf(shippedTxs), hashes: new Set(shippedTxs.map((t) => t.txHash)) },
+  { address: story.contracts.lantern.address, from: story.contracts.lantern.blockHeight, last: lastOf(storyTxs), hashes: new Set(storyTxs.map((t) => t.txHash)) },
+  { address: story.contracts.host.address, from: story.contracts.host.blockHeight, last: lastOf(hostTxs), hashes: new Set(hostTxs.map((t) => t.txHash)) },
 ];
 const txIds = [
   shipped.contract.txId, shipped.contract.maintenanceAuthority.frozenBy.txId,
@@ -43,7 +68,13 @@ const txIds = [
 
 const out = { recordedAt: new Date().toISOString(), note: 'Recorded from https://indexer.preprod.midnight.network by e2e/fixtures/record.mjs', state: {}, tx: {}, actions: {}, earlier: {} };
 
-for (const c of contracts) out.state[c.address] = await q(DOCUMENTS.STATE, { address: c.address });
+for (const c of contracts) {
+  const at = await q(DOCUMENTS.STATE_AT, { address: c.address, offset: { blockOffset: { height: c.last } } });
+  const hash = at.contractAction?.transaction?.hash;
+  if (!hash) throw new Error(`the indexer holds no action of ${c.address} in block ${c.last}, the block of the record's last transaction on it`);
+  if (!c.hashes.has(hash)) throw new Error(`the action of ${c.address} in block ${c.last} is ${hash}, which the records do not hold`);
+  out.state[c.address] = at;
+}
 for (const id of txIds) out.tx[id] = await q(DOCUMENTS.TX_BY_ID, { offset: { identifier: id } });
 
 // Earlier states of the whole story's Lantern: the block of each approval of Hana's recovery.
@@ -53,9 +84,11 @@ for (const s of approvals) {
   out.earlier[s.id] = await q(AT, { address: story.contracts.lantern.address, offset: { blockOffset: { height: s.tx.blockHeight } } });
 }
 
-// Each contract's actions from its deploy, as the subscription sends them.
+// Each contract's actions from its deploy, as the subscription sends them, up to the records' end.
+const later = {};
 await new Promise((resolve, reject) => {
   const ws = new WebSocket(INDEXER_WS, 'graphql-transport-ws');
+  // Each stream ends at the record's last transaction on its contract, not at the chain's latest.
   const until = Object.fromEntries(contracts.map((c) => [c.address, out.state[c.address].contractAction.transaction.hash]));
   const done = new Set();
   const timer = setTimeout(() => { ws.close(); reject(new Error('the stream did not catch up')); }, 60_000);
@@ -68,6 +101,8 @@ await new Promise((resolve, reject) => {
     } else if (m.type === 'next') {
       const c = contracts[Number(m.id) - 1];
       const a = m.payload.data.contractActions;
+      // after the record's last transaction: a call the records do not hold, left out
+      if (done.has(c.address)) { later[c.address] = (later[c.address] ?? 0) + 1; return; }
       (out.actions[c.address] ??= []).push(a);
       if (a.transaction.hash === until[c.address]) done.add(c.address);
       if (done.size === contracts.length) { clearTimeout(timer); ws.close(); resolve(); }
@@ -75,5 +110,6 @@ await new Promise((resolve, reject) => {
   };
 });
 
-writeFileSync(new URL('indexer.json', import.meta.url), `${JSON.stringify(out)}\n`);
+writeFileSync(process.env.OUT ?? new URL('indexer.json', import.meta.url), `${JSON.stringify(out)}\n`);
+for (const [address, n] of Object.entries(later)) console.log(`not recorded: ${n} call${n === 1 ? '' : 's'} on ${address} made since the records`);
 console.log(`recorded ${Object.keys(out.state).length} states, ${Object.keys(out.tx).length} transactions, ${Object.values(out.actions).flat().length} actions, ${Object.keys(out.earlier).length} earlier states`);

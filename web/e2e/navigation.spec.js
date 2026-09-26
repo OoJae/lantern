@@ -4,6 +4,7 @@
 // Back, forward and in-page hash links are instant.
 import { test, expect } from '@playwright/test';
 import { landsClear, expectFiniteAnimations } from './helpers.js';
+import { BUNDLED, compareBundled, packageOf } from '../scripts/notices.mjs';
 
 const nav = (page, name) => page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name });
 
@@ -356,6 +357,21 @@ test('a link taken from the keyboard moves focus to the new page’s heading; a 
   await expect(h1).not.toBeFocused();
 });
 
+// Without a view transition (reduced motion; also a hidden tab, or a browser without them) the change
+// is drawn at once, a lazy page's stand-in first: focus waits for the page itself, not the stand-in.
+test('with reduced motion, a link taken from the keyboard still moves focus to the new page’s heading', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/attacks');
+  await expect(page.locator('[data-ready="true"]')).toBeVisible();
+  const h1 = page.getByRole('heading', { level: 1 });
+  await nav(page, 'What is real').focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/about$/);
+  await expect(h1).toHaveText('Nothing here is a mock-up');
+  await expect(h1).toBeFocused();
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+});
+
 test('“Try to break it” taken from the keyboard lands on the panel with focus in it, clear of the header', async ({ page }) => {
   await page.goto('/');
   const cta = page.locator('main').getByRole('link', { name: 'Try to break it' }).first();
@@ -367,4 +383,189 @@ test('“Try to break it” taken from the keyboard lands on the panel with focu
   await landsClear(page);
   await settled(page);
   await landsClear(page);
+});
+
+// The Preprod page in the header's nav, where the four items keep to one row: from 640px. Below, the
+// footer and the landing lead there.
+test('the nav names On Preprod from 640px, on one row; below 640px it keeps three items on one row', async ({ page }) => {
+  await page.goto('/about');
+  // (by its address: hidden, it is out of the accessibility tree, so a role query would not find it)
+  const item = page.locator('header.site nav a.nav[href="/live"]');
+  await expect(item).toHaveText('On Preprod');
+  const rows = () => page.locator('header.site .nav').evaluateAll((els) => new Set(els
+    .filter((e) => e.getClientRects().length)
+    .map((e) => Math.round(e.getBoundingClientRect().top))).size);
+  const height = () => page.locator('header.site').evaluate((e) => e.getBoundingClientRect().height);
+  for (const width of [640, 700, 768, 900, 1024, 1280, 1440, 1920]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect(item).toBeVisible();
+    expect(await rows(), `${width}px`).toBe(1);
+    expect(await height(), `${width}px`).toBeLessThanOrEqual(60);
+  }
+  for (const width of [320, 360, 375, 390, 412, 430, 480, 540, 600, 639]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect(item).toBeHidden();
+    expect(await rows(), `${width}px`).toBe(1);
+    expect(await height(), `${width}px`).toBeLessThanOrEqual(60);
+  }
+  await expect(page.locator('footer.site').getByRole('link', { name: 'On Preprod' })).toHaveAttribute('href', '/live');
+});
+
+// A lazy page whose chunk is gone (a tab opened before a redeploy asks for hashed files the new
+// deployment no longer serves; a dropped connection): never a blank page.
+test('a page whose chunk is gone keeps the header and footer, says so, and offers a reload', async ({ page, browserName }) => {
+  await page.route(/\/assets\/Demo-[^/]*\.js$/, (route) => route.fulfill({ status: 404, contentType: 'text/plain', body: 'not found' }));
+  await page.goto('/');
+  await page.locator('.hero').getByRole('link', { name: 'Watch a recovery' }).click();
+  await expect(page).toHaveURL(/\/demo$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('This page did not load');
+  await expect(page.getByRole('alert')).toContainText('Check your connection, then reload the page. The site may have been updated since this tab opened.');
+  await expect(page.locator('header.site')).toBeVisible();
+  await expect(page.locator('footer.site')).toBeAttached();
+  // another page still draws; back to the landing, it is whole
+  await nav(page, 'What is real').click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Nothing here is a mock-up');
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('This page did not load');
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Lose the device. Keep the identity.');
+  // the button reloads the document: after a redeploy that brings the new build's index.html, and so
+  // chunks under new names
+  await page.unrouteAll({ behavior: 'ignoreErrors' });
+  await page.goForward();
+  await page.evaluate(() => { window.__before = true; });
+  await Promise.all([page.waitForEvent('load'), page.getByRole('button', { name: 'reload the page' }).click()]);
+  expect(await page.evaluate(() => window.__before)).toBeUndefined();
+  // With the same chunk there again (a connection that came back), the page draws. WebKit keeps a
+  // chunk that failed in its memory cache across a reload of the same page and does not ask again, so
+  // this half holds in Chromium and Firefox; a redeploy's new names are asked for afresh everywhere.
+  if (browserName !== 'webkit') await expect(page.locator('[data-ready="true"]')).toBeVisible();
+});
+
+test('taken from the keyboard, a page whose chunk is gone takes the focus with its heading', async ({ page }) => {
+  await page.route(/\/assets\/Attacks-[^/]*\.js$/, (route) => route.fulfill({ status: 404, contentType: 'text/plain', body: 'not found' }));
+  await page.goto('/about');
+  await nav(page, 'Attack it').focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/attacks$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('This page did not load');
+  await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+});
+
+for (const motion of ['no-preference', 'reduce']) {
+  test(`the landing stays whole when a chunk below the fold is gone (${motion === 'reduce' ? 'reduced motion, with the pictograms' : 'motion'})`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: motion });
+    const gone = [];
+    await page.route(/\/assets\/(AfterStory|Pictogram)-[^/]*\.js$/, (route) => {
+      gone.push(route.request().url());
+      return route.fulfill({ status: 404, contentType: 'text/plain', body: 'not found' });
+    });
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Lose the device. Keep the identity.');
+    await expect.poll(() => gone.length).toBeGreaterThan(0);
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.waitForTimeout(500);
+    // the story, the header and the links on are all still there; only what failed is left out
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Lose the device. Keep the identity.');
+    await expect(page.locator('#after-story').getByRole('link', { name: 'See the real recovery on Preprod' })).toBeVisible();
+    await expect(page.locator('header.site')).toBeVisible();
+    await expect(page.getByText('This page did not load')).toHaveCount(0);
+  });
+}
+
+// The site's JavaScript bundles third-party packages, minified with their licence comments dropped:
+// their notices ship as a file of their own, and the footer links it (scripts/notices.mjs).
+test('the footer links the third-party notices, which ship as a text file naming every bundled package', async ({ page, request, baseURL }) => {
+  await page.goto('/about');
+  const link = page.locator('footer.site').getByRole('link', { name: 'third-party licences' });
+  await expect(link).toHaveAttribute('href', '/THIRD-PARTY-NOTICES.txt');
+  const res = await request.get(new URL('/THIRD-PARTY-NOTICES.txt', baseURL).href);
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toMatch(/^text\/plain/);
+  const text = await res.text();
+  // the list the build is checked against (scripts/check-bundle.mjs compares it with the bundle itself)
+  expect(BUNDLED).toHaveLength(13);
+  for (const name of BUNDLED) {
+    expect(text, name).toMatch(new RegExp(`\\n${name.replace(/[/.]/g, '\\$&')}@\\d+\\.\\d+\\.\\d+\\n`));
+  }
+  expect(text).toContain('/fonts/OFL-Fraunces.txt');
+  // The runtime's WASM package states no licence and names a repository that does not resolve: the
+  // file says so, and gives its upstream source's licence and a link that does.
+  expect(text).toContain('@midnight-ntwrk/onchain-runtime-v3@3.0.0  Apache-2.0 (upstream source; package states none)');
+  expect(text).toContain('\nLicence: none stated in its package.json\nUpstream source licence: Apache-2.0 (built from midnightntwrk/midnight-ledger');
+  expect(text).toContain('Source: https://github.com/midnightntwrk/midnight-ledger/tree/main/onchain-runtime-wasm');
+  expect(text).not.toContain('github.com/midnight-ntwrk/artifacts');
+});
+
+// Which packages a build holds is read from its module ids (scripts/check-bundle.mjs builds the site in
+// memory and compares them with BUNDLED both ways), so a new import cannot ship without its notice.
+test('the notices\' package list is compared with the modules a build holds, both ways', () => {
+  test.skip(test.info().project.name !== 'desktop', 'no page: run once');
+  expect(packageOf('/r/node_modules/three/build/three.module.js')).toBe('three');
+  expect(packageOf('/r/node_modules/@noble/hashes/esm/sha2.js')).toBe('@noble/hashes');
+  // a nested dependency is its own package
+  expect(packageOf('/r/node_modules/@midnight-ntwrk/compact-runtime/node_modules/object-inspect/index.js?commonjs-es-import')).toBe('object-inspect');
+  // the site's own modules and the bundler's helpers are no package
+  expect(packageOf('/r/web/src/main.jsx')).toBeNull();
+  expect(packageOf('\0vite/preload-helper.js')).toBeNull();
+  const ids = BUNDLED.map((n) => `/r/node_modules/${n}/index.js`);
+  expect(compareBundled(['/r/web/src/App.jsx', ...ids])).toEqual({ found: [...BUNDLED].sort(), extra: [], missing: [] });
+  // an import that pulls in a package with no notice here, and a package no longer bundled
+  expect(compareBundled([...ids, '/r/web/node_modules/nanoid/index.browser.js']).extra).toEqual(['nanoid']);
+  expect(compareBundled(ids.slice(1)).missing).toEqual([BUNDLED[0]]);
+});
+
+// Forced colours (Windows contrast themes) drop backgrounds, box shadows and gradients, and the site
+// draws every "this one is current" state with one of them: each is redrawn in system colours.
+test('in forced colours, the current page, the chosen numbers, the sheet shown, the step and a passed check still show', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'forced colours are emulated in Chromium only');
+  await page.emulateMedia({ forcedColors: 'active' });
+  const css = (loc, prop) => loc.evaluate((e, p) => getComputedStyle(e)[p], prop);
+  const system = (name) => page.evaluate((c) => {
+    const d = document.createElement('div');
+    d.style.backgroundColor = c;
+    document.body.append(d);
+    const v = getComputedStyle(d).backgroundColor;
+    d.remove();
+    return v;
+  }, name);
+
+  // the nav's wick under the current page, and the lockup in the link's colour, not its own beige
+  await page.goto('/about');
+  const canvas = await system('Canvas');
+  expect(await css(page.locator('.nav[aria-current="page"] .wick'), 'backgroundColor')).not.toBe(canvas);
+  const footer = page.locator('.footer-lockup svg');
+  expect(await css(footer.locator('.lockup-word'), 'fill')).toBe(await css(footer, 'color'));
+  expect(await css(footer.locator('.lm-body'), 'stroke')).toBe(await css(footer, 'color'));
+
+  // /kit: the chosen number of guardians and threshold, and the sheet shown
+  await page.goto('/kit');
+  await expect(page.locator('.kit-page[data-ready="true"]')).toBeVisible();
+  const checked = page.locator('.kit-pill input:checked + span').first();
+  const unchecked = page.locator('.kit-pill input:not(:checked) + span').first();
+  expect(await css(checked, 'backgroundColor')).not.toBe(await css(unchecked, 'backgroundColor'));
+  // a fill of its own (Highlight), not the page's, with its text legible on it
+  expect(await css(checked, 'backgroundColor')).not.toBe(canvas);
+  expect(await css(checked, 'color')).not.toBe(await css(checked, 'backgroundColor'));
+  await page.getByRole('button', { name: /^Make (the|new) kits/ }).click();
+  await expect(page.locator('.kit-sheet[data-sheet="veto"]')).toBeVisible();
+  expect(await css(page.locator('.kit-tab[aria-selected="true"]'), 'textDecorationLine')).toBe('underline');
+  expect(await css(page.locator('.kit-tab[aria-selected="false"]').first(), 'textDecorationLine')).toBe('none');
+
+  // /rehearse: the step you are on
+  await page.goto('/rehearse');
+  await expect(page.locator('.rehearse[data-ready="true"]')).toBeVisible();
+  const current = page.locator('.rh-rail .current .rh-num');
+  expect(await css(current, 'backgroundColor')).not.toBe(await css(page.locator('.rh-rail .todo .rh-num').first(), 'backgroundColor'));
+  expect(await css(current, 'color')).not.toBe(await css(current, 'backgroundColor'));
+
+  // /live: a passed check's mark is a filled disc, not the empty ring of one still running
+  await page.route('https://indexer.preprod.midnight.network/**', (route) => route.abort('connectionrefused'));
+  await page.routeWebSocket(/^wss:\/\/indexer\.preprod\.midnight\.network\//, (ws) => ws.close());
+  await page.goto('/live');
+  await expect(page.locator('#check')).toBeVisible();
+  await page.evaluate(() => document.querySelector('#check').insertAdjacentHTML('beforeend',
+    '<ul class="fc-probe"><li class="lv-check pass"><span class="lv-mark"></span></li><li class="lv-check running"><span class="lv-mark"></span></li></ul>'));
+  const marks = page.locator('.fc-probe .lv-mark');
+  expect(await css(marks.nth(0), 'backgroundColor')).not.toBe(await css(marks.nth(1), 'backgroundColor'));
 });

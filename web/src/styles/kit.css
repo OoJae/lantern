@@ -339,3 +339,11 @@ html.motion .kit-result:not(:empty) { animation: kit-rise var(--dur-card) var(--
   :where(.kit-page) .kit-public { gap: 0.3mm; }
   :where(.kit-page) .kit-public div { grid-template-columns: 30mm minmax(0, 1fr); gap: 3mm; }
 }
+
+/* Forced colours drop the chosen pill's fill and the selected tab's inset line: each is redrawn in
+   the system's colours (see styles.css). */
+@media (forced-colors: active) {
+  .kit-pill input:checked + span { forced-color-adjust: none; background: Highlight; border-color: Highlight; color: HighlightText; }
+  .kit-pill input:focus-visible + span { outline-color: CanvasText; }
+  .kit-page .kit-tab[aria-selected="true"] { text-decoration: underline 3px; text-underline-offset: 0.45em; }
+}

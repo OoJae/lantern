@@ -145,8 +145,8 @@ export function GuardianSheet({ kit, id }) {
           <div><dt>Identity</dt><dd><code>{kit.identity}</code></dd></div>
           <div><dt>Guardian context</dt><dd>{kit.context === kit.identity ? contextLabel(kit) : <code>{contextLabel(kit)}</code>}</dd></div>
         </dl>
-        <p className="kit-expires">After a recovery, or once the owner replaces the guardians, this kit stops working: the owner makes new ones.</p>
-        <p><code>{kit.version}</code> · {practice ? 'A practice kit: no identity is enrolled with it.' : 'Keep it until the owner replaces it.'}</p>
+        <p className="kit-expires">After a recovery, the share here stops working, but the guardian secret and leaf salt still approve recoveries until the owner replaces the guardians. If the owner replaces the guardians without a recovery, the share here still works. Keep this kit safe or destroy it: never throw it away whole.</p>
+        <p><code>{kit.version}</code> · {practice ? 'A practice kit: no identity is enrolled with it.' : 'Keep it until the owner asks you to destroy it.'}</p>
       </footer>
     </article>
   );

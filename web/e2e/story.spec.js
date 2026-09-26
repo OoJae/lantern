@@ -1,11 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { openDemo, expectNoSideScroll } from './helpers.js';
+import { openDemo, expectNoSideScroll, withTextSpacing } from './helpers.js';
 
 test('the whole story runs in the browser, exactly as expected', async ({ page }) => {
   await openDemo(page);
   await page.getByRole('button', { name: 'Run to the end' }).click();
   await expect(page.getByTestId('summary')).toContainText('Every step went exactly as expected.');
   await expect(page.getByTestId('summary')).toContainText('74 steps');
+  // and on from the story: the same run on Preprod, and a rehearsal of your own
+  await expect(page.getByTestId('summary').getByRole('link', { name: 'See it on Preprod' })).toHaveAttribute('href', '/live');
+  await expect(page.getByTestId('summary').getByRole('link', { name: 'Rehearse your own recovery' })).toHaveAttribute('href', '/rehearse');
 
   // Every secret any circuit call read: seen privately, absent publicly.
   const boxes = page.locator('.absent li');
@@ -174,6 +177,28 @@ test('with reduced motion, steps, seals, the clock and the lock arrive at once',
   await expect(page.locator('.clock .time-was')).toBeHidden();
   await expect(page.locator('.clock .time')).toBeVisible();
 });
+
+// With a reader's text spacing (WCAG 1.4.12) the time no longer fits the line the clock sizes it to: it
+// breaks at its one space, the date over the time, and loses no character to the roll's mask.
+for (const width of [320, 390]) {
+  test(`with a reader's text spacing, the clock loses no character, at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await openDemo(page);
+    const time = page.locator('.clock .time');
+    const edges = () => time.evaluate((t) => ({
+      box: t.parentElement.getBoundingClientRect().right,
+      text: Math.max(...[...t.querySelectorAll('.nb')].map((s) => s.getBoundingClientRect().right)),
+      lines: Math.round(t.getBoundingClientRect().height / parseFloat(getComputedStyle(t).lineHeight)),
+    }));
+    // unspaced, on one line
+    expect((await edges()).lines).toBe(1);
+    await withTextSpacing(page);
+    await expect(time).toHaveText(/^\d{4}-\d\d-\d\d \d\d:\d\d UTC$/);
+    const { box, text } = await edges();
+    expect(text).toBeLessThanOrEqual(box + 0.5);
+    await expectNoSideScroll(page);
+  });
+}
 
 // The attacker's step carries the four designs' results: on a phone each design is a card, so the
 // table never hides a column off its edge; the design that held is the one Ember light in it.

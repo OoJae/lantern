@@ -16,6 +16,7 @@
 // Text reveals (styles/landing.css) are clip-path and transform only, and only under html.motion
 // (main.jsx), so without script, in print and under reduced motion every word is simply there.
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { ChunkBoundary } from '../lib/ChunkBoundary.jsx';
 import { afterRouteChange, Link } from '../lib/router.jsx';
 import LanternPoster from '../landing/LanternPoster.jsx';
 import { createTracker } from '../landing/tracker.js';
@@ -26,6 +27,21 @@ import { createTracker } from '../landing/tracker.js';
 // the first screen, and out of the first load's budget.
 const Pictogram = lazy(() => import('../brand/Pictogram.jsx'));
 const AfterStory = lazy(() => import('../landing/AfterStory.jsx'));
+
+// ?scene=high|mid|low asks for the WebGL scene at that tier by name, even on a software renderer, which
+// on 'auto' keeps the poster (lantern-scene.js); the tab remembers it, back on the landing by any link,
+// until ?scene=auto. The tests ask for low; anyone may.
+const TIERS = ['high', 'mid', 'low'];
+const TIER_KEY = 'lantern.scene';
+const sceneTier = () => {
+  let asked = new URLSearchParams(window.location.search).get('scene');
+  try {
+    if (TIERS.includes(asked)) window.sessionStorage.setItem(TIER_KEY, asked);
+    else if (asked === 'auto') window.sessionStorage.removeItem(TIER_KEY);
+    else asked = window.sessionStorage.getItem(TIER_KEY);
+  } catch { /* storage blocked: the address alone */ }
+  return TIERS.includes(asked) ? asked : 'auto';
+};
 
 const REDUCE = '(prefers-reduced-motion: reduce)';
 const reducedMotion = () => typeof window !== 'undefined' && Boolean(window.matchMedia?.(REDUCE).matches);
@@ -79,7 +95,7 @@ const CHAPTERS = [
   {
     kicker: '05 · Seventy-two hours',
     title: <>Wait in plain <em>sight.</em></>,
-    body: 'Every recovery waits 72 hours where anyone can see it. When Jihoon turns and opens one of his own, Hana’s veto card cancels it. He can act as her until her recovery finishes, but he can’t veto, or add or remove guardians: those need the card.',
+    body: 'Every recovery waits 72 hours where anyone can see it. When Jihoon turns, phishes Mum’s share and opens a recovery of his own, Hana’s veto card cancels it. With two shares he can act as her until her recovery finishes, but he can’t veto, or add or remove guardians: those need the card.',
     links: [['/demo?beat=7', 'Run beat 7']],
     art: '05-window',
   },
@@ -151,7 +167,8 @@ function Chapter({ chapter, step, still }) {
       </div>
       {still && (
         <div className="chapter-art" aria-hidden="true">
-          <Suspense fallback={null}><Pictogram name={art} className="pictogram" /></Suspense>
+          {/* a chunk that fails to arrive leaves the art out, not the story (lib/ChunkBoundary.jsx) */}
+          <ChunkBoundary><Suspense fallback={null}><Pictogram name={art} className="pictogram" /></Suspense></ChunkBoundary>
         </div>
       )}
     </div>
@@ -199,7 +216,7 @@ export default function Landing() {
         if (ac.signal.aborted) return;
         // Resolves after the scene's first frame, or at once (a no-op) when it could not start,
         // having called onFail first: then the mode is already poster and stays so.
-        scene = await createLanternScene({ host: hostRef.current, tracker, tier: 'auto', onFail: poster, signal: ac.signal });
+        scene = await createLanternScene({ host: hostRef.current, tracker, tier: sceneTier(), onFail: poster, signal: ac.signal });
         if (!ac.signal.aborted) setMode((m) => (m === 'pending' ? 'webgl' : m));
       } catch {
         poster();
@@ -287,15 +304,16 @@ export default function Landing() {
             no chain, no proofs. Every accept and every refusal is the contract’s own.
           </p>
           <Ctas className="rv" />
-          {/* The next two ways in, set as the chapters' links (spaced in landing.css). */}
+          {/* The next ways in, set as the chapters' links (spaced in landing.css). */}
           <div className="chapter-links rv">
             <Link to="/live">See the real recovery on Preprod<Arrow /></Link>
             <Link to="/rehearse">Rehearse your own<Arrow /></Link>
+            <Link to="/kit">Print a practice kit<Arrow /></Link>
           </div>
         </div>
       </section>
 
-      <Suspense fallback={null}><AfterStory reveal={observeReveals} /></Suspense>
+      <ChunkBoundary><Suspense fallback={null}><AfterStory reveal={observeReveals} /></Suspense></ChunkBoundary>
     </div>
   );
 }

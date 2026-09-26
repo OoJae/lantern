@@ -4,6 +4,7 @@
 // here the page makes no network requests.
 import { useEffect, useState } from 'react';
 import { Honesty } from '../components/Honesty.jsx';
+import { LoadFailed } from '../components/LoadFailed.jsx';
 import { Rehearsal } from '../rehearse/Rehearsal.jsx';
 import '../styles/rehearse.css';
 
@@ -35,12 +36,7 @@ export default function Rehearse() {
       {engine
         ? <Rehearsal engine={engine} />
         : failed
-          ? (
-            <p className="loading warn" role="alert">
-              The compiled contract did not load. Check your connection, then{' '}
-              <button type="button" className="linkish" onClick={() => window.location.reload()}>reload the page</button>.
-            </p>
-          )
+          ? <LoadFailed />
           : <p className="loading" role="status">Loading the compiled contract into your browser…</p>}
     </section>
   );

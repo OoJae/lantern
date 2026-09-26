@@ -178,7 +178,9 @@ for (const width of [320, 375, 768, 1024, 1280]) {
     await openAbout(page);
     expect(await overflowing()).toEqual([]);
     await expect(page.getByRole('columnheader')).toHaveCount(5);
-    await expect(page.getByRole('rowheader')).toHaveCount(5);
+    // the site's pages by what each runs (the recovery and Attack it, Rehearse, Recovery kits, On
+    // Preprod), npm test, and the three chain runs
+    await expect(page.getByRole('rowheader')).toHaveCount(8);
     await expectNoSideScroll(page);
   });
 }

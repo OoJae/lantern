@@ -13,6 +13,10 @@ const waiting = new Set();
 const HOLD_MAX = 1500;
 // Whether the link just taken was taken from the keyboard (App.jsx then moves focus to the new page).
 let focusRequest = false;
+// Whether the link just taken names a place in the new page (/live#watch): App.jsx scrolls to it once
+// the page is ready, since the window goes to the top first and a lazy page draws after the browser's
+// own jump. Back and forward never set it: the browser's own restored position stands.
+let hashRequest = false;
 
 // A route change carries the light (styles/motion.css): the old page snuffs out, the new one is
 // revealed under a header that never moves, and the wick travels to the new item. The browser
@@ -29,6 +33,7 @@ let focusRequest = false;
 export function navigate(to, { fromKeyboard = false } = {}) {
   if (to === window.location.pathname) return;
   focusRequest = fromKeyboard;
+  hashRequest = new URL(to, window.location.href).hash.length > 1;
   const samePage = new URL(to, window.location.href).pathname === window.location.pathname;
   window.history.pushState({}, '', to);
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -72,6 +77,13 @@ export function pageReady() {
 export function takeFocusRequest() {
   const asked = focusRequest;
   focusRequest = false;
+  return asked;
+}
+
+// Whether the last route change was a link to a place in the new page. Asking clears it.
+export function takeHashRequest() {
+  const asked = hashRequest;
+  hashRequest = false;
   return asked;
 }
 

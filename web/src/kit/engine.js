@@ -16,7 +16,8 @@ const hex = (b) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join(''
 export function makeKits({ guardians, threshold }) {
   const identity = newIdentity();
   const { idCommit, vetoCommit } = commitmentsOf(pure, identity);
-  const { vetoCard, kits } = dealKits({ identity, idCommit, network: 'practice', contract: null, guardians, threshold });
+  // At enrolment the guardian context is the identity commitment itself (src/kit.js dealKits).
+  const { vetoCard, kits } = dealKits({ identity, idCommit, ctx: idCommit, network: 'practice', contract: null, guardians, threshold });
   return { idCommit: hex(idCommit), vetoCommit: hex(vetoCommit), vetoCard, kits };
 }
 

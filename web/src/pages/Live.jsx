@@ -13,7 +13,7 @@
 // contract's state with its own compiled reader (a lazy chunk with the runtime), and its history
 // over a WebSocket that closes once caught up. Nothing is written, signed or sent but questions, and
 // only to indexer.preprod.midnight.network (vercel.json's connect-src allows that host, nothing else).
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link } from '../lib/router.jsx';
 import { INDEXER } from '../lib/indexer.js';
 import Check from '../live/Check.jsx';
@@ -45,16 +45,40 @@ function whyUnread(failed) {
 function Reach({ chain }) {
   const states = Object.values(chain.byKey);
   const failed = states.filter((s) => s.status === 'error');
-  if (failed.length === states.length) {
-    const [head, cause] = whyUnread(failed);
+  // "Try again" keeps its place while the new read runs, as "Trying again…", so the focus on it is not
+  // dropped to the page; when the read ends it is the same button again, and the line under the
+  // headline changes, so a screen reader hears how the retry went.
+  const told = useRef(null);
+  const [handoff, setHandoff] = useState(false);
+  const back = useRef(null);
+  const allFailed = failed.length === states.length;
+  const retrying = chain.retrying && !states.some((s) => s.status === 'ok');
+  if (allFailed) told.current = whyUnread(failed);
+  // A retry that reached the indexer takes the alert away: hand the focus to the line that says so.
+  const wasHere = useRef(false);
+  useEffect(() => {
+    const here = allFailed || retrying;
+    if (wasHere.current && !here && handoff) back.current?.focus();
+    wasHere.current = here;
+  }, [allFailed, retrying, handoff]);
+  if (allFailed || retrying) {
+    const [head, cause] = told.current ?? whyUnread(failed);
+    const onRetry = (e) => {
+      if (retrying) return; // aria-disabled, not disabled: it keeps the focus
+      setHandoff(document.activeElement === e.currentTarget);
+      chain.retry();
+    };
     return (
       <div className="lv-reach bad" role="alert">
         <p>
           <strong>{head}</strong>{' '}
           What you see is what the repository’s records say; none of it has been checked against the chain from here yet.
           {cause}
+          {chain.retriedAt && !retrying ? <span data-testid="reach-retried"> Tried again at {utcClock(chain.retriedAt)}, with no better answer.</span> : null}
         </p>
-        <p><button type="button" onClick={chain.retry}>Try again</button></p>
+        <p>
+          <button type="button" onClick={onRetry} aria-disabled={retrying ? 'true' : undefined}>{retrying ? 'Trying again…' : 'Try again'}</button>
+        </p>
       </div>
     );
   }
@@ -72,6 +96,10 @@ function Reach({ chain }) {
         What you see was read from the chain at {utcClock(readAt)}. Still trying.
       </p>
     );
+  }
+  const answeredAt = states.filter((s) => s.okAt).map((s) => s.okAt);
+  if (handoff && answeredAt.length) {
+    return <p className="lv-reach" role="status" tabIndex={-1} ref={back} data-testid="reach-back">The indexer answered at {utcClock(Math.min(...answeredAt))}.</p>;
   }
   return null;
 }

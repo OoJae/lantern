@@ -58,7 +58,7 @@ function Countdown({ to, now }) {
 
 const TITLE = {
   waiting: <>A recovery, waiting <em>in plain sight</em></>,
-  short: <>A recovery, waiting <em>for approvals</em></>,
+  short: <>A recovery, <em>short of approvals</em></>,
   ready: <>A recovery, <em>ready to finalize</em></>,
   finalized: <>A recovery, <em>finalized</em></>,
   closed: <>A recovery, <em>closed</em></>,

@@ -1,14 +1,17 @@
-// The SHA-256 of each verifier key the repository commits (contracts/managed/keys and
-// contracts/managed-host/keys: the compiled lantern.compact and host.compact, Compact 0.31.1). The
-// browser check hashes each key the chain holds and compares: a matching hash means the contract on
-// chain checks proofs against exactly the circuits this repository compiled.
+// The SHA-256 of each verifier key a compile of this repository produces (`npm run compile`, Compact
+// 0.31.1: lantern.compact into contracts/managed/keys, host.compact into contracts/managed-host/keys).
+// The keys themselves are not committed (.gitignore keeps only each compile's contract/ module), so
+// the hashes are pinned here. The browser check hashes each key the chain holds and compares: a
+// matching hash means the contract on chain checks proofs against exactly the circuits this
+// repository compiles.
 //
-// Hashes, not the 2 KB keys, so the check fetches nothing from this site. web/e2e/live.spec.js reads
-// the committed key files and fails if any hash here differs, so this list cannot drift from them.
-// That the keys on chain match a fresh compile is what the terminal checks, with the compiler, one
-// command per record: `LANTERN_NETWORK=preprod npm run devnet:verify` (the whole story, preprod.json)
-// and `LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify` (preprod-shipped.json). This page
-// does not run a compiler.
+// Hashes, not the 2 KB keys, so the check fetches nothing from this site. CI's compile job recompiles
+// and fails if any hash here differs from that compile, or if the set of circuits does; and
+// web/e2e/live.spec.js checks them too wherever a compile is present. That the keys on chain match a
+// fresh compile is what the terminal checks, with the compiler, one command per record:
+// `LANTERN_NETWORK=preprod npm run devnet:verify` (the whole story, preprod.json) and
+// `LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify` (preprod-shipped.json). This page does
+// not run a compiler.
 export const COMMITTED_KEYS = {
   lantern: {
     addGuardian: '3c2e8827b14ec8c6c091b9a26e4cfea5f494edd6989683c9ea3f3ea1d438140a',
@@ -33,9 +36,9 @@ export const COMMITTED_KEYS = {
   },
 };
 
-// The one key the whole story's Lantern does NOT share with the committed build, pinned rather than
+// The one key the whole story's Lantern does NOT share with the compiled build, pinned rather than
 // merely "different". That run changed line 120 (a 60-second timelock, so the story could wait it out),
-// which only finalizeRecovery reads: its key is the 60-second build's, every other key the committed
+// which only finalizeRecovery reads: its key is the 60-second build's, every other key the compiled
 // one. To reproduce the hash: `bash devnet/compile.sh` (compact 0.31.1), then
 // `shasum -a 256 devnet/build/lantern/keys/finalizeRecovery.verifier`. CI's compile job builds it and
 // checks this pin (.github/workflows/compile.yml), as web/e2e/live.spec.js does wherever it is built.
@@ -52,7 +55,7 @@ export const FLAVOUR_KEYS = {
 
 /**
  * A contract's verifier keys on chain (circuit -> SHA-256, from live/decode.js) against what this
- * repository expects of it: the committed key for every circuit, but the pinned one where FLAVOUR_KEYS
+ * repository expects of it: the compiled key for every circuit, but the pinned one where FLAVOUR_KEYS
  * names one. No circuit missing, none extra.
  * @param {Record<string, string|null>} onChain
  * @param {'lantern'|'host'} kind

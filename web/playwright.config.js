@@ -19,7 +19,10 @@ export default defineConfig({
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
     { name: 'phone', use: { ...devices['Pixel 7'] } },
   ],
+  // A server already on 4319 (another worktree's preview, or one left over) would be tested silently
+  // in place of the build just made: reuse is opt-in, so a busy port fails loudly (--strictPort).
+  // PW_REUSE_SERVER=1 tests your own running `npm run preview`.
   webServer: external
     ? undefined
-    : { command: 'npm run preview', url: 'http://localhost:4319', reuseExistingServer: true, timeout: 60_000 },
+    : { command: 'npm run preview', url: 'http://localhost:4319', reuseExistingServer: process.env.PW_REUSE_SERVER === '1', timeout: 60_000 },
 });

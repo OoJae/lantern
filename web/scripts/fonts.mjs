@@ -15,8 +15,9 @@ import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const web = new URL('..', import.meta.url).pathname;
+const web = fileURLToPath(new URL('..', import.meta.url)); // not .pathname: a path with a space survives
 const pkgJson = JSON.parse(readFileSync(join(web, 'package.json'), 'utf8'));
 const fail = (m) => { console.error(`fonts: ${m}`); process.exit(1); };
 const sha256 = (p) => createHash('sha256').update(readFileSync(p)).digest('hex');

@@ -193,10 +193,20 @@ test('the phishing call: approving it hands the caller your identity, unless you
   const vetoed = page.locator('#rh-window .rh-calls > li[data-tag="caller"][data-circuit="finalizeRecovery"]');
   await expect(vetoed).toHaveAttribute('data-outcome', 'refused');
   await expect(vetoed).toHaveAttribute('data-message', 'recovery vetoed');
+  // The veto killed his recovery, not the three shares he was sent: they rebuild your secret, which
+  // opens your commitment until your own recovery retires it. The page never says they are worthless.
+  const note = vetoed.locator('.rh-why');
+  await expect(note).toContainText('But the 3 shares he was sent rebuild your identity secret');
+  await expect(note).toContainText('until your own recovery finalizes and retires it, he can act as you wherever your identity is accepted. Finalize yours.');
+  await expect(note).not.toContainText('worth nothing');
+  await expect(page.locator('.person[data-persona="caller"] .tag')).toHaveText('can act as you');
   await page.getByRole('button', { name: 'Continue to finalize' }).click();
   await finalize(page);
   await expect(lastCall(page, 'finalize')).toHaveAttribute('data-outcome', 'accepted');
   await expect(page.locator('.rh')).toHaveAttribute('data-finalized', 'you');
+  // Once yours has finalized, his shares open nothing: the note says so now.
+  await expect(note).toContainText('your own recovery has since retired the commitment it was after. His approvals, and the shares he was sent, are worth nothing now.');
+  await expect(page.locator('.person[data-persona="caller"] .tag')).toHaveText('not you');
 });
 
 test('a caller one approval short: the contract refuses him before any secret, and your recovery goes on', async ({ page }) => {
@@ -287,12 +297,79 @@ test('each guardian is dealt a kit in words, and the veto card is words too', as
   await expect(page.locator('#rh-window a[href="/live#watch"]')).toBeVisible();
 });
 
+// The 72 hours' link to the watch on /live lands on the watch, by pointer and by keyboard, with motion
+// or without: the window goes to the top first, and /live draws after the browser's own jump, so the
+// app scrolls to the address's #target once the page is ready (App.jsx).
+for (const motion of ['no-preference', 'reduce']) {
+  test(`the link to the watch on /live lands on it, by click and by Enter (motion: ${motion})`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: motion });
+    // Preprod's indexer out of reach: the watch is drawn all the same, and the run needs no network
+    await page.route('https://indexer.preprod.midnight.network/**', (route) => route.abort('connectionrefused'));
+    await page.routeWebSocket(/^wss:\/\/indexer\.preprod\.midnight\.network\//, (ws) => ws.close());
+    for (const how of ['click', 'Enter']) {
+      await openRehearse(page);
+      await upToTheRequests(page);
+      await answer(page, 0, 'phone', true);
+      await answer(page, 1, 'phone', true);
+      await answer(page, 2, 'phone', false);
+      await page.getByRole('button', { name: 'Continue to the 72 hours' }).click();
+      const link = page.locator('#rh-window a[href="/live#watch"]');
+      if (how === 'click') await link.click();
+      else { await link.focus(); await page.keyboard.press('Enter'); }
+      await expect(page).toHaveURL(/\/live#watch$/);
+      const watch = page.locator('#watch');
+      await expect(watch).toBeInViewport();
+      // its top clear of the sticky header, near the top of the window, not thousands of pixels down
+      await expect.poll(() => watch.evaluate((e) => Math.round(e.getBoundingClientRect().top)), { message: how }).toBeLessThan(200);
+      expect(await watch.evaluate((e) => e.getBoundingClientRect().top >= document.querySelector('header.site').getBoundingClientRect().bottom - 1)).toBe(true);
+      if (how === 'Enter') await expect(watch).toBeFocused();
+    }
+  });
+}
+
 test('if the contract cannot load, the page says so and offers a reload', async ({ page }) => {
   await page.route(/\/assets\/engine-[^/]*\.js$/, (route) => route.abort());
   await page.goto('/rehearse');
   await expect(page.getByRole('alert')).toContainText('The compiled contract did not load');
   await expect(page.getByRole('button', { name: 'reload the page' })).toBeVisible();
   await expect(page.locator('.rehearse')).not.toHaveAttribute('data-ready', 'true');
+  // not a loading line: the page counts as drawn (App.jsx), so a route change is not held on it
+  await expect(page.locator('main .loading')).toHaveCount(0);
+});
+
+// Every page that loads the compiled contract, the same way: never "Loading…" for ever, never an
+// unhandled rejection, whether the chunk or its WebAssembly fails.
+for (const [path, loading] of [['/demo', 'Loading the compiled contract'], ['/attacks', 'Building the four ledgers'], ['/kit', 'Loading the contract']]) {
+  for (const what of ['the chunk', 'its WebAssembly']) {
+    test(`${path}: if ${what} cannot load, the page says so and offers a reload`, async ({ page }) => {
+      const errors = [];
+      page.on('pageerror', (e) => errors.push(e.message));
+      await page.route(what === 'the chunk' ? /\/assets\/engine-[^/]*\.js$/ : /\.wasm$/, (route) => route.abort());
+      await page.goto(path);
+      await expect(page.getByRole('alert')).toContainText('The compiled contract did not load. Check your connection, then reload the page.');
+      await expect(page.getByRole('button', { name: 'reload the page' })).toBeVisible();
+      await expect(page.locator('main')).not.toContainText(loading);
+      await expect(page.locator('main .loading')).toHaveCount(0);
+      expect(errors).toEqual([]);
+    });
+  }
+}
+
+test('keyboard: a page whose contract did not load still takes the focus after a route change', async ({ page }) => {
+  await page.route(/\/assets\/engine-[^/]*\.js$/, (route) => route.abort());
+  await page.goto('/about');
+  const primary = page.getByRole('navigation', { name: 'Primary' });
+  // /demo draws no h1 until the contract is in: the line that says it did not load takes the focus
+  await primary.getByRole('link', { name: 'The recovery' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/demo$/);
+  await expect(page.locator('main .load-failed')).toBeFocused();
+  // /attacks has its h1 above the line
+  await primary.getByRole('link', { name: 'Attack it' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/attacks$/);
+  await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+  await expect(page.getByRole('alert')).toContainText('The compiled contract did not load');
 });
 
 test('keyboard: every step is done from the keyboard, and focus follows what each one did', async ({ page, browserName }) => {
@@ -398,6 +475,10 @@ test('/rehearse: no overclaiming words, no serious accessibility issue, no endle
   await page.getByRole('button', { name: 'Continue to the 72 hours' }).click();
   await page.locator('#rh-rec-caller').getByRole('button', { name: /^Veto/ }).click();
   await skip(page);
+  // one share reached him, fewer than the two that rebuild your secret: nothing alone, yet not nothing
+  await expect(page.locator('#rh-window .rh-calls > li[data-tag="caller"][data-circuit="finalizeRecovery"] .rh-why'))
+    .toContainText('The share he was sent reveals nothing about your secret on its own, but it counts toward the 2 that rebuild it until your own recovery finalizes and retires it.');
+  await expect(page.locator('.person[data-persona="caller"] .tag')).toHaveText('not you');
   await page.getByRole('button', { name: 'Continue to finalize' }).click();
   await finalize(page);
   await page.getByRole('button', { name: 'See what the public record saw' }).click();

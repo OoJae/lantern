@@ -112,12 +112,15 @@ em, i, cite { font-family: var(--font-display); font-style: italic; }
 /* Waiting, in one voice: the line index.html shows until the app mounts (.boot, so a slow connection
    never sees a blank page), and a page's or a panel's own "Loading…" (.loading), all in Fraunces
    italic, Ash. */
-.loading, .boot {
+.loading, .boot, .load-failed {
   font-family: var(--font-display); font-style: italic; font-weight: 360;
   font-size: var(--step-1); line-height: var(--leading-1); letter-spacing: var(--tracking-1);
   color: var(--muted);
 }
-.loading { margin: 0; padding: var(--space-6) 0; }
+/* The same line when the contract did not load (components/LoadFailed.jsx): not .loading, so the page
+   counts as ready (App.jsx), in ink, since it asks something of the reader. */
+.loading, .load-failed { margin: 0; padding: var(--space-6) 0; }
+.load-failed.warn { color: var(--ink); }
 .boot { margin: 0; padding: 48px var(--margin); }
 
 /* ---- the header ---------------------------------------------------------------------------------
@@ -192,6 +195,11 @@ header.site nav { display: flex; flex-wrap: wrap; margin-inline-end: -12px; }
   border-radius: 1px; background: var(--hanji);
   view-transition-name: nav-wick;
 }
+/* The nav's fourth item (On Preprod) only where the four keep to one row: from 640px. Below, the
+   footer and the landing lead there. */
+@media (max-width: 639.98px) {
+  .nav.nav-wide { display: none; }
+}
 @media (max-width: 479.98px) {
   header.site nav { margin-inline-end: -8px; }
   .nav { padding: 0 8px; font-stretch: 80%; }
@@ -212,7 +220,7 @@ footer.site p { margin: 0; }
 .footer-lines { grid-column: 1 / -1; display: grid; gap: var(--space-2); }
 /* Licence and toolchain: one line of mono, each name kept whole. */
 .footer-lines .colophon { font-family: var(--font-mono); font-size: var(--step--2); letter-spacing: 0.01em; }
-.colophon span, .footer-lines .nowrap { white-space: nowrap; }
+.colophon span, .colophon a, .footer-lines .nowrap { white-space: nowrap; }
 .footer-lines .fiction { margin-top: var(--space-3); font-family: var(--font-display); font-style: italic; font-size: var(--step-0); line-height: var(--leading-1); }
 @media (min-width: 640px) {
   .footer-lockup { grid-column: 1 / span 3; }
@@ -576,14 +584,17 @@ p.upcoming { padding-block: var(--space-4); }
 .clock-arc .arc-fill { stroke: var(--ink); }
 .clock-arc .arc-gaps { stroke: var(--surface); }
 /* The time stays on one line: in a narrow side column its size comes down to fit (20 characters of
-   Fragment Mono are 12.4em), rather than the date breaking at a hyphen. */
+   Fragment Mono are 12.4em), rather than the date breaking at a hyphen. Where it still cannot fit (a
+   reader's wider letter and word spacing, WCAG 1.4.12) it breaks at its one space, the date over the
+   time, each half whole (ClockTime.jsx): the mask the roll needs never cuts a character off. */
 .panel.clock { container-type: inline-size; }
 .clock-digits { position: relative; min-width: 0; overflow: clip; }
 .clock .time, .clock .time-was {
   margin: 0; font-family: var(--font-mono); line-height: var(--leading-2);
   font-size: min(var(--step-2), (100cqw - 72px - var(--space-4)) / 12.5);
-  font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap;
+  font-variant-numeric: tabular-nums; color: var(--ink); white-space: normal;
 }
+.clock .time .nb, .clock .time-was .nb { white-space: nowrap; }
 /* The time that was: shown only while it rolls away (with reduced motion there is no roll). */
 .clock .time-was { position: absolute; left: 0; top: 0; width: 100%; display: none; }
 
@@ -1261,4 +1272,23 @@ p.upcoming { padding-block: var(--space-4); }
     transform-origin: 50% 50%;
     animation: stamp-seal var(--dur-stamp) linear var(--dur-route) backwards;
   }
+}
+
+/* ---- forced colours (Windows contrast themes) ---------------------------------------------------------
+   Forced colours drop backgrounds, box shadows and gradients, and every "this one is current" state
+   here is drawn with one of them; each is redrawn in the system's own colours. Highlight fills need
+   forced-color-adjust: none (else a Canvas backplate hides HighlightText), which lets the author's
+   Ember fill and focus ring through too, so those are redrawn as well. */
+@media (forced-colors: active) {
+  .beats button.beat.current,
+  .beats button.beat.current:hover {
+    forced-color-adjust: none; background: Highlight; border-color: Highlight; color: HighlightText;
+  }
+  .beats .beat.current .num { background: transparent; border-color: HighlightText; color: HighlightText; box-shadow: none; }
+  .beats button.beat.current:focus-visible { outline-color: CanvasText; }
+  .nav .wick { background-color: CanvasText; }
+  /* The lockup's colours are presentation attributes, which forced colours leave beige on any theme:
+     it follows the link's colour instead (the flame keeps its own). */
+  :is(.brand, .footer-lockup) svg :is(.lm-cap, .lm-join, .lm-foot, .lockup-word, .lm-hook rect) { fill: currentColor; }
+  :is(.brand, .footer-lockup) svg :is(.lm-body, .lm-hook circle) { stroke: currentColor; }
 }
