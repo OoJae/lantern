@@ -512,18 +512,35 @@ describe('F5: both shared trees hold 2^32 leaves', () => {
 // Regression: a claimed time near 2^64 is a checked cast failure, never a wrap.
 // ---------------------------------------------------------------------------
 describe('regression: claimedNow near 2^64', () => {
-  it('an open and a veto claiming 2^64 - 1 are refused, and change nothing', () => {
+  // The compiler's checked-cast refusal, without its source position. A wrapping
+  // cast would still be refused, by blockTimeGte ("claimed time is in the
+  // future"), so a bare toThrow() could not tell a checked cast from a wrap.
+  const CAST_OVERFLOW = /cast from Field or Uint value to smaller Uint value failed/;
+  const MAX64 = 2n ** 64n - 1n;
+
+  it('an open and a veto claiming 2^64 - 1 are refused by the checked cast, and change nothing', () => {
     const { sim, id, guardians } = world();
     const rid = openAs(sim, guardians[0], id, EPH_A);
-    sim.ps.claimedNow = 2n ** 64n - 1n;
-    expect(() => sim.call('vetoRecovery', rid, NO_RESERVATION)).toThrow();
+    sim.ps.claimedNow = MAX64;
+    expect(() => sim.call('vetoRecovery', rid, NO_RESERVATION)).toThrow(CAST_OVERFLOW);
     expect(sim.ledger.killed.member(rid)).toBe(false);
     expect(sim.ledger.vetoCounts.lookup(id).read()).toBe(0n);
     sim.ps.claimedNow = undefined;
     sim.call('vetoRecovery', rid, NO_RESERVATION);
     sim.setTime(cooldownUntil(sim, id));
-    sim.ps.claimedNow = 2n ** 64n - 1n;
-    expect(() => openAs(sim, guardians[1], id, EPH_B)).toThrow();
+    sim.ps.claimedNow = MAX64;
+    expect(() => openAs(sim, guardians[1], id, EPH_B)).toThrow(CAST_OVERFLOW);
     expect(sim.ledger.recoveries.member(P.recoveryIdOf(id, EPH_B))).toBe(false);
+  });
+
+  it('the veto\'s overflow edge is exact: lo + slack = 2^64 is the cast, one second less is the clock', () => {
+    const { sim, id, guardians } = world();
+    const rid = openAs(sim, guardians[0], id, EPH_A);
+    const slack = BigInt(VETO_SLACK);
+    sim.ps.claimedNow = MAX64 + 1n - slack;          // hi = 2^64: does not fit
+    expect(() => sim.call('vetoRecovery', rid, NO_RESERVATION)).toThrow(CAST_OVERFLOW);
+    sim.ps.claimedNow = MAX64 - slack;               // hi = 2^64 - 1: fits, and is refused as the future
+    expect(() => sim.call('vetoRecovery', rid, NO_RESERVATION)).toThrow(/claimed time is in the future/);
+    expect(sim.ledger.killed.member(rid)).toBe(false);
   });
 });
