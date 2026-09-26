@@ -1,0 +1,398 @@
+/* ---- /rehearse: "Rehearse a recovery" ----------------------------------------------------------------
+   Loaded with the page's own chunk. It draws in /demo's language and adds only what a stepper needs: the
+   rail of eight steps, the choice of guardians, each guardian's app, the recoveries you watch and the
+   finalize. The calls themselves are /demo's steps (styles.css), so the stamp, the clock's roll and the
+   lock are the same moments. Ember only where the secret's light is: the current step's disc, the
+   shares, and the lock. Every animation is finite and reveals by clip-path or transform; with reduced
+   motion there are none. */
+
+.rehearse .page-head { margin-bottom: var(--space-6); }
+/* Names are the visitor's, up to 24 characters with no space in them: they break anywhere rather than
+   push the page sideways. */
+.rh, .rh-side { overflow-wrap: anywhere; }
+.rehearse .page-head .lede { max-width: 40rem; }
+
+/* ---- the rail: eight discs on one cord --------------------------------------------------------------
+   A 1px Rib cord runs from the first disc's centre to the last's, drawn a length at a time by each step
+   (an empty element of its own, beside the label, so nothing is drawn behind any text). Done: a Hanji ring. The step you are
+   on: an Ember disc with a Night numeral, the rail's one light. Ahead: Ash, a Rib ring, not a link. Below
+   640px the names are read out, not shown: each step's own eyebrow names it. */
+.rh-rail { margin: 0 0 var(--space-8); }
+.rh-rail ol {
+  position: relative;
+  display: grid; grid-template-columns: repeat(8, minmax(0, 1fr));
+  margin: 0; padding: 0; list-style: none;
+}
+.rh-rail li { position: relative; min-width: 0; }
+.rh-cord { position: absolute; left: 15px; top: 15px; width: 100%; height: 0; border-top: 1px solid var(--rib); pointer-events: none; }
+.rh-rail a, .rh-rail .rh-todo {
+  display: inline-flex; flex-direction: column; align-items: flex-start; gap: var(--space-2);
+  min-height: 44px; max-width: 100%;
+  color: var(--muted); text-decoration: none;
+}
+.rh-num {
+  position: relative; display: grid; place-items: center; flex: none;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--rib); background: var(--ground);
+  font-family: var(--font-mono); font-size: 13px; line-height: 1; font-variant-numeric: tabular-nums;
+}
+.rh-label {
+  font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase;
+  white-space: nowrap;
+}
+.rh-rail .done a { color: var(--ink); }
+.rh-rail .done .rh-num { border-color: var(--ink); }
+.rh-rail .current a { color: var(--ink); }
+.rh-rail .current .rh-num {
+  background: var(--ember); border-color: var(--ember); color: var(--night);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--ember) 45%, transparent);
+}
+@media (hover: hover) {
+  .rh-rail a:hover .rh-label { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.22em; }
+}
+@media (max-width: 639.98px) {
+  .rh-rail .rh-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+/* ---- the layout: the steps take eight of twelve columns, the state the other four ------------------- */
+.rh-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-8) var(--gutter); }
+.rh-side { display: grid; gap: var(--space-3); align-content: start; min-width: 0; }
+@media (min-width: 640px) and (max-width: 1079.98px) {
+  .rh-side { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1080px) {
+  .rh-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: start; overflow-anchor: none; }
+  .rh-main { grid-column: 1 / span 8; min-width: 0; }
+  .rh-side {
+    grid-column: 9 / -1;
+    position: sticky; top: calc(var(--header-h, 60px) + 12px);
+    max-height: calc(100vh - var(--header-h, 60px) - 24px); overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin; scrollbar-color: var(--rib) transparent;
+    padding-bottom: var(--space-5);
+  }
+}
+
+/* ---- a step --------------------------------------------------------------------------------------------- */
+.rh-step { scroll-margin-top: calc(var(--header-h, 60px) + 12px); }
+.rh-step + .rh-step { margin-top: var(--space-8); padding-top: var(--space-8); border-top: 1px solid var(--rib); }
+.rh-step-head { margin: 0 0 var(--space-5); }
+.rh-step-head .eyebrow { margin-bottom: var(--space-2); }
+.rh-step-head h2 {
+  margin: 0 0 0.3em;
+  font-size: var(--step-3); font-weight: 360; line-height: var(--leading-3); letter-spacing: var(--tracking-3);
+  scroll-margin-top: calc(var(--header-h, 60px) + 12px);
+}
+.rh-step-head .caption { max-width: 40rem; }
+.rh-go { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-4) 0 0; }
+.rh-done {
+  margin: var(--space-5) 0 0; max-width: 44rem;
+  scroll-margin: calc(var(--header-h, 60px) + 12px) 0 var(--space-5);
+}
+.rh-done > p:last-child { margin-bottom: 0; }
+.rh-calls { margin-top: var(--space-5); }
+/* A step that ends on its calls ends on the next step's rule, not on a second one of its own. */
+.rh-step > .rh-calls:last-child { border-bottom: 0; }
+.rh-calls + .rh-lose { margin-top: var(--space-5); }
+.rh-calls .step { scroll-margin: calc(var(--header-h, 60px) + 12px) 0 var(--space-5); }
+.rh-why { margin: var(--space-3) 0 0; max-width: 42rem; font-size: var(--step--1); line-height: var(--leading--1); color: var(--ink); }
+.rh-sub {
+  margin: 0 0 var(--space-3);
+  font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase; color: var(--muted);
+}
+.rh-restart { margin: var(--space-8) 0 0; }
+/* Below 1080px, under the step you are on: where the shares are, what the record counts, and the way
+   down to the whole of it. */
+.rh-glance {
+  max-width: 44rem; margin: var(--space-6) 0 0; padding: 2px 0 2px var(--space-4);
+  border-left: 2px solid var(--rib); font-size: var(--step--1); line-height: var(--leading--1); color: var(--ink);
+}
+.rh-glance a { color: var(--muted); }
+
+/* ---- step 1: the choice --------------------------------------------------------------------------------- */
+.rh-names { border: 0; margin: 0 0 var(--space-5); padding: 0; min-width: 0; }
+.rh-names legend, .rh-threshold legend {
+  padding: 0;
+  font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase; color: var(--muted);
+}
+.rh-names ol { display: grid; gap: var(--space-2); max-width: 34rem; margin: var(--space-3) 0; padding: 0; list-style: none; }
+.rh-name-row {
+  display: grid; grid-template-columns: 6.5em minmax(0, 1fr) auto; align-items: center;
+  gap: var(--space-1) var(--space-3);
+}
+.rh-name-row label { font-size: var(--step--1); color: var(--muted); }
+.rh-name-row input {
+  min-width: 0; min-height: 44px; padding: 0 12px;
+  font: inherit; font-size: var(--step-0); color: var(--ink);
+  background: var(--surface); border: 1px solid var(--edge); border-radius: var(--radius-surface);
+}
+.rh-name-row input[aria-invalid="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.rh-name-row .rh-remove { justify-self: start; font-size: var(--step--1); min-height: 44px; }
+.rh-name-note { grid-column: 2 / -1; margin: 0; }
+@media (max-width: 419.98px) {
+  .rh-name-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .rh-name-row label { grid-column: 1 / -1; }
+  .rh-name-note { grid-column: 1 / -1; }
+}
+.rh-threshold legend { float: left; margin-right: var(--space-2); line-height: 32px; }
+.rh-rule { max-width: 40rem; margin: 0; }
+
+/* ---- step 2: the kits, each a light, and the veto card ---------------------------------------------------
+   One row a guardian: their light (the share), their name, the share's number and fingerprint. The row
+   opens on the kit in words, as /kit prints it. The veto card closes the list: a small solid card, the
+   one paper object, in Hanji. */
+.rh-dealt { display: grid; max-width: 36rem; margin: var(--space-3) 0 0; padding: 0; list-style: none; }
+.rh-dealt > li { border-top: 1px solid var(--rib); }
+.rh-kit-veto { max-width: 36rem; border-top: 1px solid var(--rib); border-bottom: 1px solid var(--rib); }
+.rh-kit > summary {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-3);
+  min-height: 44px; padding: 10px 0; box-sizing: border-box;
+  list-style: none; cursor: pointer; font-size: var(--step--1);
+}
+.rh-kit > summary::-webkit-details-marker { display: none; }
+.rh-kit summary .rh-dealt-name { flex: 1 1 7rem; min-width: 0; }
+/* The share's number and fingerprint keep to the right, and on a narrow phone take a line of their own. */
+.rh-kit-meta { display: inline-flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-end; gap: 2px var(--space-3); margin-left: auto; }
+.rh-kit summary .meta { margin: 0; }
+.rh-kit summary code { color: var(--ink); }
+.rh-light { flex: none; align-self: center; width: 5px; height: 5px; margin: 0 2.5px; border-radius: 50%; background: var(--ember); }
+.rh-card-mark { flex: none; align-self: center; width: 10px; height: 7px; border-radius: 1px; background: var(--ink); }
+.rh-dealt-name { font-weight: 560; overflow-wrap: anywhere; }
+/* "words", and a small caret that turns down when the kit is open. */
+.rh-kit-open {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--step--2); font-weight: 560; font-stretch: 80%; letter-spacing: var(--tracking--2);
+  text-transform: uppercase; color: var(--muted);
+}
+.rh-kit-open::after {
+  content: ""; width: 5px; height: 5px; margin-top: -2px;
+  border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg);
+}
+.rh-kit[open] > summary .rh-kit-open::after { margin-top: -4px; transform: rotate(45deg); }
+@media (hover: hover) {
+  .rh-kit > summary:hover .rh-kit-open { color: var(--ink); }
+}
+.rh-kit-words { padding: var(--space-2) 0 var(--space-5) calc(10px + var(--space-3)); }
+.rh-kit-label {
+  margin: 0;
+  font-family: var(--font-sans); font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase; color: var(--muted);
+}
+.rh-kit-section + .rh-kit-section { margin-top: var(--space-4); }
+/* The words as /kit draws them (kit/word-grid.css, which Sheets.jsx imports with them): here a size
+   down and closer set, to sit in a dealt kit's card under its label. */
+.rh .kit-grid { gap: 2px var(--space-4); margin: var(--space-2) 0 0; font-size: var(--step--1); color: var(--ink); }
+.rh-kit-check { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-3); margin: var(--space-4) 0 0; font-size: var(--step--1); }
+.rh-kit-words > .meta { max-width: 36rem; margin: var(--space-2) 0 0; }
+.rh-kits-note { max-width: 40rem; margin: var(--space-3) 0 0; }
+
+/* ---- step 3: the laptop goes dark ----------------------------------------------------------------------- */
+.rh-lose { display: flex; align-items: center; gap: var(--space-5); }
+.rh-lose .rh-done, .rh-lose .rh-go { margin-top: 0; }
+/* The lit lantern, and the dark one over it: once the laptop is lost, the dark one is drawn down like
+   a shade, the lit one giving way under the same edge. */
+.rh-picto { position: relative; flex: none; display: block; width: 96px; height: 96px; margin-left: -6px; }
+.rh-picto .rh-pictogram { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.rh-lose[data-lost="true"] .rh-lit { clip-path: inset(100% 0 0 0); }
+@media (max-width: 419.98px) {
+  .rh-picto { width: 72px; height: 72px; }
+  .rh-lose { gap: var(--space-4); }
+}
+
+/* ---- step 4: the phone's words -------------------------------------------------------------------------- */
+.rh-phone-words { padding: var(--space-5); background: var(--surface); border-radius: var(--radius-surface); }
+.rh-phone-words .eyebrow { margin-bottom: var(--space-3); }
+.rh-phone-words .meta { margin: var(--space-4) 0 0; max-width: 38rem; }
+@media (max-width: 419.98px) {
+  .rh-phone-words { padding: var(--space-4); }
+  .rh-phone-words .fp-lg { column-gap: var(--space-4); }
+}
+
+/* ---- step 5: the phishing call and each guardian's app -------------------------------------------------- */
+.rh-phish {
+  margin: 0 0 var(--space-5); padding: var(--space-4) var(--space-5) var(--space-5);
+  border: 1px dashed var(--edge); border-radius: var(--radius-surface);
+}
+.rh-phish .eyebrow { margin-bottom: var(--space-1); }
+.rh-phish h3 { margin: 0 0 var(--space-2); }
+.rh-phish p { max-width: 42rem; }
+.rh-phish .rh-done { margin-top: 0; }
+.rh-phish .rh-go { margin-top: var(--space-3); }
+.rh-guardians {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: var(--space-3);
+  margin: 0; padding: 0; list-style: none;
+}
+.rh-guardian { min-width: 0; padding: var(--space-5); background: var(--surface); border-radius: var(--radius-surface); }
+.rh-guardian h3 {
+  margin: 0 0 2px;
+  font-family: var(--font-display); font-size: var(--step-2); font-weight: 400; line-height: var(--leading-2);
+  overflow-wrap: anywhere;
+}
+.rh-guardian > .meta { margin: 0; }
+.rh-heard { display: grid; gap: var(--space-3); margin: var(--space-4) 0; }
+.rh-heard > div { min-width: 0; }
+.rh-heard dt { font-size: var(--step--2); line-height: var(--leading--2); color: var(--muted); }
+.rh-heard dd { margin: 4px 0 0; }
+.rh-requests { margin: 0; padding: 0; list-style: none; }
+.rh-request { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--rib); }
+.rh-request-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px;
+  margin: 0 0 var(--space-2); font-size: var(--step--1); font-weight: 560;
+}
+.rh-request-head code { font-weight: 400; color: var(--muted); }
+.rh-answer { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0 0; }
+.rh-answer button { flex: 1 1 8rem; }
+.rh-answered { margin: var(--space-3) 0 0; font-size: var(--step--1); scroll-margin: calc(var(--header-h, 60px) + 12px) 0 var(--space-5); }
+.rh-verdict {
+  display: inline-block; padding: 0.05em 0.6em;
+  border: 1px solid var(--edge); border-radius: var(--radius-chip);
+  font-family: var(--font-mono); font-size: var(--step--2); line-height: 1.45;
+}
+.rh-verdict.approved { background: var(--ink); border-color: var(--ink); color: var(--ground); }
+.rh-answered > p { margin: 0; }
+/* The answer's own stamp, without the narration the card already gives. */
+.rh-answered .step.rh-inline { margin-top: var(--space-3); padding: 2px 0 2px 14px; border-top: 0; }
+.rh-answered .step.rh-inline::before { top: 2px; bottom: 2px; }
+.rh-answered .step.rh-inline .result { gap: var(--space-2); }
+.rh-answered .step.rh-inline :is(.meta, .rh-why) { margin-top: var(--space-2); }
+.rh-phish .rh-calls { margin-top: var(--space-4); }
+
+/* ---- step 6: the recoveries you watch ------------------------------------------------------------------- */
+.rh-watch { display: grid; gap: var(--space-3); margin: 0 0 var(--space-3); padding: 0; list-style: none; }
+.rh-rec {
+  min-width: 0; padding: var(--space-4) var(--space-5);
+  background: var(--surface); border-radius: 0 var(--radius-surface) var(--radius-surface) 0;
+  border-left: 2px solid var(--ink);
+  scroll-margin: calc(var(--header-h, 60px) + 12px) 0 var(--space-5);
+}
+.rh-rec[data-vetoed="true"] { border-left: 2px dashed var(--muted); }
+.rh-rec[data-vetoed="true"] .rh-request-head code { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--ink); }
+.rh-rec .rh-mine { margin: var(--space-3) 0 var(--space-1); font-size: var(--step--1); }
+.rh-rec .meta { margin: 0; }
+.rh-rec .rh-go { margin-top: var(--space-3); }
+.rh-step .rh-clock { max-width: 34rem; margin: var(--space-3) 0 0; }
+/* The clock's title is a label here, as every panel's h3 is: the step's own title is above it. */
+.rh-clock h3 { margin-top: 0; }
+.rh-watch-note { max-width: 42rem; margin: 0 0 var(--space-3); }
+.rh-card-check {
+  display: flex; align-items: baseline; gap: var(--space-3);
+  max-width: 42rem; margin: 0 0 var(--space-4); font-size: var(--step--1); line-height: var(--leading--1);
+}
+.rh-card-check .rh-card-mark { align-self: auto; transform: translateY(-1px); }
+
+/* ---- step 7: the finalize -------------------------------------------------------------------------------- */
+.rh-holds { display: flex; align-items: center; gap: var(--space-3); margin: 0 0 var(--space-4); max-width: 40rem; }
+.rh-lights { flex: none; align-self: center; width: 5px; height: 5px; border-radius: 50%; background: var(--ember); }
+.rh-lights.n0 { width: 7px; height: 7px; background: none; border: 1px dashed var(--edge); }
+.rh-lights.n2 { margin-right: 8px; box-shadow: 8px 0 0 var(--ember); }
+.rh-lights.n3 { margin-right: 16px; box-shadow: 8px 0 0 var(--ember), 16px 0 0 var(--ember); }
+.rh-lights.n4 { margin-right: 24px; box-shadow: 8px 0 0 var(--ember), 16px 0 0 var(--ember), 24px 0 0 var(--ember); }
+.rh-lights.n5 { margin-right: 32px; box-shadow: 8px 0 0 var(--ember), 16px 0 0 var(--ember), 24px 0 0 var(--ember), 32px 0 0 var(--ember); }
+/* Two whole sentences to choose between: one to a line, the legend above them. */
+.rh-from { display: grid; gap: 0; margin: 0 0 var(--space-1); }
+.rh-from legend {
+  float: none; margin: 0 0 var(--space-1);
+  font-size: var(--step--2); font-weight: 560; font-stretch: 80%;
+  line-height: var(--leading--2); letter-spacing: var(--tracking--2); text-transform: uppercase; color: var(--muted);
+}
+.rh-from label { min-height: 40px; }
+.rh-check { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 44px; font-size: var(--step--1); }
+.rh-check input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--hanji); }
+.rh-check:has(input:disabled) { color: var(--muted); }
+.rh-back {
+  display: flex; align-items: flex-start; gap: var(--space-4);
+  padding: var(--space-5); background: var(--surface); border-radius: var(--radius-surface);
+}
+.rh-back p { margin: 0; }
+.rh-back em { font-size: var(--step-1); }
+.rh-seal { flex: none; display: block; width: 64px; height: 64px; }
+@media (max-width: 479.98px) {
+  .rh-back { flex-direction: column; gap: var(--space-3); }
+  .rh-seal { width: 48px; height: 48px; }
+}
+
+/* ---- step 8: the public record ---------------------------------------------------------------------------- */
+.rh-record { display: grid; gap: var(--space-3); }
+.rh-record .panel h3:first-child { margin-top: 0; }
+.rh-record .values { margin-top: var(--space-2); }
+.rh-record .meta + .values { margin-top: var(--space-3); }
+.rh-record .panel .meta { max-width: 40rem; }
+.rh-recs li { align-items: baseline; }
+.rh-id-public {
+  flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 2px var(--space-4);
+  margin: 2px 0 0; font-size: var(--step--2); line-height: var(--leading--2); color: var(--muted);
+}
+.rh-id-public > div { display: flex; gap: 6px; min-width: 0; }
+.rh-id-public dd { margin: 0; min-width: 0; }
+.rh-record .values .rh-id-public code { font-size: var(--step--2); color: var(--muted); text-decoration: none; }
+/* A root or context named for the commitment it is: set apart from its label as a hash would be. */
+.rh-id-public .rh-named { color: var(--ink); }
+.rh-rec-words { flex-basis: 100%; }
+.rh-never-list { display: grid; gap: var(--space-2); margin: var(--space-3) 0 0; padding: 0; list-style: none; }
+.rh-never-list li { position: relative; padding-left: 1.4em; }
+/* Each an open seal: a ring with its gap at one o'clock, as a refusal's. */
+.rh-never-list li::before {
+  content: ""; position: absolute; left: 0; top: 0.5em; width: 0.6em; height: 0.6em;
+  border: 1.5px solid var(--muted); border-right-color: transparent; border-radius: 50%; transform: rotate(-45deg);
+}
+/* The calls: those the record holds, then, apart and in the refused dashed rule, those it never saw.
+   Each keeps its number in the order you made it. */
+.rh-transcript { margin-top: var(--space-6); }
+.rh-transcript > .rh-sub { margin-top: 0; }
+.rh-transcript > .meta { max-width: 40rem; margin: 0; }
+.rh-transcript-h {
+  margin: var(--space-5) 0 0;
+  font-size: var(--step--1); font-weight: 560; line-height: var(--leading--1); color: var(--ink);
+}
+.rh-transcript-list { margin: var(--space-2) 0 0; padding: 0; list-style: none; }
+.rh-transcript-list li {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+  padding: 10px 0; border-top: 1px solid var(--rib);
+}
+.rh-transcript-n { min-width: 2ch; font-family: var(--font-mono); font-size: var(--step--2); color: var(--muted); font-variant-numeric: tabular-nums; }
+.rh-transcript-change { font-family: var(--font-mono); font-size: var(--step--2); line-height: 1.45; color: var(--muted); }
+.rh-tried { margin-top: var(--space-6); padding-left: var(--space-4); border-left: 2px dashed var(--muted); }
+.rh-tried .rh-transcript-h { margin-top: 0; color: var(--muted); }
+.rh-tried .rh-transcript-list li:first-child { border-top: 0; }
+.rh-tried .circuit { color: var(--muted); }
+.rh-again { margin-top: var(--space-6); }
+
+
+/* ---- motion: one thing at a time ----------------------------------------------------------------------
+   An action's calls stamp in (320ms, a batch 40ms apart); then what it did (the card under them, or
+   the laptop's shade and then its line); then, if the action took you on, the next step arrives: its
+   title rises and the rail's disc presses in, together. A step reached by "Continue" arrives at once.
+   The finalize runs longer: the stamp, the lock, and only then the card with the lit seal. */
+.rh-step { --rh-done-at: var(--dur-card); }
+.rh-step:is([data-step="choose"], [data-step="decide"]) { --rh-done-at: 0ms; }
+/* The skip's line waits for the clock to roll over (styles.css: from 240ms, for 480ms). */
+.rh-step[data-step="window"] { --rh-done-at: calc(var(--dur-stamp) + var(--dur-route)); }
+.rh-step[data-step="enrol"] { --rh-done-at: calc(var(--dur-card) + 5 * 40ms); }
+/* The laptop's shade is drawn first (from 320ms, for 640ms); only then its line. */
+.rh-step[data-step="lose"] { --rh-done-at: calc(var(--dur-card) + var(--dur-reveal)); }
+:is(.rh-step, .rh-rail li).late { --rh-arrive-at: calc(var(--dur-card) * 2); }
+:is(.rh-step, .rh-rail li).late:is([data-step="enrol"], [data-step="window"]) { --rh-arrive-at: var(--dur-card); }
+:is(.rh-step, .rh-rail li).late[data-step="lose"] { --rh-arrive-at: calc(var(--dur-card) * 2 + 5 * 40ms); }
+:is(.rh-step, .rh-rail li).late[data-step="open"] { --rh-arrive-at: calc(var(--dur-card) * 2 + var(--dur-reveal)); }
+@media (prefers-reduced-motion: no-preference) {
+  .rh-step-head h2 { animation: head-rise var(--dur-reveal) var(--ease-settle) var(--rh-arrive-at, 0ms) backwards; }
+  .rh-step-head .caption { animation: head-rise var(--dur-reveal) var(--ease-settle) calc(var(--rh-arrive-at, 0ms) + var(--stagger-line)) backwards; }
+  .rh-rail .current .rh-num { animation: rh-press var(--dur-stamp) linear var(--rh-arrive-at, 0ms) backwards; }
+  .rh-done, .rh-phone-words { animation: stamp-card var(--dur-card) var(--ease-settle) var(--rh-done-at) backwards; }
+  /* A card that holds its own stamps, or replaces the buttons that made it, reveals with them. */
+  .rh-answered, .rh-phish .rh-done { animation: stamp-card var(--dur-card) var(--ease-settle) backwards; }
+  .rh-lose[data-lost="true"] .rh-lit { animation: rh-shade-out var(--dur-reveal) var(--ease-snuff) var(--dur-card) backwards; }
+  .rh-lose[data-lost="true"] .rh-unlit { animation: rh-shade-in var(--dur-reveal) var(--ease-snuff) var(--dur-card) backwards; }
+  .rh-back { animation-delay: calc(440ms + var(--dur-lock)); }
+  .rh-seal { transform-origin: 50% 50%; animation: rh-press var(--dur-lock) linear calc(440ms + var(--dur-lock) + var(--dur-card)) backwards; }
+}
+@keyframes rh-press {
+  0% { transform: scale(1.25) rotate(-8deg); }
+  1% { transform: scale(1.25) rotate(-8deg); animation-timing-function: var(--ease-ignite); }
+  100% { transform: none; }
+}
+@keyframes rh-shade-in { from { clip-path: inset(0 0 100% 0); } }
+@keyframes rh-shade-out { from { clip-path: inset(0); } }
