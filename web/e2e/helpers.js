@@ -4,6 +4,30 @@ import { expect } from '@playwright/test';
 // Words the site must never use about itself: it runs no chain and makes no proofs.
 export const BANNED = /\bon-chain\b|\bsubmitted\b|verified proof|\blive\b/i;
 
+// A device's six fingerprint words and a kit's words and check words are drawn at random from the
+// BIP-39 list, which has "live" in it: data, not claims.
+export const WORD_LISTS = '.fp-words, .kit-grid, .kit-cws';
+
+/**
+ * The page's own words, as a reader meets them, for the scan against BANNED: every text node that is
+ * drawn (screen-reader text included; closed details, hidden tabs and display: none left out, as
+ * innerText leaves them), except the random word lists above. Joined by single spaces, so a phrase
+ * split across elements is still one phrase.
+ */
+export function pageCopy(page) {
+  return page.evaluate((skip) => {
+    const out = [];
+    const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      const el = n.parentElement;
+      if (!el || el.closest(`${skip}, script, style, template`)) continue;
+      if (!el.checkVisibility()) continue;
+      out.push(n.data);
+    }
+    return out.join(' ').replace(/\s+/g, ' ').trim();
+  }, WORD_LISTS);
+}
+
 export async function openDemo(page) {
   await page.goto('/demo');
   await expect(page.locator('[data-ready="true"]')).toBeVisible();

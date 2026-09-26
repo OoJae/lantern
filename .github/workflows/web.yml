@@ -25,6 +25,8 @@ jobs:
       # web/ resolves the runtime and the compiled contracts from the repo root.
       - run: npm ci --no-audit --no-fund
       - run: npm ci --prefix web --no-audit --no-fund
+      # The README's test counts, browser tests included (the test workflow has no web/ to list them).
+      - run: npm run readme:check
       - run: npm run build --prefix web
       # Reproducible: a second build from the same commit must hash the same.
       - name: Assert the build is reproducible

@@ -213,6 +213,33 @@ current head.
 published bundle hash (`web/scripts/check-bundle.mjs` prints one), and the ability
 to run the client locally.
 
+**The site's other pages, scored the same way.**
+- **`/kit` and `/rehearse` are B1 instances too.** They generate secrets in the page,
+  from Web Crypto, and deal them in the page. Their kits are practice kits, for no
+  enrolled identity; a real kit page would be exactly the front-end this section
+  distrusts. Browser tests check that neither page makes a request once it has loaded
+  (`web/e2e/kit.spec.js`, `web/e2e/rehearse.spec.js`), but a malicious build of either
+  would not keep that promise.
+- **The Content-Security-Policy allows one outside host.** `connect-src` names Preprod's
+  public indexer (`https://` and `wss://indexer.preprod.midnight.network`) for `/live`.
+  `web/vercel.json` sets one policy for every route, so the allowance holds on every
+  page. The pages that promise no requests are held to it by browser tests, not by the
+  policy.
+- **`/live`'s check trusts the indexer it reads.** It looks up each recorded
+  transaction, and each contract's state and verifier keys, through Preprod's public
+  indexer, so a dishonest indexer could make it pass. `LANTERN_NETWORK=preprod npm run
+  devnet:verify` reads the chain through the same public indexer and node; what it adds
+  is a fresh compile of the contracts, not a second view of the chain. Only your own
+  node and indexer remove that trust.
+- **"Watch an identity" keeps what you watch.** The commitment stays in the browser's
+  `localStorage`, and in the page's address after the `#` (`/live#id=…`), a part a
+  browser never sends to the site's host. A commitment is public already (every
+  enrolment writes it), but "this browser watches this identity" is not. The page never
+  sends the commitment to the indexer either: it reads each contract's whole public state
+  and looks for the commitment locally. A browser test checks every request and stream
+  message for it. The terminal watcher, `npm run watch`, reads the same way and sends its
+  alerts only to standard output and to a webhook you name.
+
 ### 4.2b B2 — the fee sponsor
 
 A funded wallet that pays DUST for someone else's transaction. The recovering phone
@@ -376,7 +403,11 @@ identity secret is exactly what a lost device leaks.
 `hostGatedAction` and `proveHeadOwnership` accept the secret, because until then it
 *is* the current owner's secret. That window is the honest cost of any recovery
 scheme, and it closes the moment `finalizeRecovery` retires the commitment. Open
-recoveries (anyone can, §5).
+recoveries (anyone can, §5). v2 designs an emergency lock that lets the veto card
+close the window sooner at every DApp that reads Lantern's ledger; an independently
+deployed DApp would also need a snapshot that leaves locked identities out, which is
+not built ([`docs/v2.md` §2](docs/v2.md#2-an-emergency-lock-with-the-veto-card)). The
+shipped contract has no lock.
 
 **Cannot.**
 - **Mint guardians.** `addGuardian` requires the veto secret. Without that, the
@@ -461,6 +492,12 @@ consequence.
    per-identity open counter, no escalating delay. One fee buys one more recovery
    the owner must veto within 72 hours; an owner offline for three days loses.
    Designed, not shipped — this is the largest gap between this and a production system.
+   The design is [`docs/v2.md` §1](docs/v2.md#1-rate-limited-opens): only a current
+   guardian can open, and each current guardian at most once per identity per quarter;
+   one recovery per identity at a time; and after each veto a cooldown that doubles from
+   1 day to at most 32, except for the owner's next device, which a veto can reserve.
+   v2 is not part of this submission; the shipped contract on Preprod is frozen and
+   unchanged.
 
 5. **A reconstructed secret cannot be zeroised.** `reconstruct()` returns a
    JavaScript `BigInt`, which is immutable. The secret stays in the recovering
@@ -514,7 +551,22 @@ consequence.
 12. **The trees are global and finite.** `guardians` and `lineage` are depth-20:
    1,048,576 leaves each, shared by every identity, and enrolment is
    permissionless. Exhausting one costs one transaction per leaf. The canonical
-   host snapshot is depth-20 too, so it holds at most that many live owners.
+   host snapshot is depth-20 too, so it holds at most that many current owners.
+   Once `lineage` is full, no enrolment and no `finalizeRecovery` can succeed, because
+   each inserts a lineage leaf; once `guardians` is full, no one can add a guardian.
+   About a million paid transactions would do either. The shipped contract is frozen,
+   so this stays. v2 makes both trees 32 levels deep, at 372 rows per membership proof
+   ([`docs/v2.md`](docs/v2.md#at-a-glance)).
+
+13. **A pending enrolment or rotation can be blocked, though nothing is taken.** Every
+   guardian context must be unused (`usedGuardianCtx`), and the caller chooses it: an
+   enrolment's context is its own `idCommit`, a rotation's is its `newCtx` argument.
+   Anyone who sees the transaction before it is included can enrol a throwaway
+   identity and rotate it to that context first. The owner's transaction then fails
+   with "context already used" and must be sent again with a new context or, for an
+   enrolment, a new salt. The attacker can repeat this for as long as they pay a
+   rotation's fee each time. v2 derives the context from the identity root, so no other
+   root can produce it.
 
 ---
 
@@ -566,7 +618,12 @@ shares for the new identity secret and rotate the guardian set.
 
 **Guardians.** Before approving, confirm out of band that the ephemeral public key
 belongs to the person asking: your approval can only ever be redeemed by the holder
-of that key's secret. Your approval writes a permanent public nullifier, adds one to
+of that key's secret. Compare it as its six fingerprint words (`fingerprintWords` in
+`src/words.js`: 66 bits, from the BIP-39 English word list through `@scure/bip39`, MIT),
+not as the eight-character fingerprint the demo prints beside it: that is 32 bits, and
+someone opening a competing recovery could grind a key to match it in about 4×10⁹ tries.
+Hear the words in person, or on a call you placed to a number you already know, in a
+voice you know; never read your kit's words to anyone who calls you. Your approval writes a permanent public nullifier, adds one to
 the recovery's public count and discloses which historic guardian root you proved
 against. None of it names you, but the root's age and the timing after the
 `openRecovery` narrow who you could be (§5).
@@ -589,7 +646,8 @@ build-to-seal time, and only after reading §4.4.
   epoch that cast may abort. We have not tested it and do not claim it.
 - Guardian contexts should be sampled randomly. A *predictable* context can be
   burned by an adversary through one `rotateGuardianSet` on an identity they
-  control, because contexts are globally unique.
+  control, because contexts are globally unique; a random one can be burned too, by
+  anyone who sees the pending transaction (§6.13).
 - The committee size is fixed at three by the constructor's signature.
 - The full story has run on a single-node local chain (`deployments/local-devnet.json`)
   and on Preprod, a public network with real latency (`deployments/preprod.json`), both
@@ -601,10 +659,21 @@ build-to-seal time, and only after reading §4.4.
   same); across machines and operating systems it is not proven.
 - Every role in the recorded runs, local and on Preprod, shares one local proof server,
   which sees each prover's witnesses. That is a demo convenience, not the deployment model (§4.2b).
+- The site's checks of Preprod, in the browser on `/live` and in the terminal, read the
+  chain through Preprod's public indexer and trust its answers. We have not run either
+  against a node and indexer of our own. The site's `connect-src` allows that indexer on
+  every route, and `/kit` and `/rehearse` generate secrets in the page (§4.2).
 
 **If this continued past the hackathon, we would fix, in order:** rate-limit
 `openRecovery` (§6.4); reconstruct in a disposable worker (§6.5); make the committee
 size a constructor parameter.
+
+The fixes that need a new contract are designed in [`docs/v2.md`](docs/v2.md):
+rate-limited opens (§6.4), an emergency lock that lets the veto card stop a stolen
+identity secret acting as the owner at every DApp that reads Lantern's ledger (§4.5), a
+recovery delay chosen at enrolment, and private guardian check-ins; it also answers
+§6.12 and §6.13. v2 is not part of this submission: the shipped contract on Preprod is
+frozen and unchanged, and nothing in this document claims v2's properties for it.
 
 ---
 

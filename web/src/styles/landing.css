@@ -556,6 +556,9 @@
   max-width: 34ch;
   margin: 0 0 var(--space-6);
 }
+/* Under the two buttons, the next two ways in (the real run on Preprod, a rehearsal), set as the
+   chapters' links are. */
+.after .chapter-links { margin-top: var(--space-4); }
 .attackers h2 > span { display: block; }
 .attackers .dek { color: var(--muted); }
 

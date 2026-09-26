@@ -7,7 +7,11 @@
 //
 // The circuit-size table (<!-- facts:circuits -->) needs the Compact toolchain, so
 // scripts/check-cost.mjs maintains and checks that one.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+//
+// The test counts are taken from the runners' own lists (no test runs): vitest's, and Playwright's
+// for the browser tests, which needs web/ installed. Where it is not (CI's clean-clone job), the
+// browser counts are skipped, and said to be; CI's web job checks them.
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
 const root = new URL('..', import.meta.url);
@@ -141,18 +145,93 @@ function preprodStory() {
   ].join('\n');
 }
 
-const BLOCKS = { chain, 'chain-circuits': chainCircuits, attack, ...(shipped ? { preprod } : {}), ...(story ? { 'preprod-story': preprodStory } : {}) };
+// ---- the test suites, as their runners list them -------------------------------------------------
+const run = (args, cwd) => execFileSync(process.execPath, args, { cwd: new URL(cwd, root), stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 << 20 }).toString();
+
+/** Each Vitest test file (by name, without .test.js) and how many tests it holds. */
+function unitTests() {
+  const byFile = new Map();
+  for (const t of JSON.parse(run(['node_modules/vitest/vitest.mjs', 'list', '--json'], '.'))) {
+    const f = t.file.split(/[\\/]/).pop().replace(/\.test\.js$/, '');
+    byFile.set(f, (byFile.get(f) ?? 0) + 1);
+  }
+  return byFile;
+}
+
+/** Each Playwright spec (by name, without .spec.js) and how many tests it holds in one project, or null
+ *  when web/ is not installed. Every project runs the same list (a test that skips itself is listed). */
+function browserTests() {
+  if (!existsSync(new URL('web/node_modules/@playwright/test/cli.js', root))) return null;
+  const list = JSON.parse(run(['node_modules/@playwright/test/cli.js', 'test', '--list', '--reporter=json'], 'web/'));
+  const byFile = new Map();
+  const walk = (suite) => {
+    for (const spec of suite.specs ?? []) {
+      for (const t of spec.tests) {
+        if (t.projectName !== list.config.projects[0].name) continue;
+        const f = spec.file.replace(/\.spec\.js$/, '');
+        byFile.set(f, (byFile.get(f) ?? 0) + 1);
+      }
+    }
+    for (const child of suite.suites ?? []) walk(child);
+  };
+  for (const suite of list.suites) walk(suite);
+  return byFile;
+}
+
+const sum = (m, keys = [...m.keys()]) => keys.reduce((n, k) => n + (m.get(k) ?? 0), 0);
+const WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+const inWords = (n) => WORDS[n] ?? String(n);
+const capital = (w) => w.charAt(0).toUpperCase() + w.slice(1);
+/** The sponsor's policy tests: node:test, dependency-free, one top-level test() each. */
+const nodeTests = () => readdirSync(new URL('devnet/test/', root)).filter((f) => f.endsWith('.test.mjs'))
+  .reduce((n, f) => n + (readFileSync(new URL(`devnet/test/${f}`, root), 'utf8').match(/^test\(/gm) ?? []).length, 0);
+
+const UNIT = unitTests();
+const BROWSER = browserTests();
+const unitTotal = sum(UNIT);
+const browserTotal = BROWSER && sum(BROWSER);
+
+function tests() {
+  if (!BROWSER) return null;
+  const files = [...UNIT].sort(([a, x], [b, y]) => y - x || a.localeCompare(b)).map(([f, n]) => `${f} ${n}`).join(', ');
+  return `**Tests.** ${unitTotal} Vitest tests in ${UNIT.size} files: ${files}. ${capital(inWords(nodeTests()))} node:test tests of the sponsor's policy. ${browserTotal} Playwright tests, ${inWords(BROWSER.get('break') ?? 0)} of them for the "Try to break it" panel and ${sum(BROWSER, ['live', 'rehearse', 'kit'])} for \`/live\`, \`/rehearse\` and \`/kit\`, run in CI in Chromium at desktop size and as an emulated Pixel 7, and before release in WebKit, as an emulated iPhone 15, and in Firefox.`;
+}
+
+// The same counts where the prose states them: each phrase must appear, and every number in it must
+// be the count (--write rewrites them).
+const COUNTS = [
+  ['unit tests, For reviewers', /all (\d+) unit tests pass/g, unitTotal],
+  ['unit tests, the Quality row', /(\d+) unit tests in about ten seconds/g, unitTotal],
+  ['unit tests, Quickstart', /npm test +# (\d+) tests in about ten seconds/g, unitTotal],
+  ['browser tests, the Quality row', /(\d+) browser tests in Chromium, WebKit and Firefox/g, browserTotal],
+  ['browser tests, Quickstart', /# the (\d+) browser tests in Chromium/g, browserTotal],
+  ['browser tests, Quickstart (cross)', /# the same (\d+) in WebKit/g, browserTotal],
+];
+
+const BLOCKS = { chain, 'chain-circuits': chainCircuits, attack, ...(shipped ? { preprod } : {}), ...(story ? { 'preprod-story': preprodStory } : {}), tests };
 
 const file = new URL('README.md', root);
 let readme = readFileSync(file, 'utf8');
 const stale = [];
+const skipped = [];
 for (const [name, make] of Object.entries(BLOCKS)) {
   const re = new RegExp(`(<!-- facts:${name}:start -->\\n)([\\s\\S]*?)(\\n<!-- facts:${name}:end -->)`);
   const m = readme.match(re);
   if (!m) { stale.push(`${name}: block missing`); continue; }
   const body = make();
+  if (body === null) { skipped.push(name); continue; }
   if (m[2] !== body) { stale.push(name); readme = readme.replace(re, `$1${body}$3`); }
 }
+for (const [what, re, count] of COUNTS) {
+  if (count === null) { skipped.push(what); continue; }
+  const found = [...readme.matchAll(re)];
+  if (!found.length) { stale.push(`${what}: phrase missing`); continue; }
+  if (found.some((m) => Number(m[1]) !== count)) {
+    stale.push(`${what} (${found.map((m) => m[1]).join(', ')}, not ${count})`);
+    readme = readme.replace(re, (m, n) => m.replace(n, String(count)));
+  }
+}
+if (skipped.length) console.log(`readme-facts: skipped ${skipped.join(', ')}: web/ is not installed (npm run web:install)`);
 if (process.argv.includes('--write')) {
   writeFileSync(file, readme);
   console.log(stale.length ? `readme-facts: rewrote ${stale.join(', ')}` : 'readme-facts: already current');
@@ -160,5 +239,5 @@ if (process.argv.includes('--write')) {
   console.error(`readme-facts: README.md is out of date with the evidence: ${stale.join(', ')}. Run: node scripts/readme-facts.mjs --write`);
   process.exit(1);
 } else {
-  console.log(`readme-facts: all ${Object.keys(BLOCKS).length} generated blocks match their sources`);
+  console.log(`readme-facts: all ${Object.keys(BLOCKS).length - skipped.filter((x) => x in BLOCKS).length} generated blocks and ${COUNTS.length - skipped.filter((x) => !(x in BLOCKS)).length} stated test counts match their sources`);
 }

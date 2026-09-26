@@ -1,5 +1,7 @@
 # Lantern
 
+English · [한국어](README.ko.md)
+
 **Lantern lets hidden guardians restore a lost Midnight identity secret, and proves it is the right one.**
 
 This project is built on the Midnight Network.
@@ -11,10 +13,10 @@ This project is built on the Midnight Network.
 
 | | |
 |---|---|
-| **Try it, no install** | [lantern-midnight.vercel.app/demo](https://lantern-midnight.vercel.app/demo): the recovery, run by the compiled contract in your browser, then [try to break it yourself](https://lantern-midnight.vercel.app/demo#break) · [/attacks](https://lantern-midnight.vercel.app/attacks): try to find the guardians |
+| **Try it, no install** | [lantern-midnight.vercel.app/demo](https://lantern-midnight.vercel.app/demo): the recovery, run by the compiled contract in your browser, then [try to break it yourself](https://lantern-midnight.vercel.app/demo#break) · [/live](https://lantern-midnight.vercel.app/live): the shipped contract's recovery on Preprod, checked in your browser · [/rehearse](https://lantern-midnight.vercel.app/rehearse): a recovery with your own guardians · [/kit](https://lantern-midnight.vercel.app/kit): practice recovery kits, in words · [/attacks](https://lantern-midnight.vercel.app/attacks): try to find the guardians |
 | **Check it in five minutes** | [Quickstart](#quickstart) |
 | **Threat model** | [SECURITY.md](SECURITY.md) |
-| **On Midnight's public test network** | [the whole story](#the-whole-story), 74 steps with the recovery finalized, on [Lantern, with a 60-second timelock](https://preprod.midnightexplorer.com/contracts/bac79cd962f547ac070802a221f9f7260bffa4724e6180ef3c874eadabb85101) and [LanternHost](https://preprod.midnightexplorer.com/contracts/a53b489179903e1b40a8078b59649af9b113a4d9d7da0d8f293e97314b59b68d) · [the shipped contract](https://preprod.midnightexplorer.com/contracts/bfd4fa7780902551422b932e7acf8b61fc077dba21afb1be3df1090a25b352c9), its 72-hour recovery open · [check both yourself](#on-midnights-public-test-network) |
+| **On Midnight's public test network** | [the whole story](#the-whole-story), 74 steps with the recovery finalized, on [Lantern, with a 60-second timelock](https://preprod.midnightexplorer.com/contracts/bac79cd962f547ac070802a221f9f7260bffa4724e6180ef3c874eadabb85101) and [LanternHost](https://preprod.midnightexplorer.com/contracts/a53b489179903e1b40a8078b59649af9b113a4d9d7da0d8f293e97314b59b68d) · [the shipped contract](https://preprod.midnightexplorer.com/contracts/bfd4fa7780902551422b932e7acf8b61fc077dba21afb1be3df1090a25b352c9), its 72-hour recovery open · [check both yourself](#on-midnights-public-test-network), or [in your browser](https://lantern-midnight.vercel.app/live) |
 | **Chain records, local and on Preprod** | [`deployments/`](deployments/) · [`docs/spikes.md`](docs/spikes.md) |
 | **Prior art, posted upstream** | [a note on Passport's total-loss recovery, issue #20](https://github.com/midnightntwrk/passport/issues/20#issuecomment-5821240645) · [the note](docs/upstream/passport-c14-prior-art.md) |
 | **Brand** | [lantern-midnight.vercel.app/brand](https://lantern-midnight.vercel.app/brand) · [`brand/README.md`](brand/README.md) |
@@ -40,22 +42,48 @@ Lantern lets hidden guardians restore a lost Midnight identity secret, and prove
 
 ## For reviewers
 
-The official criteria and their weights, and where each is evidenced:
+What Lantern contributes to each judging criterion, the evidence, and one command or link to check it yourself. Commands run from a fresh clone after `npm ci`, unless the row says otherwise.
 
-| Criterion | Weight | Where to look |
-|---|---:|---|
-| Engineering & Implementation | 40% | [`contracts/src/lantern.compact`](contracts/src/lantern.compact) and [`host.compact`](contracts/src/host.compact); [How Lantern uses Midnight](#how-lantern-uses-midnight): the dual ledger, private state and each primitive by file; `npm run compile:check` |
-| Quality Assurance & Reliability | 15% | 210 tests in [`test/`](test/), including a leak scanner with a positive control and tests of the committed chain records; 97 browser tests, run in Chromium in CI and in WebKit and Firefox before release; CI on Node 20, 22 and 24; [21 defects found and fixed](#found-and-fixed-in-review) |
-| Product & Vision | 15% | [Who it is for](#who-it-is-for-and-why-now), [Roadmap](#roadmap), [Limitations](#limitations) |
-| User Experience & Design | 15% | [The hosted demo](https://lantern-midnight.vercel.app/demo): every accept and refusal comes from the compiled contract, and each contract call shows how the same step went in the local-chain run. Below the story, [try to break it](https://lantern-midnight.vercel.app/demo#break): pick an attack, such as flipping a byte of a share, and the contract refuses it in its own words. Deep links (`/demo?beat=7`), a phone layout and automated accessibility checks |
-| Communication | 10% | This README and [SECURITY.md](SECURITY.md) |
-| Business Development & Viability | 5% | [Who it is for, and why now](#who-it-is-for-and-why-now) |
+### The four review steps
+
+| The organisers' step | Do this | What you should see |
+|---|---|---|
+| 1. "Clone … and compile it" | `git clone https://github.com/OoJae/lantern && cd lantern && npm ci && npm test`, then, with compact 0.31.1 ([Quickstart](#quickstart)), `npm run compile:check` | all 267 unit tests pass in about ten seconds, with no toolchain and no Docker; then every contract recompiles from source and matches the committed modules byte for byte |
+| 2. The form's description matches the README | Read the form beside [In one minute](#in-one-minute), which it summarises | the same claims and the same numbers. Every chain, circuit and attack table in this README is generated from its source, and CI fails if one drifts (`npm run readme:check`, and `npm run cost:check` for the circuits) |
+| 3. "How clearly the project uses Midnight's features" | [How Lantern uses Midnight](#how-lantern-uses-midnight) | what is public and what stays private, field by field, and each Midnight primitive with the file that uses it and what it buys. [SECURITY.md §3](SECURITY.md#3-where-the-security-comes-from-midnight-primitives-by-file-and-circuit) argues each one |
+| 4. "Check that we can access and verify the demo" | Open [lantern-midnight.vercel.app/demo](https://lantern-midnight.vercel.app/demo). Then open [/live](https://lantern-midnight.vercel.app/live) and press **Check it against the chain**. For the full check against Preprod, follow [these three commands](#on-midnights-public-test-network) (Node 24, compact 0.31.1) | the recovery, run by the compiled contract in your browser with nothing to install. Then, from your browser, every recorded Preprod transaction at its recorded block, and each contract with its rules frozen and the verifier keys this repository commits. From the full check, which also compiles the contracts afresh: "The record matches the chain." |
+
+### Each criterion
+
+| Criterion | What Lantern contributes | Evidence | Check it |
+|---|---|---|---|
+| **Engineering & Implementation** · 40% | A recovery the circuit proves correct: `finalizeRecovery` accepts only a rebuilt secret that opens the enrolment commitment. Guardians stay hidden even while they approve, a veto card no guardian holds can cancel, and the recovering phone holds no wallet. Two Compact contracts with 17 circuits, each at k ≤ 14; the whole 74-step story ran with real proofs on a local chain and on Preprod | [`lantern.compact`](contracts/src/lantern.compact), [`host.compact`](contracts/src/host.compact); [How Lantern uses Midnight](#how-lantern-uses-midnight); [Measured](#measured); [the whole story on Preprod](#the-whole-story) | `npm run compile:check` |
+| **Quality Assurance & Reliability** · 15% | 267 unit tests in about ten seconds with no toolchain, among them a leak scanner with a positive control and tests of every committed chain record. 174 browser tests in Chromium, WebKit and Firefox, with accessibility checks on every page. `npm run attack` and `npm run story` exit non-zero on any unexpected outcome. We found 21 defects in our own review; each was reproduced first, and 20 have a regression test named after them | [`test/`](test/), [`web/e2e/`](web/e2e/), [CI on Node 20, 22 and 24](https://github.com/OoJae/lantern/actions), [Found and fixed in review](#found-and-fixed-in-review) | `npm test` |
+| **Product & Vision** · 15% | Recovery for anyone a private DApp knows only by a commitment. A DApp stores one value, the identity root, and keeps working across a loss without writing any recovery code. The owner-safety gaps our research found are answered in the product now (alerts, in the tab and from `npm run watch`; a rehearsal; practice kits in words) and designed for the contract in v2: rate-limited opens, an emergency lock, a delay chosen at enrolment and private guardian check-ins | [Who it is for](#who-it-is-for-and-why-now), [Roadmap](#roadmap), [Limitations](#limitations), [`docs/v2.md`](docs/v2.md) | [/live](https://lantern-midnight.vercel.app/live) → **Watch an identity** → **Use the demo identity** |
+| **User Experience & Design** · 15% | A reviewer can do a recovery, not only watch one: rehearse it with your own guardians, try to break it, and follow the real one on Preprod. Every accept and refusal comes from the compiled contract, in its own words. Deep links (`/demo?beat=7`), a phone layout, reduced motion respected, automated accessibility checks, and one brand across the site, the brand kit and the deck | [/demo](https://lantern-midnight.vercel.app/demo), [/demo#break](https://lantern-midnight.vercel.app/demo#break), [/rehearse](https://lantern-midnight.vercel.app/rehearse), [/attacks](https://lantern-midnight.vercel.app/attacks), [the brand guide](brand/README.md) | [lantern-midnight.vercel.app/rehearse](https://lantern-midnight.vercel.app/rehearse) |
+| **Communication** · 10% | Every chain, circuit and attack table in this README is generated from its source and checked in CI. [SECURITY.md](SECURITY.md) says what the circuit proves and what it does not, scores each adversary separately and lists all 21 defects. A summary in Korean, the v2 design, a note to Midnight's Passport team, and the deck's text with its sources | [SECURITY.md](SECURITY.md), [README.ko.md](README.ko.md), [`docs/v2.md`](docs/v2.md), [the Passport note](docs/upstream/passport-c14-prior-art.md), [the deck](#the-deck) | `npm run readme:check` |
+| **Business Development & Viability** · 5% | Integrators: Midnight Passport, as a recovery profile; wallets and identity apps; DApps that gate on an identity root; Korean services that must not publish who guards whom. Distribution: an SDK, to be packaged from the client code in `src/`, plus a hosted sponsor and watcher | [Who it is for, and why now](#who-it-is-for-and-why-now), [the Passport comment](https://github.com/midnightntwrk/passport/issues/20#issuecomment-5821240645), [the deck's business slide](docs/deck/slides.md#slide-12-who-integrates-it-and-the-ask) | `npm run attack`: 0 of 3 guardians named from public data |
+
+### Try it yourself
+
+- **[lantern-midnight.vercel.app/live](https://lantern-midnight.vercel.app/live)**, "On Preprod", read in your browser from Preprod's public indexer:
+  - **The shipped contract's recovery**: its approvals, and when it can finalize (2026-09-27 15:03 UTC), with a countdown until then and the finalize once it lands.
+  - **A timeline** of every call, with its block, time and circuit.
+  - **Check it against the chain**: in your browser, every transaction in [`preprod.json`](deployments/preprod.json) and [`preprod-shipped.json`](deployments/preprod-shipped.json) at its recorded block, and each contract with its rules frozen and the verifier keys this repository commits. The full checks, which also compile the contracts afresh, are `LANTERN_NETWORK=preprod npm run devnet:verify` for the whole story and `LANTERN_NETWORK=preprod node devnet/src/shipped.mjs verify` for the shipped contract.
+  - **Watch an identity**: paste an identity commitment to see every recovery opened for it and, while the tab is open, be told when a new one appears. The page never sends the identity to the indexer or to this site: it reads the contracts' public state and looks for it in your browser. With no tab open, `LANTERN_NETWORK=preprod npm run watch -- --id <commitment>` does the same from a terminal or a server, and `--webhook <url>` sends each alert on. Run from cron with `--once --state <file>`, it alerts only on what changed since its last run. It needs Node 24 and compact 0.31.1, set up as for the [full check](#on-midnights-public-test-network).
+- **[/rehearse](https://lantern-midnight.vercel.app/rehearse)**, in your browser rather than on the chain: choose three to five guardians and a threshold, deal their kits, lose the device, and see the recovery through, phishing call included. It runs the compiled circuits, with no network and no proofs, as `/demo` does.
+- **[/kit](https://lantern-midnight.vercel.app/kit)**: practice kits, made in your browser: a printable veto card for the owner, guardian kits in words, and the new device's fingerprint as six words (66 bits), which a guardian compares aloud before approving.
+
+### The deck
+
+- **The deck's text**, slide by slide, with speaker notes and a source for every number: [`docs/deck/slides.md`](docs/deck/slides.md).
+<!-- Before submission, add here, or delete: the deck itself (a shared link, or a PDF exported from it and committed beside slides.md); the video, if one is made; the three Midnight Academy certificates. -->
 
 ## Quickstart
 
 ```sh
 git clone https://github.com/OoJae/lantern && cd lantern
-npm ci && npm test        # 210 tests in about ten seconds; no Compact toolchain, no Docker
+npm ci && npm test        # 267 tests in about ten seconds; no Compact toolchain, no Docker
 npm run attack            # four guardian designs, one attacker: three broken, Lantern holds
 npm run story             # the whole recovery, 74 steps, each outcome asserted
 ```
@@ -81,8 +109,8 @@ npm run web:install
 npm run web                                 # the dev server, http://localhost:5173 (Node 22.12 or later); runs until Ctrl-C
 npm run web:build && npm run web:preview    # or the production build with the hosted site's headers, http://localhost:4319
 npx --prefix web playwright install chromium   # once, before the first browser-test run; on Linux or WSL add --with-deps
-npm run web:e2e                             # the 97 browser tests in Chromium, at desktop size and as an emulated Pixel 7
-npx --prefix web playwright install webkit firefox && npm run e2e:cross --prefix web   # the same 97 in WebKit, as an emulated iPhone 15, and in Firefox
+npm run web:e2e                             # the 174 browser tests in Chromium, at desktop size and as an emulated Pixel 7
+npx --prefix web playwright install webkit firefox && npm run e2e:cross --prefix web   # the same 174 in WebKit, as an emulated iPhone 15, and in Firefox
 ```
 
 **Real proofs on a local chain** (Docker, Node 24 or later, compact 0.31.1):
@@ -109,13 +137,16 @@ npm run devnet:down
 |---|---|---|---|---|
 | The hosted demo, `npm run web` | the compiled contract's generated JavaScript ([`web/src/lib/engine.js`](web/src/lib/engine.js)) | in memory, in your browser | none | none |
 | `npm test`, `npm run story`, `npm run attack` | the same modules | in memory | none | none |
+| [`/rehearse`](https://lantern-midnight.vercel.app/rehearse) | the same generated JavaScript, with your choice of guardians and threshold | in memory, in your browser | none | none |
+| [`/kit`](https://lantern-midnight.vercel.app/kit) | only the pure circuits, such as `idCommitOf` and `vetoCommitOf`; secrets come from the browser's Web Crypto and never leave the page | none: practice kits, for no enrolled identity | none | none |
+| [`/live`](https://lantern-midnight.vercel.app/live) | the generated `ledger()` reader, decoding Preprod's public state | Midnight Preprod, read only, from its public indexer | none; it reads what proved transactions left on the chain | none |
 | `npm run devnet` | the same source with one line changed: a 60-second timelock instead of 72 hours ([`devnet/flavour.mjs`](devnet/flavour.mjs)) | a local Midnight node and indexer | real, from a local proof server | real DUST |
 | `LANTERN_NETWORK=preprod npm run devnet` | the same flavour as `npm run devnet` | Midnight Preprod, a public test network | real, from a local proof server | real DUST, generated from faucet tNIGHT |
 | `LANTERN_NETWORK=preprod node devnet/src/shipped.mjs open` | the shipped build, unchanged | Midnight Preprod, a public test network | real, from a local proof server | real DUST, generated from faucet tNIGHT |
 | `npm run devnet:bench` | the shipped build | in memory: a recovery opened 73 hours ago, built with the simulator | real: the shipped 72-hour `finalizeRecovery` | none; not submitted |
 | CI | compiled from source on every push | in memory | none; keys are generated, not used | none |
 
-The hosted demo makes no network request after it loads, and a browser test enforces that ([`web/e2e/network.spec.js`](web/e2e/network.spec.js)).
+The hosted demo, `/rehearse` and `/kit` make no network request after they load, and browser tests enforce it ([`network.spec.js`](web/e2e/network.spec.js), [`rehearse.spec.js`](web/e2e/rehearse.spec.js), [`kit.spec.js`](web/e2e/kit.spec.js)). `/live` talks to one host besides the site, Preprod's public indexer (`indexer.preprod.midnight.network`), only reads from it, and never sends it the identity you watch; [`live.spec.js`](web/e2e/live.spec.js) enforces the one host.
 
 ## How it works
 
@@ -190,7 +221,9 @@ Every private-to-public crossing is a `disclose()`. What the public fields still
 
 ## Measured
 
-**Tests.** 210 Vitest tests in 14 files: lantern 33, record 32, succession 31, adversarial 27, host 22, identity 10, devnet 9, shamir 9, leakscan 8, story 8, concurrency 6, portable 6, authentication 5, host-snapshot 4. Three node:test tests of the sponsor's policy. Ninety-seven Playwright tests, twelve of them for the "Try to break it" panel, run in CI in Chromium at desktop size and as an emulated Pixel 7 (194 runs), and before release in WebKit, as an emulated iPhone 15, and in Firefox (291 runs).
+<!-- facts:tests:start -->
+**Tests.** 267 Vitest tests in 16 files: kit 36, lantern 33, record 32, succession 31, adversarial 27, host 22, words 21, identity 10, devnet 9, shamir 9, leakscan 8, story 8, concurrency 6, portable 6, authentication 5, host-snapshot 4. Three node:test tests of the sponsor's policy. 174 Playwright tests, twelve of them for the "Try to break it" panel and 74 for `/live`, `/rehearse` and `/kit`, run in CI in Chromium at desktop size and as an emulated Pixel 7, and before release in WebKit, as an emulated iPhone 15, and in Firefox.
+<!-- facts:tests:end -->
 
 **Circuits.** All 17 are ZKIR v2, the deployable ledger-8 path. `npm run cost:check` measures them, and fails if any exceeds k = 14 or if this table differs from the measurement.
 
@@ -325,7 +358,7 @@ Paid by a sponsor: 8 transactions, from a device that holds no wallet; the devic
 <!-- facts:preprod-story:end -->
 
 <details>
-<summary><code>LANTERN_NETWORK=preprod npm run devnet:verify</code>, captured on 2026-09-25</summary>
+<summary><code>LANTERN_NETWORK=preprod npm run devnet:verify</code>, captured on 2026-09-26</summary>
 
 ```
 verifying deployments/preprod.json (full+sponsored, recorded 2026-09-25T14:46:29.451Z)
@@ -335,11 +368,11 @@ verifying deployments/preprod.json (full+sponsored, recorded 2026-09-25T14:46:29
 ✓ Lantern (devnet flavour): maintenance authority frozen, so its rules can never change  committee 0, threshold 1
 ✓ Lantern (devnet flavour): every on-chain verifier key is byte-identical to a fresh compile  10 of 10 circuits
 ✓ Lantern (devnet flavour): the flavour differs from the shipped build in finalizeRecovery alone  differs: finalizeRecovery
-✓ Lantern (devnet flavour): the ledger ends where the record says  enrolled 3, guardianLeaves 6, recoveries 2, approvals 3, vetoes 1, killed 1, retired 1, lineage 3, guardianSets 3, gateActions 3
+✓ Lantern (devnet flavour): the ledger ends where the record says  enrolled 3, guardianLeaves 6, recoveries 2, approvals 3, vetoes 1, killed 1, retired 1, lineage 3, guardianSets 3, gateActions 3; in block 2704954
 ✓ LanternHost (unchanged): exists on this chain  a53b489179903e1b40a8078b59649af9b113a4d9d7da0d8f293e97314b59b68d
 ✓ LanternHost (unchanged): maintenance authority frozen, so its rules can never change  committee 0, threshold 1
 ✓ LanternHost (unchanged): every on-chain verifier key is byte-identical to a fresh compile  7 of 7 circuits
-✓ LanternHost (unchanged): the ledger ends where the record says  sealedEpochs 4, committeeGen 1, committeeVotes 10, hostActions 4
+✓ LanternHost (unchanged): the ledger ends where the record says  sealedEpochs 4, committeeGen 1, committeeVotes 10, hostActions 4; in block 2704983
 ✓ every sponsored transaction came from a device with no wallet, and only the sponsor spent DUST  8 sponsored
 ✓ every recorded transaction is on the chain, at its recorded block  49 of 49
 The record matches the chain.
@@ -431,25 +464,27 @@ All 21 are in [SECURITY.md §7](SECURITY.md#7-found-and-fixed-in-review).
 
 **Adoption path.** A wallet or identity app adds enrolment and share dealing. DApps gate on the identity root. Each deployment freezes its maintenance authority, which anyone can check before trusting it, as `npm run devnet:verify` does.
 
+**Who integrates, and how it reaches them.** First, Midnight Passport, as a recovery profile beside its paper keys ([docs/v2.md §6](docs/v2.md#6-lantern-as-a-midnight-passport-c14-profile)); then wallets and identity apps, DApps that gate on an identity root, and Korean services, for the reason below. The distribution is an SDK for wallets and identity apps (enrolment, share dealing, kits in words and the recovery flow, built from the client code in [`src/`](src/), which is not yet packaged), plus two hosted services for teams that would rather not run their own: a sponsor that pays the walletless phone's DUST, as [`devnet/src/sponsor.mjs`](devnet/src/sponsor.mjs) does in the recorded runs, and a watcher that alerts an owner to any recovery opened for their identity, as `npm run watch` does from a terminal today. The contracts and the SDK stay open under Apache-2.0; the hosted services are the business.
+
 **Korea.** South Korea's amended Personal Information Protection Act was promulgated on 10 March 2026 and took effect on 11 September 2026. The [IAPP](https://iapp.org/news/a/south-korea-overhauls-pipa-and-ties-fines-to-ceo-accountability) reports that it "introduces a penalty ceiling of 10% of total turnover" and "places personal supervisory liability on the CEO"; [Hunton](https://www.hunton.com/privacy-and-cybersecurity-law-blog/south-korea-amends-privacy-law-to-authorize-fines-of-up-to-10-of-total-revenue) describes fines "of up to 10% of a company's total revenue in certain high-severity data breach cases", subject to transition rules. *Our reading, not legal advice:* a public list of who can recover whose identity is personal information about named people and their relationships. A guardian design that stores it in the clear publishes it to everyone, permanently. Lantern keeps it off the public record by construction, and `npm run attack` checks that it does.
 
 **Midnight's own direction.** Midnight's Passport project decided in 2026/07 to use BUSS (ANARKey) stateless guardians with paper keys for total-loss recovery ([component C14](https://github.com/midnightntwrk/passport/blob/main/docs/plans/components/C14-total-loss-recovery-flow.md)). Lantern is a different point in the same space: an on-chain guardian set that stays hidden, a recovery that proves its own correctness in the circuit, and a veto credential that no guardian holds. We set out the comparison in [a comment on Passport issue #20](https://github.com/midnightntwrk/passport/issues/20#issuecomment-5821240645) ([the note](docs/upstream/passport-c14-prior-art.md)).
 
 ## Roadmap
 
-1. **Rate-limit `openRecovery`**, with a bond or an escalating delay. Today one fee buys one more recovery the owner must veto; this is the largest gap between Lantern and a production system ([SECURITY.md §6.4](SECURITY.md#6-known-limitations)).
+1. **Rate-limit `openRecovery`**: only a current guardian can open, one recovery per identity at a time, with a cooldown that doubles after each veto. Today one fee buys one more recovery the owner must veto; this is the largest gap between Lantern and a production system ([SECURITY.md §6.4](SECURITY.md#6-known-limitations)). [`docs/v2.md`](docs/v2.md) designs it with three more changes that need the contract: an emergency lock held by the veto card, a delay chosen at enrolment (which makes a private inheritance profile possible) and private guardian check-ins. v2 is not part of this submission; the shipped contract on Preprod is frozen and unchanged.
 2. **Reconstruct in a disposable worker**, so a rebuilt secret cannot linger in the heap (§6.5).
 3. **Make the committee size a constructor parameter**; it is fixed at three.
 4. **A delegation-safe gate.** Every owner and guardian gate today takes its secret as a witness, so a remote prover learns it. A signature gate would not; today only the host committee's votes are signature checks.
 5. **Cross-contract calls**, when Midnight ships them: an independent DApp could read Lantern directly and drop the 24-hour committee window.
-6. **Finish on Preprod**: finalize the shipped contract's open recovery once its 72-hour lock ends, and put the enrolment flow in front of real users. The whole story has already run there, with the 60-second flavour.
+6. **Finish on Preprod**: the shipped contract's recovery can finalize from 2026-09-27 15:03 UTC, after the deadline, and [/live](https://lantern-midnight.vercel.app/live) shows whether it has; then put the enrolment flow in front of real users. The whole story has already run there, with the 60-second flavour.
 7. **An external audit.**
 
 ## Limitations
 
-- **Colluding guardians win.** *t* guardians who collude can take the identity. What you get is public notice, 72 hours and a veto they cannot hold, and until your recovery finalizes they can also act as you.
+- **Colluding guardians win.** *t* guardians who collude can take the identity. What you get is public notice, 72 hours and a veto they cannot hold, and until your recovery finalizes they can also act as you. v2's emergency lock would let the veto card stop them acting as you at every DApp that reads Lantern's ledger ([docs/v2.md §2](docs/v2.md#2-an-emergency-lock-with-the-veto-card)).
 - **The threshold and guardian count are public.** Only who the guardians are is hidden.
-- **Opening a recovery is permissionless.** The recovering device holds no secret to authenticate with, so an open recovery tells the world an identity's owner may have lost a key, and whether a veto arrives says whether they are watching.
+- **Opening a recovery is permissionless.** The recovering device holds no secret to authenticate with, so an open recovery tells the world an identity's owner may have lost a key, and whether a veto arrives says whether they are watching. The v2 design rate-limits it: only a current guardian can open, one recovery per identity at a time, with a cooldown that doubles after each veto ([docs/v2.md §1](docs/v2.md#1-rate-limited-opens)).
 - **An independently deployed DApp** accepts a retired secret until the committee seals a snapshot built after the recovery. Each snapshot expires 24 hours after it seals, not after it was built, so the 24-hour bound assumes the committee proposes and seals promptly.
 - **A delegated prover learns the secrets.** Every role in the recorded runs shares one local proof server.
 - **Losing the veto card** means you cannot veto a recovery, add a guardian or evict the set until a recovery issues a new one.
@@ -459,7 +494,7 @@ All 21 are in [SECURITY.md §7](SECURITY.md#7-found-and-fixed-in-review).
 - **Out of scope:** share transport between owner and guardians, wallet UX and login.
 - **Upstream:** the veto secret is kept in midnight-js private state. midnight-js issue #1169 (open) reports that, with the level private-state provider, a password rotation racing a write can leave that state undecryptable, so keep the veto card outside it too.
 
-The causes and bounds are in SECURITY.md: the adversaries in [§4](SECURITY.md#4-the-adversaries-scored-separately), leakage in [§5](SECURITY.md#5-leakage), what we have not tested in [§9](SECURITY.md#9-where-our-rigour-stops), and the code's known limitations in [§6](SECURITY.md#6-known-limitations), which lists more than this page does.
+The causes and bounds are in SECURITY.md: the adversaries in [§4](SECURITY.md#4-the-adversaries-scored-separately), leakage in [§5](SECURITY.md#5-leakage), what we have not tested in [§9](SECURITY.md#9-where-our-rigour-stops), and the code's known limitations in [§6](SECURITY.md#6-known-limitations), which lists more than this page does. The fixes that need a new contract are designed in [docs/v2.md](docs/v2.md).
 
 ## Repository map
 
@@ -467,18 +502,20 @@ The causes and bounds are in SECURITY.md: the adversaries in [§4](SECURITY.md#4
 contracts/src/          lantern.compact, host.compact, identity.compact, ownergate.compact, schnorr.compact (vendored)
 contracts/managed*/     the generated modules, committed; proving keys are not
 contracts/adversarial/  two deliberately insecure contracts for npm run attack; never deployed
-src/                    Shamir over the scalar field, identity derivation, witnesses, the leak scanner
+src/                    Shamir over the scalar field, identity derivation, witnesses, the leak scanner, fingerprint words and recovery kits
 src/attack/             the attack engine and the per-field leak classification
 src/demo/               the story: 74 steps, run unchanged by the simulator, the browser, the local chain and Preprod
 src/host/               the canonical host snapshot the committee signs
-test/                   210 tests
-web/                    the site (React and Vite): the landing's three.js lantern, the browser demo, /brand, and the Playwright tests
+test/                   the unit tests: npm test runs them with no toolchain and no Docker
+web/                    the site (React and Vite): the landing's three.js lantern, the browser demo, /live, /rehearse, /kit, /brand, and the Playwright tests
 brand/                  the brand guide; the kit's files are in web/public/brand-kit/
-devnet/                 the chain runner, local and on Preprod: flavour, sponsor, verify, bench and the shipped run
+devnet/                 the chain runner, local and on Preprod: flavour, sponsor, verify, bench, the shipped run and the watcher
 deployments/            the records of the local-chain runs, the two Preprod runs and the bench
 scripts/                compile, cost, attack, story and the README's generated facts
 docs/spikes.md          nine assumptions, each tested before anything was built on it
+docs/v2.md              the v2 design: rate-limited opens, an emergency lock, a chosen delay, private check-ins
 SECURITY.md             the threat model
+README.ko.md            a summary in Korean; this README is authoritative
 ```
 
 ## Credits
@@ -486,6 +523,7 @@ SECURITY.md             the threat model
 - [`contracts/src/schnorr.compact`](contracts/src/schnorr.compact) is vendored byte-identical from [midnightntwrk/midnight-did](https://github.com/midnightntwrk/midnight-did) (Apache-2.0, © 2025 Midnight Foundation). Its npm package generates the committee's keys and signs its votes.
 - The Vite and WebAssembly setup and the local-chain compose file follow the author's earlier [OnePledge](https://github.com/OoJae/onepledge) project (2026/09), itself after [midnightntwrk/example-zkloan](https://github.com/midnightntwrk/example-zkloan) (Apache-2.0).
 - CI installs the compiler with [midnightntwrk/setup-compact-action](https://github.com/midnightntwrk/setup-compact-action).
+- The fingerprint words and the kits use the English word list of [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki), through [@scure/bip39](https://github.com/paulmillr/scure-bip39) (MIT), with [@noble/hashes](https://github.com/paulmillr/noble-hashes) (MIT) for SHA-256.
 - [Midnight's documentation](https://docs.midnight.network/), quoted above.
 
 **Provenance.** Lantern's first commit is dated 2026-09-22, after the hackathon opened on 2026-09-01; the git history is the record. OnePledge, whose setup Lantern borrows, began on 2026-09-13. All people in the story are fictional.
