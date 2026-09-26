@@ -9,8 +9,10 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('..', import.meta.url).pathname;
+// fileURLToPath, not URL.pathname: a path with a space (%20) or a Windows drive letter survives.
+const root = fileURLToPath(new URL('..', import.meta.url));
 const SOURCES = readdirSync(join(root, 'contracts/src'))
   .filter((f) => f.endsWith('.compact'))
   .map((f) => ({ f, text: readFileSync(join(root, 'contracts/src', f), 'utf8') }));

@@ -5,11 +5,15 @@
 import { describe, it, expect } from 'vitest';
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ADDRESS_BOOK, guardianIdOf, sha, hex } from '../src/attack/candidates.mjs';
 import { R, randomFieldElement } from '../src/field.js';
 
-const SRC = new URL('../src/', import.meta.url).pathname;
+// fileURLToPath, not URL.pathname: a path with a space (%20) or a Windows drive letter survives.
+const SRC = fileURLToPath(new URL('../src/', import.meta.url));
+/** A file's path under src/, with forward slashes on every OS. */
+const under = (f) => relative(SRC, f).split(sep).join('/');
 
 function sourceFiles(dir) {
   return readdirSync(dir).flatMap((name) => {
@@ -62,7 +66,7 @@ describe('portability of src/', () => {
   it('uses no Node-only API, so the browser demo can import it unchanged', () => {
     const files = sourceFiles(SRC);
     expect(files.length).toBeGreaterThan(5);
-    const hits = files.flatMap((f) => violations(readFileSync(f, 'utf8')).map((h) => `${f.slice(SRC.length)}:${h}`));
+    const hits = files.flatMap((f) => violations(readFileSync(f, 'utf8')).map((h) => `${under(f)}:${h}`));
     expect(hits).toEqual([]);
   });
 
@@ -73,7 +77,7 @@ describe('portability of src/', () => {
     const importers = sourceFiles(SRC)
       .filter((f) => codeLines(readFileSync(f, 'utf8'))
         .some(({ line }) => /from\s+['"](@midnight-ntwrk\/|[^'"]*contracts\/managed)/.test(line)))
-      .map((f) => f.slice(SRC.length))
+      .map(under)
       .sort();
     expect(importers).toEqual(ALLOWED);
   });

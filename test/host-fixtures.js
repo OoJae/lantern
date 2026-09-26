@@ -109,3 +109,26 @@ export function attestedHost(opts = {}, snap = SNAP) {
   h.call('sealEpoch', 0n, root);
   return { h, root, snap };
 }
+
+// White-box: write epoch `epoch` as sealed over `root` straight into the simulated ledger, the way
+// the compiled sealEpoch writes it (attestedRoots is ledger field 8, attestedAtLo field 9, in
+// host.compact's order). Only for a state no honest run can reach in a test's lifetime: epoch 2^32-1
+// takes 2^32 seals in order. The caller checks the ledger reads it back.
+const U8 = new rt.CompactTypeUnsignedInteger(255n, 1);
+const U32 = new rt.CompactTypeUnsignedInteger(4294967295n, 4);
+const U64 = new rt.CompactTypeUnsignedInteger(18446744073709551615n, 8);
+function plantEntry(h, field, key, type, value) {
+  const cell = (t, v) => rt.StateValue.newCell({ value: t.toValue(v), alignment: t.alignment() }).encode();
+  const ppd = { input: { value: [], alignment: [] }, output: undefined, publicTranscript: [], privateTranscriptOutputs: [] };
+  rt.queryLedgerState(h.ctx, ppd, [
+    { idx: { cached: false, pushPath: true, path: [{ tag: 'value', value: { value: U8.toValue(field), alignment: U8.alignment() } }] } },
+    { push: { storage: false, value: cell(U32, key) } },
+    { push: { storage: true, value: cell(type, value) } },
+    { ins: { cached: false, n: 1 } },
+    { ins: { cached: true, n: 1 } },
+  ]);
+}
+export function plantEpoch(h, epoch, root, lo = h.now) {
+  plantEntry(h, 8n, BigInt(epoch), rt.CompactTypeField, root);
+  plantEntry(h, 9n, BigInt(epoch), U64, BigInt(lo));
+}

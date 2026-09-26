@@ -3,7 +3,7 @@ import * as rt from '@midnight-ntwrk/compact-runtime';
 import { signJubjubDigest } from '@midnight-ntwrk/midnight-did-jubjub-schnorr';
 import { pureCircuits as hostPure } from '../contracts/managed-host/contract/index.js';
 import { bytes32, fieldOf, pureCircuits } from './simulator.js';
-import { TAG, NOW, ROOT, HEAD, SNAP, HEAD_SECRET, member, xy, HostSim, attestedHost, snapshotOf } from './host-fixtures.js';
+import { TAG, NOW, ROOT, HEAD, SNAP, HEAD_SECRET, member, xy, HostSim, attestedHost, snapshotOf, plantEpoch } from './host-fixtures.js';
 
 describe('committee attestation (real in-circuit Jubjub Schnorr)', () => {
   it('reaches quorum and seals an epoch', () => {
@@ -235,5 +235,58 @@ describe('the attested gate after a recovery: the window, and how it closes', ()
     h.ps.identitySecret = NEW_SECRET; h.ps.idSalt = NEW_SALT;
     h.ps.snapshotPath = after.pathFor(ROOT, NEW_HEAD);
     expect(() => h.gate(1n, ROOT, NEW_HEAD)).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The committee's quorum: the constructor's only bound, and the stricter setting for integrity,
+// though at quorum 3 one missing key halts the host (test/limits.test.js).
+// ---------------------------------------------------------------------------
+describe('the committee\'s quorum', () => {
+  it('the constructor takes a quorum of 2 or 3 of 3, nothing else', () => {
+    for (const q of [0, 1, 4, 255]) expect(() => new HostSim({ quorum: q })).toThrow(/quorum must be 2 or 3 of 3/);
+    for (const q of [2, 3]) expect(new HostSim({ quorum: q }).ledger.quorum).toBe(BigInt(q));
+  });
+
+  it('quorum 3 needs all three votes', () => {
+    const h = new HostSim({ quorum: 3 });
+    const root = SNAP.root;
+    h.call('openEpoch', 0n, root);
+    h.vote(0, 0, root);
+    h.vote(1, 0, root);
+    expect(() => h.call('sealEpoch', 0n, root)).toThrow(/quorum not reached/);
+    h.vote(2, 0, root);
+    h.call('sealEpoch', 0n, root);
+    expect(h.ledger.attestedRoots.lookup(0n)).toBe(root);
+    expect(h.gate(0, ROOT, HEAD)).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The last epoch. The gate casts (epoch + 1) to Uint<32>, which aborts at 2^32-1: that epoch can
+// never pass the gate, and a host that reaches it is spent. Reaching it takes 2^32 seals in order.
+// ---------------------------------------------------------------------------
+describe('the last epoch', () => {
+  const LAST = 2n ** 32n - 1n;
+
+  it('the gate aborts on its (epoch + 1) cast at epoch 2^32-1; the epoch before it passes', () => {
+    const { h, root } = attestedHost();
+    plantEpoch(h, LAST, root);
+    expect(h.ledger.attestedRoots.lookup(LAST)).toBe(root);
+    expect(h.ledger.attestedAtLo.lookup(LAST)).toBe(BigInt(h.now));
+    expect(() => h.gate(LAST, ROOT, HEAD)).toThrow(/cast from Field or Uint value to smaller Uint value failed/);
+    const { h: before, root: r } = attestedHost();
+    plantEpoch(before, LAST - 1n, r);
+    expect(before.gate(LAST - 1n, ROOT, HEAD)).toEqual([]);
+  });
+
+  it('and it is reached only in order: never attested, never sealed out of turn', () => {
+    const { h, root } = attestedHost();
+    expect(() => h.gate(LAST, ROOT, HEAD)).toThrow(/epoch not attested/);
+    h.call('openEpoch', LAST, root);
+    h.vote(0, LAST, root);
+    h.vote(1, LAST, root);
+    expect(() => h.call('sealEpoch', LAST, root)).toThrow(/sealed in order/);
+    expect(h.ledger.attestedRoots.member(LAST)).toBe(false);
   });
 });

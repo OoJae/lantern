@@ -45,8 +45,19 @@ describe('shamir', () => {
 
   it('reveals nothing from t-1 shares', () => {
     const s = randomFieldElement();
-    const sh = split(s, 3, 2);
-    expect(reconstruct([sh[0]])).not.toBe(s);
+    // Perfect secrecy rests on the coefficients: every one but the secret is its own draw from the RNG
+    // split is given, t-1 of them. Fixed or reused coefficients would pass a reconstruction test and
+    // still let one share give the secret away (for t = 2, s = y - a1*x).
+    const draws = [5n, 7n];
+    let k = 0;
+    const sh = split(s, 4, 3, () => draws[k++]);
+    expect(k).toBe(2);
+    for (const { x, y } of sh) expect(y).toBe(add(add(s, mul(5n, x)), mul(7n, mul(x, x))));
+    // By default the draws are fresh: the same secret split twice gives unrelated shares, and one
+    // share of a 2-of-n split (y = s + a1*x) is not the secret.
+    const a = split(s, 3, 2), b = split(s, 3, 2);
+    for (let i = 0; i < 3; i++) expect(a[i].y).not.toBe(b[i].y);
+    expect(reconstruct([a[0]])).not.toBe(s);
   });
 
   it('rejects duplicate and zero x-coordinates', () => {
@@ -58,6 +69,12 @@ describe('shamir', () => {
   it('rejects impossible parameters', () => {
     expect(() => split(1n, 2, 3)).toThrow(/at least t/);
     expect(() => split(1n, 3, 1)).toThrow(/at least 2/);
+    // x is one byte on a guardian kit (src/kit.js canonical()), so 255 is the widest set.
+    expect(() => split(1n, 256, 2)).toThrow(/at most 255/);
+    expect(split(1n, 255, 2)).toHaveLength(255);
+    expect(() => split(1n, 2.5, 2)).toThrow(/integers/);
+    expect(() => split(1n, 3n, 2n)).toThrow(/integers/);
+    expect(() => reconstruct([])).toThrow(/no shares/);
   });
 });
 

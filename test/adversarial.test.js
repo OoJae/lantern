@@ -7,6 +7,7 @@ import { COVERAGE, leakReport } from '../src/attack/leaks.mjs';
 import * as V0 from '../contracts/managed-lantern-v0/contract/index.js';
 import * as PublicGuardians from '../contracts/managed-public-guardians/contract/index.js';
 import * as Lantern from '../contracts/managed/contract/index.js';
+import { idSaltOf, vetoSaltOf } from '../src/identity.js';
 
 const T = buildTargets();
 const byId = Object.fromEntries(T.map((t) => [t.view.id, t]));
@@ -153,6 +154,20 @@ describe('regression: target 3 secrets are fresh entropy, not a function of the 
       const inA = hexes(a, k);
       expect([...hexes(b, k)].filter((h) => inA.has(h)), k).toEqual([]);
     }
+  });
+
+  it('its owner is the shipped client\'s: both salts derived from their secrets (D4), as the leak report says', () => {
+    const { sim, view } = buildTargets({ withSims: true }).find((t) => t.view.id === '3');
+    const { identitySecret, idSalt, vetoSecret, vetoSalt } = sim.ps;
+    expect(hex(idSalt)).toBe(hex(idSaltOf(identitySecret)));
+    expect(hex(vetoSalt)).toBe(hex(vetoSaltOf(vetoSecret)));
+    // The commitment an observer reads is the one the client's convention makes.
+    const idCommit = view.publicParams.idCommit;
+    expect(hex(view.ledger.vetoCommits.lookup(idCommit))).toBe(hex(Lantern.pureCircuits.vetoCommitOf(vetoSecret, vetoSaltOf(vetoSecret))));
+    expect(COVERAGE.vetoCommits.why).toMatch(/derived from that secret/);
+    expect(COVERAGE.vetoCommits.why).not.toMatch(/independent/);
+    // And deterministic: the same card gives the same commitment, which links identities that share it.
+    expect(COVERAGE.vetoCommits.why).toMatch(/a card reused for a second identity links the two/);
   });
 });
 

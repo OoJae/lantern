@@ -18,6 +18,7 @@ import {
   VETO_CARD_VERSION, GUARDIAN_KIT_VERSION, CHECK_WORDS, NETWORKS, KitError,
   buildVetoCard, vetoCardText, parseVetoCard, vetoCheckWords,
   buildGuardianKit, guardianKitText, parseGuardianKit, collectShares, dealKits, contextLabel,
+  rebuildFromKits, MAX_KIT_SUBSETS,
 } from '../src/kit.js';
 
 const hex = (u) => Buffer.from(u).toString('hex');
@@ -55,7 +56,7 @@ function owner() {
 
 function dealt({ n = 3, t = 2, network = 'preprod', contract = CONTRACT } = {}) {
   const { identity, idCommit } = owner();
-  const { vetoCard, kits } = dealKits({ identity, idCommit, network, contract, guardians: n, threshold: t, fieldRng: field, bytesRng: b32 });
+  const { vetoCard, kits } = dealKits({ identity, idCommit, ctx: idCommit, network, contract, guardians: n, threshold: t, fieldRng: field, bytesRng: b32 });
   return { identity, idCommit, vetoCard, kits };
 }
 
@@ -254,12 +255,12 @@ describe('the guardian kit: what it carries', () => {
 
   it('a practice kit names no contract, and a real one must', () => {
     const { identity, idCommit } = owner();
-    const { kits } = dealKits({ identity, idCommit, network: 'practice', guardians: 3, threshold: 2, fieldRng: field, bytesRng: b32 });
+    const { kits } = dealKits({ identity, idCommit, ctx: idCommit, network: 'practice', guardians: 3, threshold: 2, fieldRng: field, bytesRng: b32 });
     expect(kits[0].contract).toBeNull();
     expect(guardianKitText(kits[0])).toMatch(/^Contract: none$/m);
     expect(parseGuardianKit(guardianKitText(kits[0])).contract).toBeNull();
-    expect(refusal(() => dealKits({ identity, idCommit, network: 'practice', contract: CONTRACT, guardians: 3, threshold: 2 })).field).toBe('contract');
-    expect(refusal(() => dealKits({ identity, idCommit, network: 'preprod', guardians: 3, threshold: 2 })).field).toBe('contract');
+    expect(refusal(() => dealKits({ identity, idCommit, ctx: idCommit, network: 'practice', contract: CONTRACT, guardians: 3, threshold: 2 })).field).toBe('contract');
+    expect(refusal(() => dealKits({ identity, idCommit, ctx: idCommit, network: 'preprod', guardians: 3, threshold: 2 })).field).toBe('contract');
   });
 });
 
@@ -272,7 +273,7 @@ describe('a kit is everything a guardian needs: printed, typed back, and used ag
     sim.call('enrollIdentity', idCommit, vetoCommit, 2n);
 
     // The owner deals three kits and mints each guardian's leaf from that kit's own secret and salt.
-    const { vetoCard, kits } = dealKits({ identity, idCommit, network: 'undeployed', contract: CONTRACT, guardians: 3, threshold: 2, fieldRng: field, bytesRng: b32 });
+    const { vetoCard, kits } = dealKits({ identity, idCommit, ctx: idCommit, network: 'undeployed', contract: CONTRACT, guardians: 3, threshold: 2, fieldRng: field, bytesRng: b32 });
     const leaves = kits.map((k) => {
       const p = parseGuardianKit(k);
       sim.ps.guardianSecret = p.guardianSecret;
@@ -394,6 +395,20 @@ describe('the guardian kit: every change is refused', () => {
     }
   });
 
+  it('a whole section replaced by other valid words is refused by the check words', () => {
+    // Every word here is on the list and every section passes its own checksum: only the check words,
+    // which cover the guardian secret, the leaf salt and the share, can refuse it.
+    const own = rng('kit-sections');
+    for (const [label, other] of [['Guardian secret', bytesToWords(own.bytes())], ['Leaf salt', bytesToWords(own.bytes())], ['Share words', bytesToWords(be32(own.field()))]]) {
+      expect(refusal(() => parseGuardianKit(withLine(text, label, other.join(' ')))).code).toBe('check');
+    }
+    for (const key of ['guardianSecret', 'leafSalt']) {
+      expect(refusal(() => parseGuardianKit({ ...kit, words: { ...kit.words, [key]: bytesToWords(own.bytes()) } })).code).toBe('check');
+      // The likelier slip: that section copied from another kit of the same deal.
+      expect(refusal(() => parseGuardianKit({ ...kit, words: { ...kit.words, [key]: kits[0].words[key] } })).code).toBe('check');
+    }
+  });
+
   it('a word not on the list, a word missing, or a section missing: each named', () => {
     const words = kit.words.leafSalt;
     const bad = [...words];
@@ -461,7 +476,7 @@ describe('the guardian kit: meant for something else', () => {
   it('another network: a practice kit, or a real one', () => {
     expect(refusal(() => parseGuardianKit(text, { network: 'mainnet' })).message).toBe('This kit is for preprod, not mainnet');
     const { identity, idCommit: id2 } = owner();
-    const practice = dealKits({ identity, idCommit: id2, network: 'practice', guardians: 2, threshold: 2, fieldRng: field, bytesRng: b32 }).kits[0];
+    const practice = dealKits({ identity, idCommit: id2, ctx: id2, network: 'practice', guardians: 2, threshold: 2, fieldRng: field, bytesRng: b32 }).kits[0];
     expect(refusal(() => parseGuardianKit(practice, { network: 'preprod' })).message).toBe('This is a practice kit; it cannot be used on preprod');
     expect(parseGuardianKit(text, { network: 'preprod' }).network).toBe('preprod');
   });
@@ -474,6 +489,8 @@ describe('the guardian kit: meant for something else', () => {
     const e = refusal(() => parseGuardianKit(text, { ctx: b32() }));
     expect(e.code).toBe('context');
     expect(e.message).toMatch(/earlier guardian set/);
+    // A rotation voids the leaf, not the share (SECURITY.md §6.17): the refusal never calls the kit dead paper.
+    expect(e.message).toMatch(/its share still rebuilds the owner's secret until a recovery: destroy it$/);
     expect(hex(parseGuardianKit(text, { idCommit, ctx: idCommit }).idCommit)).toBe(hex(idCommit));
   });
 });
@@ -511,6 +528,83 @@ describe('the guardian kit: as printed, and after a recovery', () => {
   });
 });
 
+describe('the guardian kit: dealt again for a successor', () => {
+  it('under the root\'s guardian context, read from the ledger, the kits approve against the real circuits', () => {
+    const own = rng('kit-successor');
+    const identity = newIdentity(own.field);
+    const { idCommit, vetoCommit } = commitmentsOf(pureCircuits, identity);
+    const sim = new LanternSim({ identitySecret: identity.identitySecret, idSalt: identity.idSalt,
+      vetoSecret: identity.vetoSecret, vetoSalt: identity.vetoSalt });
+    sim.call('enrollIdentity', idCommit, vetoCommit, 2n);
+    // The context a leaf is minted under, as addGuardian and approveRecovery read it.
+    const ctxOf = (id) => sim.ledger.guardianCtx.lookup(sim.ledger.idRoots.lookup(id));
+    const leafOf = (p) => pureCircuits.guardianLeafOf(p.guardianSecret, p.ctx, p.leafSalt);
+    const mint = (p, id) => { sim.ps.guardianSecret = p.guardianSecret; sim.ps.leafSalt = p.leafSalt; return sim.call('addGuardian', id); };
+    const approve = (id, rid, parsed) => {
+      for (const p of parsed) {
+        sim.ps.guardianSecret = p.guardianSecret;
+        sim.ps.leafSalt = p.leafSalt;
+        sim.ps.guardianPath = sim.findPath(leafOf(p));
+        sim.call('approveRecovery', id, rid);
+      }
+    };
+    const net = { network: 'undeployed', contract: CONTRACT, guardians: 3, threshold: 2 };
+
+    // Enrolment: the context is the identity commitment itself.
+    expect(hex(ctxOf(idCommit))).toBe(hex(idCommit));
+    const firstKits = dealKits({ identity, idCommit, ctx: ctxOf(idCommit), ...net, fieldRng: own.field, bytesRng: own.bytes }).kits;
+    const first = firstKits.map((k) => parseGuardianKit(k));
+    const leaves = first.map((p) => mint(p, idCommit));
+
+    // A recovery, finalized to a successor identity.
+    const eph = ephKey(42);
+    sim.ps.ephemeralSk = ephSkFor(eph);
+    const rid = sim.call('openRecovery', idCommit, eph);
+    approve(idCommit, rid, first.slice(0, 2));
+    sim.advance(DELAY + SLACK + 1);
+    const successor = newIdentity(own.field);
+    const next = commitmentsOf(pureCircuits, successor);
+    sim.call('finalizeRecovery', rid, next.idCommit, next.vetoCommit);
+    Object.assign(sim.ps, { identitySecret: successor.identitySecret, idSalt: successor.idSalt,
+      vetoSecret: successor.vetoSecret, vetoSalt: successor.vetoSalt });
+
+    // The successor's guardians approve under the ROOT's context, never its own commitment, and
+    // dealKits has no default to get that wrong with.
+    const ctx = ctxOf(next.idCommit);
+    expect(hex(ctx)).toBe(hex(idCommit));
+    expect(hex(ctx)).not.toBe(hex(next.idCommit));
+    expect(refusal(() => dealKits({ identity: successor, idCommit: next.idCommit, ...net })).field).toBe('context');
+    const expect_ = { network: 'undeployed', contract: CONTRACT, idCommit: next.idCommit, ctx, retired: [idCommit] };
+
+    // New shares for the leaves already in the tree: each guardian keeps their secret and salt, the
+    // set stays three, and any two new shares rebuild the successor's secret.
+    const kept = dealKits({ identity: successor, idCommit: next.idCommit, ctx, ...net, credentials: first, fieldRng: own.field })
+      .kits.map((k) => parseGuardianKit(guardianKitText(k), expect_));
+    kept.forEach((p, i) => expect(hex(leafOf(p))).toBe(hex(leaves[i])));
+    expect(recoverFromShares(collectShares(kept.slice(1)).shares).identitySecret).toBe(successor.identitySecret);
+    // The old kits are refused as made before the recovery.
+    for (const k of firstKits) expect(refusal(() => parseGuardianKit(guardianKitText(k), expect_)).code).toBe('retired');
+
+    // Or fresh credentials: the leaf addGuardian mints for the successor is the one each kit rebuilds.
+    const fresh = dealKits({ identity: successor, idCommit: next.idCommit, ctx, ...net, fieldRng: own.field, bytesRng: own.bytes })
+      .kits.map((k) => parseGuardianKit(guardianKitText(k), expect_));
+    for (const p of fresh) expect(hex(mint(p, next.idCommit))).toBe(hex(leafOf(p)));
+
+    // A recovery of the successor: guardians working from nothing but their kits approve it.
+    const eph2 = ephKey(43);
+    sim.ps.ephemeralSk = ephSkFor(eph2);
+    const rid2 = sim.call('openRecovery', next.idCommit, eph2);
+    approve(next.idCommit, rid2, [kept[0], fresh[1]]);
+    expect(sim.ledger.approvals.lookup(rid2).read()).toBe(2n);
+
+    // What the old default dealt, the successor's own commitment as the context: its leaf is in no
+    // tree, and a guardian app checking against the ledger refuses the kit.
+    const wrong = dealKits({ identity: successor, idCommit: next.idCommit, ctx: next.idCommit, ...net, credentials: first, fieldRng: own.field }).kits[0];
+    expect(sim.findPath(leafOf(parseGuardianKit(wrong)))).toBeUndefined();
+    expect(refusal(() => parseGuardianKit(guardianKitText(wrong), expect_)).code).toBe('context');
+  });
+});
+
 describe('collecting shares from kits', () => {
   it('rebuilds the secret from any t kits of the same identity, in any order', () => {
     const { identity, kits } = dealt({ n: 5, t: 3 });
@@ -537,24 +631,247 @@ describe('collecting shares from kits', () => {
   });
 });
 
+describe('rebuilding from kits: the secret is checked against the identity commitment first', () => {
+  // Two deals of one identity under one context, n and t (a lost kit reprinted, say). The second keeps
+  // each guardian's secret and salt, so an old kit and a new one differ only in their share words, and
+  // a kit records no deal: collectShares takes them together.
+  function twoDeals(name, n, t) {
+    const own = rng(name);
+    const identity = newIdentity(own.field);
+    const { idCommit } = commitmentsOf(pureCircuits, identity);
+    const base = { identity, idCommit, ctx: idCommit, network: 'preprod', contract: CONTRACT, guardians: n, threshold: t, fieldRng: own.field };
+    const first = dealKits({ ...base, bytesRng: own.bytes }).kits.map((k) => parseGuardianKit(guardianKitText(k)));
+    const second = dealKits({ ...base, credentials: first }).kits.map((k) => parseGuardianKit(guardianKitText(k)));
+    return { own, identity, idCommit, first, second };
+  }
+  const rebuild = (kits) => rebuildFromKits(kits, pureCircuits.idCommitOf);
+
+  it('rebuilds from any t or more kits of one deal, and names none as from another', () => {
+    const { identity, idCommit, first } = twoDeals('kit-rebuild-one-deal', 5, 3);
+    for (const pick of [[0, 1, 2], [4, 2, 0], [1, 3, 4], [0, 1, 2, 3], [0, 1, 2, 3, 4]]) {
+      const r = rebuild(pick.map((i) => first[i]));
+      expect(r.identitySecret).toBe(identity.identitySecret);
+      expect(hex(r.idSalt)).toBe(hex(identity.idSalt));
+      expect(hex(r.idCommit)).toBe(hex(idCommit));
+      expect(r.threshold).toBe(3);
+      expect(r.used).toEqual(pick.map((i) => i + 1));
+      expect(r.stale).toEqual([]);
+    }
+  });
+
+  it('refuses t kits from two deals, which collectShares accepts and which rebuild a wrong secret', () => {
+    const { identity, first, second } = twoDeals('kit-rebuild-two-deals', 3, 2);
+    const mixed = [first[0], second[1]];
+    expect(recoverFromShares(collectShares(mixed).shares).identitySecret).not.toBe(identity.identitySecret);
+    const e = refusal(() => rebuild(mixed));
+    expect(e.code).toBe('mismatch');
+    expect(e.field).toBe('share');
+    expect(e.message).toMatch(/another deal of it/);
+    // Either deal alone rebuilds the secret.
+    expect(rebuild(first.slice(0, 2)).identitySecret).toBe(identity.identitySecret);
+    expect(rebuild(second.slice(1)).identitySecret).toBe(identity.identitySecret);
+    // More than t kits, and no t of them from one deal.
+    const five = twoDeals('kit-rebuild-two-deals-5', 5, 3);
+    expect(refusal(() => rebuild([five.first[0], five.first[1], five.second[2], five.second[3]])).message).toMatch(/no 3 of them agree/);
+  });
+
+  it('sets aside a kit from another deal when the rest reach the threshold, and names it', () => {
+    const { identity, first, second } = twoDeals('kit-rebuild-stale', 3, 2);
+    // What recoverFromShares makes of the three together: a wrong secret, though two of them are good.
+    expect(recoverFromShares(collectShares([first[0], first[1], second[2]]).shares).identitySecret).not.toBe(identity.identitySecret);
+    for (const [kits, used, stale] of [
+      [[first[0], first[1], second[2]], [1, 2], [3]],
+      [[second[0], first[1], first[2]], [2, 3], [1]],
+      [[first[0], second[1], first[2]], [1, 3], [2]],
+    ]) {
+      const r = rebuild(kits);
+      expect(r.identitySecret).toBe(identity.identitySecret);
+      expect(r.used).toEqual(used);
+      expect(r.stale).toEqual(stale);
+    }
+    // Five kits of 3: three from the second deal, two from the first.
+    const five = twoDeals('kit-rebuild-stale-5', 5, 3);
+    const r = rebuild([five.first[0], five.second[1], five.second[2], five.first[3], five.second[4]]);
+    expect(r.identitySecret).toBe(five.identity.identitySecret);
+    expect(r.used).toEqual([2, 3, 5]);
+    expect(r.stale).toEqual([1, 4]);
+  });
+
+  it('tries every set of up to eight kits; past its limit it says so; it needs the circuit and t kits', () => {
+    // Eight kits of 2, four from each deal: every set of five or more mixes them, and a set of four is found.
+    const eight = twoDeals('kit-rebuild-eight', 8, 2);
+    const r = rebuild([...eight.first.slice(0, 4), ...eight.second.slice(4)]);
+    expect(r.identitySecret).toBe(eight.identity.identitySecret);
+    expect(r.used).toEqual([1, 2, 3, 4]);
+    expect(r.stale).toEqual([5, 6, 7, 8]);
+    // Twelve kits of 2, six from each deal: every set of seven or more mixes them, and there are more
+    // of those (1 + 12 + 66 + 220) than MAX_KIT_SUBSETS.
+    expect(1 + 12 + 66 + 220).toBeGreaterThan(MAX_KIT_SUBSETS);
+    const twelve = twoDeals('kit-rebuild-twelve', 12, 2);
+    const e = refusal(() => rebuild([...twelve.first.slice(0, 6), ...twelve.second.slice(6)]));
+    expect(e.code).toBe('mismatch');
+    expect(e.message).toMatch(/too many to try/);
+    expect(refusal(() => rebuildFromKits(twelve.first, undefined)).code).toBe('format');
+    expect(refusal(() => rebuild([twelve.first[0]])).code).toBe('too-few');
+    expect(refusal(() => rebuild([twelve.first[0], twelve.second[0]])).code).toBe('duplicate-share');
+  });
+
+  it('against the real circuits: a mixed secret fails only at finalize; the checked one finalizes', () => {
+    const { own, identity, idCommit, first, second } = twoDeals('kit-rebuild-sim', 3, 2);
+    const { vetoCommit } = commitmentsOf(pureCircuits, identity);
+    const sim = new LanternSim({ identitySecret: identity.identitySecret, idSalt: identity.idSalt,
+      vetoSecret: identity.vetoSecret, vetoSalt: identity.vetoSalt });
+    sim.call('enrollIdentity', idCommit, vetoCommit, 2n);
+    const leafOf = (p) => pureCircuits.guardianLeafOf(p.guardianSecret, p.ctx, p.leafSalt);
+    for (const p of first) { sim.ps.guardianSecret = p.guardianSecret; sim.ps.leafSalt = p.leafSalt; sim.call('addGuardian', idCommit); }
+    // The second deal kept the credentials: its kits' leaves are the first deal's.
+    second.forEach((p, i) => expect(hex(leafOf(p))).toBe(hex(leafOf(first[i]))));
+    const eph = ephKey(45);
+    sim.ps.ephemeralSk = ephSkFor(eph);
+    const rid = sim.call('openRecovery', idCommit, eph);
+    for (const p of [first[0], second[1]]) {
+      sim.ps.guardianSecret = p.guardianSecret;
+      sim.ps.leafSalt = p.leafSalt;
+      sim.ps.guardianPath = sim.findPath(leafOf(p));
+      sim.call('approveRecovery', idCommit, rid);
+    }
+    sim.advance(DELAY + SLACK + 1);
+    const successor = newIdentity(own.field);
+    const next = commitmentsOf(pureCircuits, successor);
+
+    // The phone holds one kit from each deal. Rebuilt unchecked, the secret is refused only now, at
+    // the end of the timelock, by an error that names no kit.
+    const mixed = [first[0], second[1]];
+    const wrong = recoverFromShares(collectShares(mixed).shares);
+    Object.assign(sim.ps, { identitySecret: wrong.identitySecret, idSalt: wrong.idSalt });
+    expect(() => sim.call('finalizeRecovery', rid, next.idCommit, next.vetoCommit)).toThrow(/does not open idCommit/);
+    // Checked, it is refused before anything is opened; with one more kit, the stale one is named.
+    expect(refusal(() => rebuildFromKits(mixed, pureCircuits.idCommitOf)).code).toBe('mismatch');
+    const r = rebuildFromKits([...mixed, first[2]], pureCircuits.idCommitOf);
+    expect(r.stale).toEqual([2]);
+    Object.assign(sim.ps, { identitySecret: r.identitySecret, idSalt: r.idSalt });
+    sim.call('finalizeRecovery', rid, next.idCommit, next.vetoCommit);
+    expect(sim.ledger.retiredIdentities.member(idCommit)).toBe(true);
+    expect(sim.ledger.enrolled.member(next.idCommit)).toBe(true);
+  });
+});
+
 describe('dealing', () => {
   it('enforces 2 ≤ t ≤ n, and a salt derived from the identity secret', () => {
     const { identity, idCommit } = owner();
-    const deal = (o) => dealKits({ identity, idCommit, network: 'practice', fieldRng: field, bytesRng: b32, ...o });
+    const deal = (o) => dealKits({ identity, idCommit, ctx: idCommit, network: 'practice', fieldRng: field, bytesRng: b32, ...o });
     expect(refusal(() => deal({ guardians: 3, threshold: 1 })).field).toBe('threshold');
     expect(refusal(() => deal({ guardians: 2, threshold: 3 })).field).toBe('threshold');
     expect(refusal(() => deal({ guardians: 1, threshold: 1 })).field).toBe('guardians');
     expect(refusal(() => deal({ guardians: 2.5, threshold: 2 })).field).toBe('guardians');
-    expect(refusal(() => dealKits({ identity: { ...identity, idSalt: b32() }, idCommit, network: 'practice', guardians: 3, threshold: 2 })).field).toBe('idSalt');
+    expect(refusal(() => dealKits({ identity: { ...identity, idSalt: b32() }, idCommit, ctx: idCommit, network: 'practice', guardians: 3, threshold: 2 })).field).toBe('idSalt');
     expect(deal({ guardians: 7, threshold: 7 }).kits).toHaveLength(7);
+    // 255 is the widest set: the kit's threshold, count and share are one byte each (canonical()).
+    expect(refusal(() => deal({ guardians: 256, threshold: 2 })).field).toBe('guardians');
+    const own = rng('kit-widest');
+    const widest = dealKits({ identity, idCommit, ctx: idCommit, network: 'practice', guardians: 255, threshold: 255, fieldRng: own.field, bytesRng: own.bytes });
+    expect(parseGuardianKit(guardianKitText(widest.kits[254]))).toMatchObject({ guardians: 255, threshold: 255, share: { x: 255n } });
+    // A count past the byte is refused, never wrapped: 259 would encode as 3, and keep 3's check words.
+    expect(refusal(() => parseGuardianKit(withLine(guardianKitText(deal({ guardians: 3, threshold: 2 }).kits[0]), 'Guardians', '259'))).field).toBe('guardians');
+  });
+
+  it('requires the guardian context, and kept credentials one pair per guardian', () => {
+    const own = rng('kit-dealing-ctx');
+    const identity = newIdentity(own.field);
+    const { idCommit } = commitmentsOf(pureCircuits, identity);
+    const base = { identity, idCommit, network: 'practice', guardians: 3, threshold: 2, fieldRng: own.field, bytesRng: own.bytes };
+    for (const ctx of [undefined, null]) {
+      const e = refusal(() => dealKits({ ...base, ctx }));
+      expect(e.field).toBe('context');
+      expect(e.message).toMatch(/guardianCtx\[idRoots\[idCommit\]\]/);
+    }
+    expect(refusal(() => dealKits({ ...base, ctx: new Uint8Array(31) })).field).toBe('context');
+    // Kept credentials: each kit carries its own guardian's pair, and none is drawn.
+    const pairs = [0, 1, 2].map(() => ({ guardianSecret: own.bytes(), leafSalt: own.bytes() }));
+    const drawn = () => { throw new Error('a credential was drawn'); };
+    const kept = dealKits({ ...base, ctx: idCommit, credentials: pairs, bytesRng: drawn });
+    kept.kits.forEach((k, i) => {
+      const p = parseGuardianKit(k);
+      expect(hex(p.guardianSecret)).toBe(hex(pairs[i].guardianSecret));
+      expect(hex(p.leafSalt)).toBe(hex(pairs[i].leafSalt));
+    });
+    expect(refusal(() => dealKits({ ...base, ctx: idCommit, credentials: pairs.slice(1) })).field).toBe('guardians');
+    expect(refusal(() => dealKits({ ...base, ctx: idCommit, credentials: 'kept' })).field).toBe('guardians');
+    expect(refusal(() => dealKits({ ...base, ctx: idCommit, credentials: [pairs[0], pairs[1], pairs[0]] })).field).toBe('guardianSecret');
+    // One guardian secret with two different salts is still one guardian: the contract counts one approval per secret.
+    const twice = refusal(() => dealKits({ ...base, ctx: idCommit, credentials: [pairs[0], { ...pairs[1], guardianSecret: pairs[0].guardianSecret }, pairs[2]] }));
+    expect(twice.field).toBe('guardianSecret');
+    expect(twice.message).toMatch(/same guardian secret/);
+    // One salt under two secrets makes two leaves and two guardians.
+    expect(dealKits({ ...base, ctx: idCommit, credentials: [pairs[0], { ...pairs[1], leafSalt: pairs[0].leafSalt }, pairs[2]] }).kits).toHaveLength(3);
+    expect(refusal(() => dealKits({ ...base, ctx: idCommit, credentials: [pairs[0], pairs[1], null] })).field).toBe('guardianSecret');
+    expect(refusal(() => dealKits({ ...base, ctx: idCommit, credentials: [pairs[0], pairs[1], { ...pairs[2], leafSalt: new Uint8Array(31) }] })).field).toBe('leafSalt');
+  });
+
+  it('refuses one guardian secret on two kits, whatever the salts: against the real circuits it approves once', () => {
+    const own = rng('kit-dealing-one-secret');
+    const identity = newIdentity(own.field);
+    const { idCommit, vetoCommit } = commitmentsOf(pureCircuits, identity);
+    const secret = own.bytes();
+    const pairs = [{ guardianSecret: secret, leafSalt: own.bytes() }, { guardianSecret: secret, leafSalt: own.bytes() },
+      { guardianSecret: own.bytes(), leafSalt: own.bytes() }];
+    const e = refusal(() => dealKits({ identity, idCommit, ctx: idCommit, network: 'undeployed', contract: CONTRACT,
+      guardians: 3, threshold: 3, credentials: pairs, fieldRng: own.field }));
+    expect(e.field).toBe('guardianSecret');
+    expect(e.message).toMatch(/one approval per guardian secret/);
+
+    // Why: the three leaves such a deal would name, minted, give two approvals, never three, and a
+    // threshold of 3 is never reached.
+    const sim = new LanternSim({ identitySecret: identity.identitySecret, idSalt: identity.idSalt,
+      vetoSecret: identity.vetoSecret, vetoSalt: identity.vetoSalt });
+    sim.call('enrollIdentity', idCommit, vetoCommit, 3n);
+    const leafOf = (p) => pureCircuits.guardianLeafOf(p.guardianSecret, idCommit, p.leafSalt);
+    for (const p of pairs) { sim.ps.guardianSecret = p.guardianSecret; sim.ps.leafSalt = p.leafSalt; sim.call('addGuardian', idCommit); }
+    expect(new Set(pairs.map((p) => hex(leafOf(p)))).size).toBe(3);
+    const eph = ephKey(44);
+    sim.ps.ephemeralSk = ephSkFor(eph);
+    const rid = sim.call('openRecovery', idCommit, eph);
+    const approve = (p) => {
+      sim.ps.guardianSecret = p.guardianSecret;
+      sim.ps.leafSalt = p.leafSalt;
+      sim.ps.guardianPath = sim.findPath(leafOf(p));
+      return sim.call('approveRecovery', idCommit, rid);
+    };
+    approve(pairs[0]);
+    expect(() => approve(pairs[1])).toThrow(/already approved/);
+    approve(pairs[2]);
+    expect(sim.ledger.approvals.lookup(rid).read()).toBe(2n);
+  });
+
+  it('refuses an identity whose veto salt is not derived from its secret: its card could never veto', () => {
+    const own = rng('kit-dealing-veto-salt');
+    const identity = newIdentity(own.field);
+    const { idCommit, vetoCommit } = commitmentsOf(pureCircuits, identity);
+    const deal = (id) => dealKits({ identity: id, idCommit, ctx: idCommit, network: 'practice', guardians: 3, threshold: 2, fieldRng: own.field, bytesRng: own.bytes });
+    // A derived identity: the card, typed back, opens the veto commitment the contract stores.
+    const card = parseVetoCard(vetoCardText(deal(identity).vetoCard));
+    expect(hex(pureCircuits.vetoCommitOf(card.vetoSecret, card.vetoSalt))).toBe(hex(vetoCommit));
+    // A random veto salt (a client before D4): the card carries only the secret, a device re-derives
+    // the salt, and the commitment enrolled with the random one is never opened.
+    const odd = { ...identity, vetoSalt: own.bytes() };
+    expect(hex(pureCircuits.vetoCommitOf(card.vetoSecret, card.vetoSalt))).not.toBe(hex(commitmentsOf(pureCircuits, odd).vetoCommit));
+    const e = refusal(() => deal(odd));
+    expect(e.field).toBe('vetoSalt');
+    expect(e.message).toMatch(/could never veto/);
+    // Missing or malformed salts and secrets are refusals that name them, never a TypeError.
+    expect(refusal(() => deal({ ...identity, vetoSalt: undefined })).field).toBe('vetoSalt');
+    expect(refusal(() => deal({ ...identity, vetoSalt: Array.from(identity.vetoSalt) })).field).toBe('vetoSalt');
+    expect(refusal(() => deal({ ...identity, idSalt: undefined })).field).toBe('idSalt');
+    expect(refusal(() => deal({ ...identity, vetoSecret: undefined })).field).toBe('vetoSecret');
+    expect(refusal(() => deal({ ...identity, vetoSecret: R })).field).toBe('vetoSecret');
   });
 
   it('takes its randomness from the caller when given, so a deal is reproducible', () => {
     const { identity, idCommit } = owner();
     const seq = (seed) => { let i = seed; return () => { i++; return Uint8Array.from({ length: 32 }, (_, j) => (i * 31 + j) & 0xff); }; };
     const field = (seed) => { let i = BigInt(seed); return () => { i += 1n; return (i * 0x9e3779b97f4a7c15n) % R; }; };
-    const a = dealKits({ identity, idCommit, network: 'practice', guardians: 3, threshold: 2, bytesRng: seq(1), fieldRng: field(1) });
-    const b = dealKits({ identity, idCommit, network: 'practice', guardians: 3, threshold: 2, bytesRng: seq(1), fieldRng: field(1) });
+    const a = dealKits({ identity, idCommit, ctx: idCommit, network: 'practice', guardians: 3, threshold: 2, bytesRng: seq(1), fieldRng: field(1) });
+    const b = dealKits({ identity, idCommit, ctx: idCommit, network: 'practice', guardians: 3, threshold: 2, bytesRng: seq(1), fieldRng: field(1) });
     expect(a).toEqual(b);
   });
 

@@ -2,10 +2,12 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { flavour, SHIPPED_LINE, FLAVOUR_LINE, FLAVOUR_DELAY_SECONDS } from '../devnet/flavour.mjs';
 import { retryOutOfDustWindow } from '../devnet/src/dust-window.mjs';
 
-const root = new URL('..', import.meta.url).pathname;
+// fileURLToPath, not URL.pathname: a path with a space (%20) or a Windows drive letter survives.
+const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (p) => readFileSync(join(root, p), 'utf8');
 
 describe('the devnet flavour', () => {
@@ -20,6 +22,13 @@ describe('the devnet flavour', () => {
     expect(a[changedLine - 1]).toBe(SHIPPED_LINE);
     expect(b[changedLine - 1]).toBe(FLAVOUR_LINE);
     expect(FLAVOUR_DELAY_SECONDS).toBe(60);
+  });
+
+  it('flavours a CRLF checkout the same way, keeping its line ends', () => {
+    const crlf = shipped.replaceAll('\n', '\r\n');
+    const out = flavour(crlf);
+    expect(out.changedLine).toBe(changedLine);
+    expect(out.text).toBe(text.replaceAll('\n', '\r\n'));
   });
 
   it('refuses a source where that line is missing or doubled', () => {

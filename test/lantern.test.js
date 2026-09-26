@@ -275,8 +275,17 @@ describe('privacy', () => {
     const { sim, id, guardians } = world();
     const rid = sim.call('openRecovery', id, EPH_A);
     asGuardian(sim, guardians[0]);
+    const path = sim.ps.guardianPath;
     sim.call('approveRecovery', id, rid);
-    assertNoLeak(sim.lastProofData, { guardianSecret: guardians[0].secret, leafSalt: guardians[0].salt });
+    // Nor the leaf, nor any path sibling that is a real node hash: either would locate the approving
+    // guardian in the public tree. Each must be seen privately (the positive control), never publicly.
+    const secrets = { guardianSecret: guardians[0].secret, leafSalt: guardians[0].salt, leaf: guardians[0].leaf };
+    path.path.forEach((e, i) => {
+      if (e.sibling.field > 0xffffffffffffffffn) secrets[`sibling${i}`] = e.sibling.field;
+    });
+    // With two guardians, the other's leaf is the first sibling: at least one real hash is scanned.
+    expect(Object.keys(secrets).length).toBeGreaterThan(3);
+    assertNoLeak(sim.lastProofData, secrets);
   });
 
   it('never leaks the identity secret, its salt or the device key on finalize', () => {

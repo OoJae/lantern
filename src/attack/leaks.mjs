@@ -73,7 +73,7 @@ export const COVERAGE = {
   },
   vetoCommits: {
     sev: 'BENIGN', what: 'that a veto commitment exists',
-    why: 'a hiding commitment over a Field secret plus an independent 32-byte salt.',
+    why: 'a hiding commitment over a uniform 255-bit Field secret. Its salt is derived from that secret (D4, src/identity.js), so hiding rests on the secret\'s entropy alone, as SECURITY.md §2 ("What each party holds") says. It is deterministic too: one card always gives the same commitment, so a card reused for a second identity links the two (SECURITY.md §5).',
     measure: (L) => `${count(L.vetoCommits)} commitment(s)`,
   },
   approvedNullifiers: {

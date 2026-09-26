@@ -281,6 +281,21 @@ describe('reference host gate: a DApp survives its user losing their key', () =>
       .toThrow(/already performed/);
   });
 
+  // SECURITY.md §8, "Once per identity": the gate's nullifier binds the identity SECRET, not the root,
+  // so a recovery gives the same root a fresh use of every nonce. A DApp that needs one action per
+  // member must write its own nullifier over the root.
+  it('is one-shot per identity secret, not per root: after a recovery the same nonce is accepted again', () => {
+    const { sim, id, idRoot, guardians } = world();
+    path(sim, idRoot, id);
+    sim.call('hostGatedAction', idRoot, id, bytes32(9));
+    const g1 = succeed(sim, id, guardians, 1);
+    path(sim, idRoot, g1.newId);
+    sim.call('hostGatedAction', idRoot, g1.newId, bytes32(9));
+    expect(sim.ledger.gateActions).toBe(2n);
+    path(sim, idRoot, g1.newId);
+    expect(() => sim.call('hostGatedAction', idRoot, g1.newId, bytes32(9))).toThrow(/already performed/);
+  });
+
   it('rejects a descendant of a DIFFERENT root', () => {
     const { sim, id, idRoot } = world();
     path(sim, idRoot, id);
@@ -403,6 +418,36 @@ describe('regression: holding the identity secret is not enough to rotate or min
     sim.ps.guardianSecret = bytes32(3000); sim.ps.leafSalt = bytes32(3100);
     expect(() => sim.call('addGuardian', id)).toThrow(/adding a guardian requires the veto secret/);
     expect(sim.ledger.guardians.firstFree()).toBe(3n);
+  });
+
+  // SECURITY.md §4.5 and §6.16: the veto card is what stops a secret-holder minting guardians. Whoever
+  // holds BOTH (a dealing device that kept them, say) mints a quorum of their own, opens a recovery for
+  // their own device, approves it and, 72 hours later, takes the identity. Only a veto in time stops it.
+  it('a thief holding the identity secret AND the veto card mints a quorum; only a veto in time stops it', () => {
+    const steal = () => {
+      const { sim, id } = world({ n: 3 });
+      const minted = [0, 1].map((i) => {
+        sim.ps.guardianSecret = bytes32(3200 + i); sim.ps.leafSalt = bytes32(3300 + i);
+        return { secret: bytes32(3200 + i), salt: bytes32(3300 + i), leaf: sim.call('addGuardian', id) };
+      });
+      const rid = openAndApprove(sim, id, minted, 2, EPH_C);
+      sim.ps.identitySecret = ID_SECRET; sim.ps.idSalt = ID_SALT; sim.ps.ephemeralSk = ephSkFor(EPH_C);
+      return { sim, id, rid };
+    };
+    const newId = pureCircuits.idCommitOf(fieldOf(3400), bytes32(3401));
+    const newVeto = pureCircuits.vetoCommitOf(fieldOf(3402), bytes32(3403));
+
+    const taken = steal();
+    taken.sim.advance(DELAY + SLACK + 1);
+    taken.sim.call('finalizeRecovery', taken.rid, newId, newVeto);
+    expect(taken.sim.ledger.retiredIdentities.member(taken.id)).toBe(true);
+
+    const saved = steal();
+    saved.sim.ps.vetoSecret = VETO_SECRET_OLD; saved.sim.ps.vetoSalt = VETO_SALT_OLD;
+    saved.sim.call('vetoRecovery', saved.rid);
+    saved.sim.advance(DELAY + SLACK + 1);
+    expect(() => saved.sim.call('finalizeRecovery', saved.rid, newId, newVeto)).toThrow(/recovery vetoed/);
+    expect(saved.sim.ledger.retiredIdentities.member(saved.id)).toBe(false);
   });
 
   it('the owner, holding both the secret and the veto card, still rotates', () => {

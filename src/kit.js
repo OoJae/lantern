@@ -20,7 +20,29 @@
 // WHEN A KIT STOPS WORKING. After a recovery the successor identity has a new secret and a new veto
 // commitment (finalizeRecovery), so every kit's share and the old veto card are dead; the guardian
 // leaves survive (the context is untouched), but the owner deals new kits. After the owner replaces the
-// guardians (rotateGuardianSet, the whole set at once), every old leaf is dead too.
+// guardians (rotateGuardianSet, the whole set at once), every old leaf is dead too. The old shares are
+// not, until a recovery retires the secret, so old kits must be destroyed (SECURITY.md §6.17).
+//
+// THE GUARDIAN CONTEXT a kit names is the one its leaf is minted under: guardianCtx[idRoots[idCommit]]
+// on the ledger. It is the identity commitment itself only for an identity never recovered or rotated.
+// finalizeRecovery carries the root forward, so a successor's guardians approve under the ROOT's
+// context (or the one the last rotateGuardianSet set), never under the successor's own commitment.
+// dealKits therefore takes the context from the caller, with no default.
+//
+// AFTER A RECOVERY the default is SECURITY.md §8: rotate the guardian set first (rotateGuardianSet,
+// with the new veto card), then deal kits with fresh guardian secrets and leaf salts under the new
+// context, and add each guardian. Until that rotation every copy of the old guardian secrets and leaf
+// salts still approves recoveries of the successor: the old kits, and anything the lost device or the
+// dealing device kept (§6.9, §6.16). dealKits's `credentials` option, which keeps each guardian's
+// secret and salt so that only the shares change, keeps every one of those copies live with them. It
+// is only for an owner sure that no copy exists outside the guardians' own kits, which after the loss
+// of a device no owner can be; it is not the path after a recovery. Fresh kits dealt
+// without a rotation need their leaves added, and the old leaves can still approve beside them.
+//
+// ONE DEAL AT A TIME. A kit does not record which deal it came from. Two deals of one identity under
+// one context, n and t (a lost kit reprinted, say) make kits that collectShares accepts together and
+// that rebuild a wrong secret. rebuildFromKits checks the rebuilt secret against the identity
+// commitment, and names a kit from another deal when a working set remains without it.
 //
 // The check words detect a change or a slip; they are not a signature. Anyone holding a kit can make a
 // consistent one, and nothing here claims otherwise.
@@ -35,14 +57,16 @@ import { utf8ToBytes } from '@noble/hashes/utils.js';
 import { bytesToWords, wordsToBytes, hashWords, readWords, WordsError } from './words.js';
 import { be32, vetoSaltOf, idSaltOf } from './identity.js';
 import { R } from './field.js';
-import { split } from './shamir.js';
+import { split, reconstruct } from './shamir.js';
 
 export const VETO_CARD_VERSION = 'lantern-veto-card/1';
 export const GUARDIAN_KIT_VERSION = 'lantern-guardian-kit/1';
 export const CHECK_WORDS = 3;
 // Midnight's networks, and "practice": a kit made to try the format, for no contract at all.
 export const NETWORKS = Object.freeze(['practice', 'undeployed', 'preview', 'preprod', 'mainnet']);
-// The widest guardian set a kit describes: src/shamir.js's own bound.
+// The widest guardian set a kit describes: src/shamir.js's own bound, and what keeps canonical()'s
+// one-byte threshold, count and share fields from wrapping (256 would encode as 0, and two kits would
+// share check words). Raising it needs a new GUARDIAN_KIT_VERSION with a wider encoding.
 export const MAX_GUARDIANS = 255;
 
 const VETO_CHECK_DOMAIN = 'lantern:veto-card:check:v1';
@@ -184,6 +208,13 @@ export function parseVetoCard(input) {
 
 // ---- the guardian kit ------------------------------------------------------------------------------
 
+// One byte of canonical(): a value that does not fit is refused rather than wrapped, whatever bound
+// the caller checked.
+function byte(v, field) {
+  if (!Number.isInteger(v) || v < 0 || v > 255) throw new KitError('format', `${v} does not fit the kit's one-byte ${field}`, field);
+  return v;
+}
+
 // Everything the check words cover, in one fixed order. Each variable-length part is length-prefixed,
 // so no two different kits share an encoding.
 function canonical(k) {
@@ -195,7 +226,7 @@ function canonical(k) {
     Uint8Array.of(net.length), net,
     Uint8Array.of(contract.length), contract,
     bytesOfHex(k.identity), bytesOfHex(k.context),
-    Uint8Array.of(k.threshold, k.guardians, k.share),
+    Uint8Array.of(byte(k.threshold, 'threshold'), byte(k.guardians, 'guardians'), byte(k.share, 'share')),
     k.guardianSecret, k.leafSalt, be32(k.shareY),
   ];
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
@@ -245,8 +276,10 @@ function validated(k) {
  * @param {string} p.network            one of NETWORKS
  * @param {string|Uint8Array|null} p.contract  the Lantern contract's address (null for practice)
  * @param {string|Uint8Array} p.idCommit       the identity commitment (idCommitOf, the contract's own circuit)
- * @param {string|Uint8Array} p.ctx            the guardian context the leaf is minted under (at enrolment,
- *                                             the identity commitment itself)
+ * @param {string|Uint8Array} p.ctx            the guardian context the leaf is minted under:
+ *                                             guardianCtx[idRoots[idCommit]] on the ledger. The identity
+ *                                             commitment itself only for an identity never recovered or
+ *                                             rotated; for a successor, the root's context.
  * @param {number} p.threshold, p.guardians   t and n
  * @param {{x: bigint, y: bigint}} p.share     this guardian's share, as src/shamir.js deals it
  * @param {Uint8Array} p.guardianSecret, p.leafSalt  32 bytes each
@@ -418,7 +451,7 @@ export function parseGuardianKit(input, expect = {}) {
     throw new KitError('identity', 'This kit belongs to a different identity', 'identity');
   }
   if (expect.ctx !== undefined && hex32(expect.ctx, 'The expected guardian context', 'context') !== k.context) {
-    throw new KitError('context', 'This kit was made for an earlier guardian set: the owner has replaced it, and it can no longer approve', 'context');
+    throw new KitError('context', 'This kit was made for an earlier guardian set: the owner has replaced it, and it can no longer approve, but its share still rebuilds the owner\'s secret until a recovery: destroy it', 'context');
   }
 
   return {
@@ -464,6 +497,9 @@ function diagnose(k, check) {
 /**
  * The shares a recovering device rebuilds from, once every kit agrees: the same network, contract,
  * identity, guardian set and threshold; no share twice; and at least the threshold of them.
+ * It cannot tell two deals of one identity apart (a kit records no deal), and shares from two deals
+ * rebuild a wrong secret with no error. A recovering device therefore rebuilds with rebuildFromKits,
+ * which checks the secret against the identity commitment, before it opens a recovery.
  * @param kits  parsed kits (parseGuardianKit's results)
  * @returns {{ shares: {x: bigint, y: bigint}[], threshold: number, idCommit: Uint8Array }}
  */
@@ -487,32 +523,139 @@ export function collectShares(kits) {
   return { shares: kits.map((k) => ({ x: k.share.x, y: k.share.y })), threshold: first.threshold, idCommit: first.idCommit };
 }
 
+// How many sets of kits rebuildFromKits tries before it gives up. It is every set of at least t kits
+// when there are up to 8, and always all the kits together and every set with one left out, so one kit
+// from another deal is set aside whenever the rest still reach the threshold.
+export const MAX_KIT_SUBSETS = 256;
+
+// The sets of `lo` or more of m indexes, largest first, each size in lexicographic order.
+function* subsetsBySize(m, lo) {
+  for (let size = m; size >= lo; size--) {
+    const idx = Array.from({ length: size }, (_, i) => i);
+    for (;;) {
+      yield idx.slice();
+      let i = size - 1;
+      while (i >= 0 && idx[i] === m - size + i) i--;
+      if (i < 0) break;
+      idx[i]++;
+      for (let j = i + 1; j < size; j++) idx[j] = idx[j - 1] + 1;
+    }
+  }
+}
+
+/**
+ * What a recovering device rebuilds from its guardians' kits, checked before anything is opened: the
+ * identity secret and its salt, and only if they open the kits' identity commitment. collectShares
+ * cannot tell two deals of one identity apart, and their shares mixed rebuild a wrong secret that
+ * finalizeRecovery would refuse only after the timelock. So a device runs this before openRecovery.
+ *
+ * It tries the kits together first, then smaller sets down to t of them (at most MAX_KIT_SUBSETS), and
+ * keeps the largest set that opens the commitment. A secret that opens it is the identity's own (the
+ * commitment binds it), so a kit from another deal does not stop a recovery the others can make: the
+ * kits left out are named, and their guardians asked for their newest kit.
+ * @param kits        parsed kits (parseGuardianKit's results), as collectShares takes them
+ * @param idCommitOf  the contract's own pure circuit, (identitySecret, idSalt) => idCommit
+ *                    (pureCircuits.idCommitOf), passed in so this file stays runtime-free
+ * @returns {{ identitySecret: bigint, idSalt: Uint8Array, idCommit: Uint8Array, threshold: number,
+ *             used: number[], stale: number[] }}  `used` and `stale` are share numbers: the kits the
+ *             secret was rebuilt from, and the kits from another deal of this identity.
+ */
+export function rebuildFromKits(kits, idCommitOf) {
+  if (typeof idCommitOf !== 'function') throw new KitError('format', 'Rebuilding needs the contract\'s idCommitOf circuit, to check the secret', 'identity');
+  const { shares, threshold, idCommit } = collectShares(kits);
+  const want = hexOf(idCommit);
+  let tries = 0;
+  for (const pick of subsetsBySize(shares.length, threshold)) {
+    if (++tries > MAX_KIT_SUBSETS) {
+      throw new KitError('mismatch', `These kits do not rebuild this identity together, and there are too many to try every set of ${threshold}: at least one comes from another deal of it. Ask each guardian for their newest kit`, 'share');
+    }
+    const identitySecret = reconstruct(pick.map((i) => shares[i]));
+    const idSalt = idSaltOf(identitySecret);
+    if (hex32(idCommitOf(identitySecret, idSalt), 'The identity commitment the circuit returned', 'identity') !== want) continue;
+    const kept = new Set(pick);
+    const shareNo = (i) => Number(shares[i].x);
+    return {
+      identitySecret, idSalt, idCommit, threshold,
+      used: pick.map(shareNo),
+      stale: shares.map((_, i) => i).filter((i) => !kept.has(i)).map(shareNo),
+    };
+  }
+  throw new KitError('mismatch', shares.length > threshold
+    ? `These kits do not rebuild this identity: no ${threshold} of them agree, so they come from different deals of it. Ask each guardian for their newest kit`
+    : 'These kits do not rebuild this identity: at least one comes from another deal of it. Ask each guardian for their newest kit, or bring one more', 'share');
+}
+
 // ---- dealing ---------------------------------------------------------------------------------------
 
 const randomBytes32 = () => globalThis.crypto.getRandomValues(new Uint8Array(32));
 
 /**
  * Everything an owner prints, for an identity from newIdentity: one veto card, and one kit per guardian
- * with a fresh guardian secret, leaf salt and share. A kit's leaf is minted when the owner adds that
- * guardian (addGuardian); until then the kit protects nothing.
+ * with a fresh share and, unless `credentials` are given, a fresh guardian secret and leaf salt. A kit
+ * with fresh credentials protects nothing until the owner adds that guardian (addGuardian) and so mints
+ * its leaf.
  * @param {object} p
- * @param p.identity   newIdentity()'s result
- * @param p.idCommit   the identity commitment (the contract's idCommitOf); also the first guardian context
- * @param p.ctx        the guardian context, if not the first (after a rotation)
+ * @param p.identity   newIdentity()'s result: both salts derived from their secrets (D4), or it is refused
+ * @param p.idCommit   the identity commitment (the contract's idCommitOf)
+ * @param p.ctx        required: the guardian context the leaves are minted under, guardianCtx[idRoots[idCommit]]
+ *                     on the ledger. It equals idCommit only for an identity never recovered or rotated. For
+ *                     a successor it is the root's context (or the one the last rotateGuardianSet set), never
+ *                     the successor's own commitment.
  * @param p.network, p.contract, p.guardians (n), p.threshold (t)
+ * @param p.credentials optional: n { guardianSecret, leafSalt } pairs, share i+1's guardian keeping pair i,
+ *                     and no guardian secret twice (the contract counts one approval per secret). New shares
+ *                     for leaves already in the tree: nothing to mint, and no second set of leaves. But it
+ *                     keeps every copy of those secrets and salts live, the old kits and anything a lost or
+ *                     dealing device kept (SECURITY.md §6.9, §6.16). After a recovery the default is §8:
+ *                     rotate the guardian set, then deal with fresh credentials (leave this out).
  * @param p.fieldRng   () => field element, for the shares' coefficients (default: Web Crypto)
  * @param p.bytesRng   () => 32 bytes, for guardian secrets and leaf salts (default: Web Crypto)
  */
-export function dealKits({ identity, idCommit, ctx = idCommit, network: net, contract = null, guardians, threshold, fieldRng, bytesRng = randomBytes32 }) {
+export function dealKits({ identity, idCommit, ctx, network: net, contract = null, guardians, threshold, credentials, fieldRng, bytesRng = randomBytes32 }) {
+  if (ctx === undefined || ctx === null) {
+    throw new KitError('format', 'The guardian context is required: guardianCtx[idRoots[idCommit]] on the ledger (the identity commitment only for an identity never recovered or rotated)', 'context');
+  }
   const n = count(guardians, 'The number of guardians', 'guardians', 2, MAX_GUARDIANS);
   const t = count(threshold, 'The threshold', 'threshold', 2, MAX_GUARDIANS);
   if (t > n) throw new KitError('format', `The threshold (${t}) cannot be more than the number of guardians (${n})`, 'threshold');
+  // Both salts must be the ones derived from their secrets (src/identity.js, D4): the shares rebuild only
+  // the identity secret, and the veto card carries only the veto secret, so a device re-derives each salt.
+  // With any other salt the shares could never finalize, and the card could never veto.
   fieldElement(identity?.identitySecret, 'The identity secret', 'identitySecret');
-  if (!sameBytes(identity.idSalt, idSaltOf(identity.identitySecret))) throw new KitError('format', 'The identity salt is not the one derived from its secret', 'idSalt');
+  if (!(identity.idSalt instanceof Uint8Array) || !sameBytes(identity.idSalt, idSaltOf(identity.identitySecret))) {
+    throw new KitError('format', 'The identity salt is not the one derived from its secret', 'idSalt');
+  }
+  fieldElement(identity.vetoSecret, 'The veto secret', 'vetoSecret');
+  if (!(identity.vetoSalt instanceof Uint8Array) || !sameBytes(identity.vetoSalt, vetoSaltOf(identity.vetoSecret))) {
+    throw new KitError('format', 'The veto salt is not the one derived from its secret: a veto card carries only the secret, so this card could never veto', 'vetoSalt');
+  }
+  const kept = credentials === undefined ? null : keptCredentials(credentials, n);
   const shares = fieldRng ? split(identity.identitySecret, n, t, fieldRng) : split(identity.identitySecret, n, t);
-  const kits = shares.map((share) => buildGuardianKit({
+  const kits = shares.map((share, i) => buildGuardianKit({
     network: net, contract, idCommit, ctx, threshold: t, guardians: n, share,
-    guardianSecret: bytesRng(), leafSalt: bytesRng(),
+    ...(kept ? kept[i] : { guardianSecret: bytesRng(), leafSalt: bytesRng() }),
   }));
   return { vetoCard: buildVetoCard(identity.vetoSecret), kits };
+}
+
+// The guardians' own secrets and salts, kept for a new deal: one pair per share, each 32 bytes, and no
+// guardian secret twice, whatever its salt. The contract counts one approval per guardian SECRET per
+// recovery (approvalNullifierOf(secret, idCommit, rid) leaves the leaf salt out; SECURITY.md §4.3), so
+// two kits with one secret are one guardian counted as two of n: only one of them can ever approve, and
+// with t = n the identity could never be recovered.
+function keptCredentials(credentials, n) {
+  if (!Array.isArray(credentials) || credentials.length !== n) {
+    throw new KitError('format', `The credentials must be one { guardianSecret, leafSalt } per guardian: ${n} of them`, 'guardians');
+  }
+  const seen = new Set();
+  return credentials.map((c) => {
+    const guardianSecret = bytes32(c?.guardianSecret, 'A kept guardian secret', 'guardianSecret');
+    const leafSalt = bytes32(c?.leafSalt, 'A kept leaf salt', 'leafSalt');
+    const key = hexOf(guardianSecret);
+    if (seen.has(key)) {
+      throw new KitError('format', 'Two guardians are given the same guardian secret: the contract counts one approval per guardian secret, whatever the leaf salt, so they would be one guardian', 'guardianSecret');
+    }
+    seen.add(key);
+    return { guardianSecret, leafSalt };
+  });
 }

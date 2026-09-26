@@ -11,7 +11,9 @@ import { scanProofData } from '../leakscan.js';
 
 const seedOf = (n) => new Uint8Array(32).fill(n);
 
-/** @param bindings { rt, schnorr, Lantern, Host } -- from src/bindings/root.mjs, or the browser's copy */
+/** @param bindings { rt, schnorr, Lantern, Host } -- from src/bindings/root.mjs, or the browser's copy
+ *  @param hostTag the host's tag: 4242 is the story's fixed demo value. A real host needs its own fresh
+ *  random 31-byte tag (SECURITY.md §8). */
 export function simExecutor({ rt, schnorr, Lantern, Host }, { now = 1_790_000_000, hostTag = 4242n } = {}) {
   let reads = [];
   let clock = now;

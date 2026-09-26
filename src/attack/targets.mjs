@@ -12,6 +12,7 @@ import { Sim } from './sim.mjs';
 import { observerView } from './view.mjs';
 import { TRUE_GUARDIANS, guardianIdOf } from './candidates.mjs';
 import { randomFieldElement } from '../field.js';
+import { idSaltOf, vetoSaltOf } from '../identity.js';
 
 export const OWNER = new Uint8Array(32).fill(0xc4);       // the victim, as target 1/2 see them
 export const RIDS = [new Uint8Array(32).fill(0x76)];       // recoveries opened -- rids are public args
@@ -75,8 +76,10 @@ function buildShipped() {
     'guardianSecret', 'leafSalt', 'guardianPath', 'lineagePath',
     'identitySecret', 'idSalt', 'vetoSecret', 'vetoSalt', 'claimedNow', 'ephemeralSk',
   ]);
-  const idSecret = randomFieldElement(), idSalt = rand32();
-  const vetoSecret = randomFieldElement(), vetoSalt = rand32();
+  // The owner's salts are derived from their secrets, as the shipped client makes them (D4,
+  // src/identity.js): the ledger measured here is the one that client writes.
+  const idSecret = randomFieldElement(), idSalt = idSaltOf(idSecret);
+  const vetoSecret = randomFieldElement(), vetoSalt = vetoSaltOf(vetoSecret);
   const idCommit = Lantern.pureCircuits.idCommitOf(idSecret, idSalt);
   // The owner holds both; adding guardians needs the veto card too.
   Object.assign(sim.ps, { identitySecret: idSecret, idSalt, vetoSecret, vetoSalt });
