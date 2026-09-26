@@ -14,7 +14,7 @@ import {
   EPH_A, EPH_B, EPH_C, EPH_D, DAY, VETO_SLACK, NO_RESERVATION,
 } from './v2-fixtures.js';
 import {
-  slotOf, periodBounds, checkInAt, checkInSlot, cryptoUniform, vetoAdvice, cooldownOf, PERIOD, CHECKIN_MARGIN,
+  slotOf, periodBounds, checkInAt, checkInSlot, cryptoUniform, vetoAdvice, cooldownOf, PERIOD, CHECKIN_MARGIN, CHECKIN_LATE_MIN,
 } from '../src/v2/timeline.js';
 import { newIdentity, commitmentsOf, dealShares, recoverFromShares } from '../src/v2/identity.js';
 import { createLantern2Sim } from '../src/v2/sim.js';
@@ -719,13 +719,22 @@ describe('F7: a guardian checks in at its own secret slot, which no reminder mov
     expect(at).toBeLessThan(end - CHECKIN_MARGIN);
   });
 
-  it('in the period\'s last hour it never sends at once: it waits for the next period\'s slot', () => {
+  it('with less than a day left before the period\'s last hour, it never sends late: it waits for the next period\'s slot', () => {
+    // Second review (check-2): the late window used to shrink with the period, so a
+    // client woken at end - 3602 always sent one second later, straight after the prompt.
     const slot = slotFor(0);
-    for (const t of [end - CHECKIN_MARGIN - 1, end - CHECKIN_MARGIN, end - 60, end - 1]) {
-      expect(checkInAt(t, slot, { rng: () => 0.5 })).toEqual({ at: null, late: true });
+    const last = end - CHECKIN_MARGIN;
+    for (const t of [last - CHECKIN_LATE_MIN, last - 3_600, end - 3_602, last - 1, last, end - 60, end - 1]) {
+      for (const u of [0, 0.5, 0.999999]) expect(checkInAt(t, slot, { rng: () => u })).toEqual({ at: null, late: true });
     }
-    expect(checkInAt(end - CHECKIN_MARGIN - 2, slot, { rng: () => 0.999999 })).toEqual({ at: end - CHECKIN_MARGIN - 1, late: true });
+    // One second earlier a full day is left, and the draw spans all of it.
+    const t = last - CHECKIN_LATE_MIN - 1;
+    expect(checkInAt(t, slot, { rng: () => 0 })).toEqual({ at: t + 1, late: true });
+    expect(checkInAt(t, slot, { rng: () => 0.999999 })).toEqual({ at: last - 1, late: true });
+    // A client that has NOT reached its slot still sends at it, however late in the period.
+    expect(checkInAt(end - 3_602, end - 3_601, { rng: () => 0.5 })).toEqual({ at: end - 3_601, late: false });
     expect(CHECKIN_MARGIN).toBe(3_600);
+    expect(CHECKIN_LATE_MIN).toBe(86_400);
     expect(PERIOD).toBe(7_862_400);
   });
 

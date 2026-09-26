@@ -168,6 +168,7 @@ export function vetoAdvice(ledger, rid, now) {
 
 export const CHECKIN_SLOT_DOMAIN = 'lantern2:checkin-slot:v1';
 export const CHECKIN_MARGIN = 3_600;   // no slot in a period's last hour: the send must land in its period
+export const CHECKIN_LATE_MIN = 86_400; // a late check-in needs at least a day to hide in, or it waits
 
 const u64be = (x) => { const b = new Uint8Array(8); new DataView(b.buffer).setBigUint64(0, BigInt(x)); return b; };
 
@@ -202,18 +203,20 @@ export function checkInSlot(guardianSecret, ctx, p, { margin = CHECKIN_MARGIN } 
  *     woke the client: an owner who reminds one guardian at a time and waits
  *     for the counter learns whether that guardian checked in. The random draw
  *     hides it only among the other late check-ins;
- *   - in the period's last `margin` seconds: { at: null, late: true }. No
- *     moment is left that is not straight after the prompt; the client checks
- *     in at its next period's slot instead. It never sends at once.
+ *   - when fewer than `lateMin` seconds (a day) are left before end - margin,
+ *     or in the period's last `margin` seconds: { at: null, late: true }. The
+ *     only moments left are straight after the prompt; the client checks in at
+ *     its next period's slot instead. It never sends at once, nor a second after.
  * `rng()` returns a float in [0, 1); the default is the platform's CSPRNG.
  */
-export function checkInAt(now, slot, { margin = CHECKIN_MARGIN, rng = cryptoUniform } = {}) {
+export function checkInAt(now, slot, { margin = CHECKIN_MARGIN, lateMin = CHECKIN_LATE_MIN, rng = cryptoUniform } = {}) {
   const n = num(now);
   if (slot === undefined || slot === null || !Number.isInteger(num(slot))) throw new Error('checkInAt needs the guardian\'s slot for this period (checkInSlot)');
   const p = periodOf(n);
   if (periodOf(slot) !== p) throw new Error('the slot is for another period');
   if (n < num(slot)) return { at: num(slot), late: false };
   const last = periodBounds(p).end - margin;
-  if (n + 1 >= last) return { at: null, late: true };
-  return { at: n + 1 + Math.floor(rng() * (last - n - 1)), late: true };
+  const room = last - n - 1;               // the moments in [now + 1, last)
+  if (room < lateMin) return { at: null, late: true };
+  return { at: n + 1 + Math.floor(rng() * room), late: true };
 }
