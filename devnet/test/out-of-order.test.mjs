@@ -33,7 +33,7 @@ describe('the cost checks, before a compile', () => {
       cpSync(path.join(repo, 'scripts', f), path.join(tree, 'scripts', f));
     }
   });
-  after(() => rmSync(tree, { recursive: true, force: true }));
+  after(() => tree && rmSync(tree, { recursive: true, force: true }));
   const run = (cmd, args) => spawnSync(cmd, args, { cwd: tree, encoding: 'utf8' });
 
   it("npm run cost:check says to run 'npm run compile' first", () => {
@@ -70,9 +70,14 @@ describe('the cost checks, before a compile', () => {
 // The verifies load the wallet SDK's modules, from the devnet's own install.
 const devnetDeps = existsSync(path.join(repo, 'devnet', 'node_modules', '@midnight-ntwrk'));
 
-describe('the devnet verifies, before bash devnet/compile.sh', { skip: !devnetDeps && 'devnet/node_modules is not installed' }, () => {
+// Skipped test by test, not as a suite, so a checkout without devnet/node_modules lists the same
+// tests (as skipped) and every tree counts the same number of them (scripts/readme-facts.mjs).
+const skip = !devnetDeps && 'devnet/node_modules is not installed';
+
+describe('the devnet verifies, before bash devnet/compile.sh', () => {
   let tree;
   before(() => {
+    if (skip) return;
     tree = mkdtempSync(path.join(os.tmpdir(), 'lantern-verify-order-'));
     mkdirSync(path.join(tree, 'devnet'));
     cpSync(path.join(repo, 'devnet', 'src'), path.join(tree, 'devnet', 'src'), { recursive: true });
@@ -81,7 +86,7 @@ describe('the devnet verifies, before bash devnet/compile.sh', { skip: !devnetDe
     symlinkSync(path.join(repo, 'src'), path.join(tree, 'src'));
     symlinkSync(path.join(repo, 'deployments'), path.join(tree, 'deployments'));
   });
-  after(() => rmSync(tree, { recursive: true, force: true }));
+  after(() => tree && rmSync(tree, { recursive: true, force: true }));
   const verify = (script, net) => spawnSync('node', [path.join('devnet', 'src', script)], {
     cwd: tree, encoding: 'utf8', timeout: 60_000, env: { ...process.env, LANTERN_NETWORK: net },
   });
@@ -89,15 +94,15 @@ describe('the devnet verifies, before bash devnet/compile.sh', { skip: !devnetDe
 
   for (const net of ['', 'preprod']) {
     const where = net || 'the local chain';
-    it(`devnet:verify on ${where} says to run bash devnet/compile.sh first`, () => {
+    it(`devnet:verify on ${where} says to run bash devnet/compile.sh first`, { skip }, () => {
       saysOneLine(verify('verify.mjs', net), /^devnet:verify: devnet\/build is missing or incomplete; run 'bash devnet\/compile\.sh' first$/);
     });
-    it(`devnet/src/verify-v2.mjs on ${where} says to run bash devnet/compile.sh --v2 first`, () => {
+    it(`devnet/src/verify-v2.mjs on ${where} says to run bash devnet/compile.sh --v2 first`, { skip }, () => {
       saysOneLine(verify('verify-v2.mjs', net), /^devnet:verify:v2: devnet\/build\/lantern2 is missing or incomplete; run 'bash devnet\/compile\.sh --v2' first/);
     });
   }
 
-  it('a build with no stamp (compile.sh stopped part-way) gets the same advice', () => {
+  it('a build with no stamp (compile.sh stopped part-way) gets the same advice', { skip }, () => {
     for (const d of ['lantern', 'host', 'shipped', 'lantern2']) {
       mkdirSync(path.join(build(), d, 'contract'), { recursive: true });
       mkdirSync(path.join(build(), d, 'keys'), { recursive: true });

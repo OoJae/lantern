@@ -3,7 +3,7 @@
 # way scripts/cost.sh does for v1. Needs `npm run compile:v2` first.
 set -euo pipefail
 ZKIR="${HOME}/.compact/versions/0.31.1/$(uname -m | sed 's/arm64/aarch64/')-darwin/zkir"
-[ -x "$ZKIR" ] || ZKIR="$(find "${HOME}/.compact/versions/0.31.1" -name zkir -type f | head -1)"
+[ -x "$ZKIR" ] || ZKIR="$(find "${HOME}/.compact/versions/0.31.1" -name zkir -type f 2>/dev/null | head -1 || true)"
 [ -x "$ZKIR" ] || { echo "error: zkir not found; run 'npm run compile:v2' first" >&2; exit 1; }
 ls contracts/managed-lantern2/zkir/*.zkir >/dev/null 2>&1 || { echo "error: no v2 zkir; run 'npm run compile:v2' first" >&2; exit 1; }
 
