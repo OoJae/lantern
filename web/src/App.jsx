@@ -88,10 +88,17 @@ export default function App() {
       const hashTarget = !hash ? null : hash.startsWith('id=') ? document.getElementById('watch') : document.getElementById(hash);
       if (hashTarget && toHash) {
         hashTarget.scrollIntoView();
-        // Firefox puts the window back at the top when the new page grows above the target while a
-        // view transition is drawn (the indexer's answer, say): again once it is over, unless the
-        // reader has scrolled since.
-        afterRouteChange(() => { if (hashTarget.isConnected && window.scrollY === 0) hashTarget.scrollIntoView(); });
+        // Firefox puts the window back near the top (not always at 0) when the new page grows above the
+        // target while a view transition is drawn (/live's line that the indexer is out of reach, say):
+        // again once it is over, unless the reader has moved the page since.
+        let moved = false;
+        const move = () => { moved = true; };
+        const INPUT = ['wheel', 'touchmove', 'keydown', 'pointerdown'];
+        for (const e of INPUT) window.addEventListener(e, move, { capture: true, passive: true });
+        afterRouteChange(() => {
+          for (const e of INPUT) window.removeEventListener(e, move, { capture: true });
+          if (hashTarget.isConnected && !moved) hashTarget.scrollIntoView();
+        });
       }
       // (a page whose contract did not load before it drew its h1, /demo's, has only the line that says so)
       const target = focus && (hashTarget || main.current.querySelector('h1') || main.current.querySelector('.load-failed'));
