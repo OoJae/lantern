@@ -79,6 +79,8 @@ What Lantern contributes to each judging criterion, the evidence, and one comman
 
 ### The deck
 
+- **The deck**, in Google Slides: [docs.google.com/presentation/d/18uyCn49…](https://docs.google.com/presentation/d/18uyCn49KgutkaMVVv3dlBlRJ4khVXkCOPaWQgRw4tiQ).
+- **The demo film**, 2 min 23 s, every shot a recording of this site: [youtu.be/oapC_yWs4HA](https://youtu.be/oapC_yWs4HA).
 - **The deck's text**, slide by slide, with speaker notes and a source for every number: [`docs/deck/slides.md`](docs/deck/slides.md).
 
 ## Quickstart
